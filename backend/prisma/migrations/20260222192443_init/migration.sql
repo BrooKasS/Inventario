@@ -11,7 +11,8 @@ CREATE TABLE "Asset" (
     "nombre" TEXT,
     "codigoServicio" TEXT,
     "ubicacion" TEXT,
-    "responsable" TEXT,
+    "propietario" TEXT,
+    "custodio" TEXT,
     "creadoEn" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "actualizadoEn" TIMESTAMP(3) NOT NULL,
 
@@ -33,7 +34,9 @@ CREATE TABLE "Servidor" (
     "vcpu" INTEGER,
     "vramMb" INTEGER,
     "sistemaOperativo" TEXT,
+    "fechaFinSoporte" TIMESTAMP(3),
     "rutasBackup" TEXT,
+    "contratoQueSoporta" TEXT,
 
     CONSTRAINT "Servidor_pkey" PRIMARY KEY ("id")
 );
@@ -45,8 +48,10 @@ CREATE TABLE "Red" (
     "serial" TEXT,
     "mac" TEXT,
     "modelo" TEXT,
+    "fechaFinSoporte" TIMESTAMP(3),
     "ipGestion" TEXT,
     "estado" TEXT,
+    "contratoQueSoporta" TEXT,
 
     CONSTRAINT "Red_pkey" PRIMARY KEY ("id")
 );
@@ -73,7 +78,9 @@ CREATE TABLE "BaseDatos" (
     "ambiente" TEXT,
     "appSoporta" TEXT,
     "versionBd" TEXT,
+    "fechaFinalSoporte" TIMESTAMP(3),
     "contenedorFisico" TEXT,
+    "contratoQueSoporta" TEXT,
 
     CONSTRAINT "BaseDatos_pkey" PRIMARY KEY ("id")
 );
