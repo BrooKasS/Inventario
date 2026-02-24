@@ -4,7 +4,7 @@ import { getAssets } from "../api/client";
 import type { Asset, Pagination, TipoActivo } from "../types";
 
 const GRAD    = "linear-gradient(135deg, #fa8e00 , #89183e 25%, 35% #861F41 35%, #B7312C 70%, #D86018 100%)";
-const PRIMARY = "#ff5500";
+const PRIMARY = "hsl(32, 94%, 56%)";
 
 const TIPO_LABEL: Record<string, string> = {
   SERVIDOR:   "Servidores",
@@ -136,7 +136,7 @@ function Badge({ text }: { text: string | null }) {
     <span style={{
       display: "inline-block", padding: "3px 12px", borderRadius: 20,
       fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em",
-      background: "rgba(250,130,0,.3)", color: PRIMARY,
+      background: "rgba(245, 65, 15, 0.45)", color: PRIMARY,
       border: "1px solid rgba(183,49,44,.2)",
     }}>
       {text}
@@ -247,10 +247,12 @@ export default function AssetList() {
 
   const [assets,     setAssets]     = useState<Asset[]>([]);
   const [allAssets,  setAllAssets]  = useState<Asset[]>([]);
+  const [allAssetsForFiltering, setAllAssetsForFiltering] = useState<Asset[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [q,          setQ]          = useState("");
   const [page,       setPage]       = useState(1);
   const [loading,    setLoading]    = useState(true);
+  const [loadingFilters, setLoadingFilters] = useState(false);
 
   const [showFilters,     setShowFilters]     = useState(false);
   const [filtroNombre,    setFiltroNombre]    = useState("");
@@ -265,12 +267,12 @@ export default function AssetList() {
   const hayFiltros = !!(filtroNombre || filtroCodigo || filtroUbicacion
     || Object.values(filtroExtra).some(v => v));
 
-  /* ── opciones de autocompletado derivadas de allAssets ── */
-  const optsNombre    = uniqueVals(allAssets, a => a.nombre);
-  const optsCodigo    = uniqueVals(allAssets, a => a.codigoServicio);
-  const optsUbicacion = uniqueVals(allAssets, a => a.ubicacion);
+  /* ── opciones de autocompletado derivadas de allAssetsForFiltering ── */
+  const optsNombre    = uniqueVals(allAssetsForFiltering, a => a.nombre);
+  const optsCodigo    = uniqueVals(allAssetsForFiltering, a => a.codigoServicio);
+  const optsUbicacion = uniqueVals(allAssetsForFiltering, a => a.ubicacion);
   const optsExtra: Record<string, string[]> = Object.fromEntries(
-    extraFields.map(({ key }) => [key, uniqueSubVals(allAssets, key)])
+    extraFields.map(({ key }) => [key, uniqueSubVals(allAssetsForFiltering, key)])
   );
 
   const load = useCallback(async () => {
@@ -288,12 +290,32 @@ export default function AssetList() {
     }
   }, [tipo, q, page]);
 
+  // Cargar TODOS los activos sin paginación para aplicar filtros
+  const loadAllForFiltering = useCallback(async () => {
+    setLoadingFilters(true);
+    try {
+      const data = await getAssets({ tipo, limit: 10000 }); // Cargar todos (sin búsqueda 'q' ni paginación)
+      setAllAssetsForFiltering(data.assets || []);
+    } catch (err) {
+      console.error("Error cargando todos los activos para filtros:", err);
+    } finally {
+      setLoadingFilters(false);
+    }
+  }, [tipo]);
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { setPage(1); setQ(""); limpiarFiltros(); }, [tipo]);
   useEffect(() => { load(); }, [load]);
+  
+  // Cargar todos los activos cuando se abre el modal de filtros
+  useEffect(() => {
+    if (showFilters) {
+      loadAllForFiltering();
+    }
+  }, [showFilters, loadAllForFiltering]);
 
   const aplicarFiltros = () => {
-    const filtered = allAssets.filter(a => {
+    const filtered = allAssetsForFiltering.filter(a => {
       const matchNombre    = !filtroNombre    || normalize(a.nombre ?? "").includes(normalize(filtroNombre));
       const matchCodigo    = !filtroCodigo    || normalize(a.codigoServicio ?? "").includes(normalize(filtroCodigo));
       const matchUbicacion = !filtroUbicacion || normalize(a.ubicacion ?? "").includes(normalize(filtroUbicacion));
@@ -311,7 +333,7 @@ export default function AssetList() {
 
   function limpiarFiltros() {
     setFiltroNombre(""); setFiltroCodigo(""); setFiltroUbicacion(""); setFiltroExtra({});
-    setAssets(allAssets); setShowFilters(false);
+    setAssets(allAssetsForFiltering); setShowFilters(false);
   }
 
   return (
@@ -348,7 +370,7 @@ export default function AssetList() {
             </div>
             <p style={{ fontSize: 13, color: "rgba(255,255,255,.75)", margin: "4px 0 0 54px" }}>
               {loading ? "Cargando..."
-                : hayFiltros ? `${assets.length} de ${allAssets.length} registros (filtrado)`
+                : hayFiltros ? `${assets.length} de ${allAssetsForFiltering.length} registros (filtrado)`
                 : pagination ? `${pagination.total} registros encontrados` : ""}
             </p>
           </div>

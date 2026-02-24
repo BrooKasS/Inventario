@@ -213,7 +213,7 @@ export default function Dashboard() {
               gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))",
               gap: 16, marginBottom: 32,
             }}>
-              <StatCard label="Total Activos" value={stats?.total} grad={GRAD} onClick={() => navigate("/inventario")} />
+              <StatCard label="Total Activos" value={stats?.total} grad={GRAD} />
               {stats?.porTipo.map(t => (
                 <StatCard
                   key={t.tipo}

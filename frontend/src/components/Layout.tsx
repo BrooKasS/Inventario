@@ -11,7 +11,7 @@ const nav = [
 
 const GRAD = "linear-gradient(135deg, #FA8200 0%, #861F41 35%, #B7312C 70%, #D86018 100%)";
 const PRIMARY = "#B7312C";
-const DARK    = "#861F41";
+const DARK  = "#861F41";
 
 export default function Layout() {
   const [importing, setImporting]   = useState(false);

@@ -14,7 +14,7 @@ export class ImportController {
         } as ApiResponse<never>);
       }
 
-      // ✅ Si no viene autor → usar "Sistema"
+    
       const autor = req.body?.autor || "Sistema";
 
       const resultado = await importService.importarExcel(
