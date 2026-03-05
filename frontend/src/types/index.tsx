@@ -13,7 +13,7 @@ export interface Servidor {
   tipoServidor: string | null;
   appSoporta: string | null;
   vcpu: number | null;
-  vramMb: number | null;
+  Mb: number | null;
   sistemaOperativo: string | null;
   fechaFinSoporte: string | null;
   rutasBackup: string | null;

@@ -101,7 +101,7 @@ function AutoInput({
               key={opt}
               onMouseDown={e => { e.preventDefault(); onChange(opt); setOpen(false); }}
               style={{
-                padding: "9px 14px", fontSize: 13,
+                padding: "9px 14px", fontSize: 12,
                 fontFamily: "Calibri, sans-serif", cursor: "pointer",
                 borderBottom: "1px solid #f5f0f0",
                 color: "#333", transition: "background .1s",
@@ -131,13 +131,15 @@ function AutoInput({
 
 /* ── Badge ── */
 function Badge({ text }: { text: string | null }) {
-  if (!text) return <span style={{ color: "#bbb" }}>—</span>;
+  if (!text) return <span style={{ color: "#252525" }}>—</span>;
   return (
     <span style={{
-      display: "inline-block", padding: "3px 12px", borderRadius: 20,
-      fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em",
-      background: "rgba(245, 65, 15, 0.45)", color: PRIMARY,
-      border: "1px solid rgba(183,49,44,.2)",
+         display: "inline-block", padding: "3px 12px", borderRadius: 20,
+          fontSize: 12, fontWeight: 700, textTransform: "uppercase",
+          letterSpacing: "0.06em",
+          background: "rgba(250,130,0,.18)", color: "#FA8200",
+          border: "1px solid rgba(250,130,0,.3)",
+          fontFamily: "Calibri, sans-serif",
     }}>
       {text}
     </span>
@@ -149,11 +151,11 @@ function Row({ cells, onClick }: { cells: React.ReactNode[]; onClick: () => void
   const [hovered, setHovered] = useState(false);
   return (
     <tr onClick={onClick} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
-      style={{ cursor: "pointer", background: hovered ? "rgba(250,130,0,.08)" : "transparent", transition: "background .15s", borderBottom: "1px solid rgba(255,255,255,.06)" }}
+      style={{ cursor: "pointer", background: hovered ? "rgba(250, 129, 0, 0.21)" : "transparent", transition: "background .15s", borderBottom: "1px solid rgba(255,255,255,.06)" }}
     >
       {cells.map((cell, i) => (
         <td key={i} style={{
-          padding: "13px 18px", fontSize: 13, color: "#fff", verticalAlign: "middle",
+          padding: "13px 18px", fontSize: 15, color: "#000000", verticalAlign: "middle",
           fontFamily: "Calibri, 'Segoe UI', sans-serif",
           borderLeft: i === 0 && hovered ? `3px solid ${PRIMARY}` : i === 0 ? "3px solid transparent" : "none",
         }}>
@@ -167,9 +169,9 @@ function Row({ cells, onClick }: { cells: React.ReactNode[]; onClick: () => void
 function ServidorRow({ a, onClick }: { a: Asset; onClick: () => void }) {
   const s = a.servidor;
   return <Row onClick={onClick} cells={[
-    <strong style={{ color: "#fff" }}>{a.nombre ?? "—"}</strong>,
+    <strong style={{ color: "#000000" }}>{a.nombre ?? "—"}</strong>,
     a.codigoServicio ?? "—", <Badge text={s?.ambiente ?? null} />,
-    <code style={{ fontSize: 12 }}>{s?.ipInterna ?? "—"}</code>,
+    <code style={{ fontSize: 14 }}>{s?.ipInterna ?? "—"}</code>,
     s?.vcpu ?? "—", s?.vramMb ? `${s.vramMb / 1024} GB` : "—",
     s?.sistemaOperativo ?? "—", a.ubicacion ?? "—",
   ]} />;
@@ -177,25 +179,25 @@ function ServidorRow({ a, onClick }: { a: Asset; onClick: () => void }) {
 function RedRow({ a, onClick }: { a: Asset; onClick: () => void }) {
   const r = a.red;
   return <Row onClick={onClick} cells={[
-    <strong style={{ color: "#fff" }}>{a.nombre ?? "—"}</strong>,
-    <code style={{ fontSize: 12 }}>{r?.serial ?? "—"}</code>, r?.modelo ?? "—",
-    <code style={{ fontSize: 12 }}>{r?.ipGestion ?? "—"}</code>,
+    <strong style={{ color: "#000000" }}>{a.nombre ?? "—"}</strong>,
+    <code style={{ fontSize: 14 }}>{r?.serial ?? "—"}</code>, r?.modelo ?? "—",
+    <code style={{ fontSize: 14 }}>{r?.ipGestion ?? "—"}</code>,
     <Badge text={r?.estado ?? null} />, a.ubicacion ?? "—", a.codigoServicio ?? "—",
   ]} />;
 }
 function UpsRow({ a, onClick }: { a: Asset; onClick: () => void }) {
   const u = a.ups;
   return <Row onClick={onClick} cells={[
-    <strong style={{ color: "#fff" }}>{a.nombre ?? "—"}</strong>,
-    <code style={{ fontSize: 12 }}>{u?.serial ?? "—"}</code>, u?.modelo ?? "—",
-    <code style={{ fontSize: 12 }}>{u?.placa ?? "—"}</code>,
+    <strong style={{ color: "#000000" }}>{a.nombre ?? "—"}</strong>,
+    <code style={{ fontSize: 14 }}>{u?.serial ?? "—"}</code>, u?.modelo ?? "—",
+    <code style={{ fontSize: 14 }}>{u?.placa ?? "—"}</code>,
     <Badge text={u?.estado ?? null} />, a.ubicacion ?? "—",
   ]} />;
 }
 function BDRow({ a, onClick }: { a: Asset; onClick: () => void }) {
   const b = a.baseDatos;
   return <Row onClick={onClick} cells={[
-    <strong style={{ color: "#fff" }}>{a.nombre ?? "—"}</strong>,
+    <strong style={{ color: "#000000" }}>{a.nombre ?? "—"}</strong>,
     b?.ambiente ?? "—", b?.appSoporta ?? "—", b?.servidor1 ?? "—",
     b?.versionBd ?? "—", b?.racScan ?? "—", a.propietario ?? "—",
   ]} />;
@@ -220,7 +222,7 @@ function PagBtn({ label, disabled, onClick }: { label: string; disabled: boolean
     <button onClick={onClick} disabled={disabled} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
       style={{
         padding: "8px 16px", borderRadius: 8, border: "1px solid rgba(255,255,255,.1)",
-        background: hov && !disabled ? "linear-gradient(135deg,#FA8200,#861F41 35%,#B7312C 70%,#D86018)" : "rgba(255,255,255,.04)",
+        background: hov && !disabled ? "linear-gradient(135deg,#FA8200,#861F41 35%,#B7312C 70%,#D86018)" : "rgba(255, 0, 0, 0.04)",
         color: disabled ? "rgba(255,255,255,.2)" : hov ? "#fff" : "rgba(255,255,255,.6)",
         fontWeight: 600, fontSize: 13, cursor: disabled ? "not-allowed" : "pointer",
         fontFamily: "Calibri, sans-serif", transition: "all .15s", opacity: disabled ? 0.5 : 1,
@@ -402,13 +404,13 @@ export default function AssetList() {
               </span>
             </div>
             {hayFiltros && (
-              <span style={{ fontSize: 11, color: "rgba(255,255,255,.8)", background: "rgba(255,255,255,.15)", padding: "3px 10px", borderRadius: 20, fontWeight: 600 }}>
+              <span style={{ fontSize: 11, color: "rgba(255, 255, 255, 0.8)", background: "rgb(90, 56, 112)", padding: "3px 10px", borderRadius: 20, fontWeight: 600 }}>
                 {assets.length} resultado{assets.length !== 1 ? "s" : ""}
               </span>
             )}
           </div>
 
-          <div style={{ background: "rgba(255,255,255,.04)" }}>
+          <div style={{ background: "rgb(255, 255, 255)" }}>
             {loading ? (
               <div style={{ padding: "64px 40px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
                 <div style={{ width: 44, height: 44, border: "4px solid rgba(255,255,255,.1)", borderTop: "4px solid #FA8200", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
@@ -428,7 +430,7 @@ export default function AssetList() {
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
                   <thead>
-                    <tr style={{ background: "rgba(0,0,0,.3)" }}>
+                    <tr style={{ background: "rgb(90, 56, 112)" }}>
                       {headers.map((h, i, arr) => (
                         <th key={h} style={{ padding: "11px 18px", textAlign: "left", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#fff", whiteSpace: "nowrap", borderRight: i < arr.length - 1 ? "1px solid rgba(255,255,255,.06)" : "none" }}>
                           {h}
