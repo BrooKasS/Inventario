@@ -9,6 +9,14 @@ const TIPO_LABEL_SINGULAR: Record<string, string> = {
   UPS:        "UPS",
 };
 
+/** NUEVO: Mapa de labels en plural para nombrar las hojas del Excel */
+const TIPO_LABEL_PLURAL: Record<string, string> = {
+  SERVIDOR:   "Servidores",
+  BASE_DATOS: "Bases de Datos",
+  RED:        "Red",
+  UPS:        "UPS",
+};
+
 /** Aplana los activos a filas planas para exportación */
 function prepararFilasActivos(assets: Asset[]) {
   return assets.map((a) => {
@@ -34,7 +42,7 @@ function prepararFilasActivos(assets: Asset[]) {
         "IP Servicio": s.ipServicio ?? "",
         vCPU: s.vcpu ?? "",
         "vRAM (MB)": s.vramMb ?? "",
-        "Sistema Operativo": s.sistemaOperativo ?? "",
+        "Sistema Operativo": s.sistemaOperitivo ?? s.sistemaOperativo ?? "", // tolerante si cambió la key
         Ambiente: s.ambiente ?? "",
         "Tipo Servidor": s.tipoServidor ?? "",
         "App Soporta": s.appSoporta ?? "",
@@ -96,21 +104,49 @@ function fechaArchivo() {
   return new Date().toISOString().slice(0, 10);
 }
 
-/** Exporta a Excel usando SheetJS */
+/** Excel: crea hoja con ancho estándar por columnas del primer row */
+function aplicarAnchosSheetJS(ws: any, rows: any[], wch = 22) {
+  ws["!cols"] = Object.keys(rows[0] || {}).map(() => ({ wch }));
+}
+
+/** Segura para nombres de hoja (<=31 chars y sin caracteres inválidos) */
+function nombreHojaSeguro(name: string) {
+  const invalid = /[\\/?*[\]:]/g; // Excel no permite estos
+  const cleaned = name.replace(invalid, " ");
+  return cleaned.slice(0, 31).trim() || "Hoja";
+}
+
+/** Exporta a Excel usando SheetJS — separado por hojas por tipo */
 export async function exportarActivosExcel(assets: Asset[], nombre: string) {
   const XLSX = await import("xlsx");
-  const filas = prepararFilasActivos(assets);
-  const ws = XLSX.utils.json_to_sheet(filas);
-
-  // ancho general
-  ws["!cols"] = Object.keys(filas[0] || {}).map(() => ({ wch: 22 }));
-
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Activos");
+
+  // (Opcional) Hoja consolidada con todos los activos
+  const filasTodos = prepararFilasActivos(assets);
+  if (filasTodos.length) {
+    const wsTodos = XLSX.utils.json_to_sheet(filasTodos);
+    aplicarAnchosSheetJS(wsTodos, filasTodos, 22);
+    XLSX.utils.book_append_sheet(wb, wsTodos, nombreHojaSeguro("Todos"));
+  }
+
+  // Hojas por tipo
+  const TIPOS = ["SERVIDOR", "BASE_DATOS", "RED", "UPS"] as const;
+  for (const tipo of TIPOS) {
+    const delTipo = assets.filter(a => a.tipo === tipo);
+    if (!delTipo.length) continue;
+
+    const filas = prepararFilasActivos(delTipo);
+    const ws = XLSX.utils.json_to_sheet(filas);
+    aplicarAnchosSheetJS(ws, filas, 22);
+
+    const hoja = nombreHojaSeguro(TIPO_LABEL_PLURAL[tipo] ?? tipo);
+    XLSX.utils.book_append_sheet(wb, ws, hoja);
+  }
+
   XLSX.writeFile(wb, `Activos_${nombre}_${fechaArchivo()}.xlsx`);
 }
 
-/** Exporta a PDF usando jsPDF + autoTable */
+/** Exporta a PDF usando jsPDF + autoTable (SIN cambios: una sola salida) */
 export async function exportarActivosPDF(assets: Asset[], nombre: string) {
   const { default: jsPDF } = await import("jspdf");
   const { default: autoTable } = await import("jspdf-autotable");
@@ -170,7 +206,7 @@ const EVENTO_LABEL: Record<string, string> = {
 
 export type ObservacionRow = {
   Activo: string;
-  Tipo: string;
+  Tipo: string;           // <- Se usa para agrupar por hoja
   Código: string;
   Ubicación?: string;
   Fecha: string;
@@ -182,12 +218,8 @@ export type ObservacionRow = {
   "Valor nuevo": string;
 };
 
-/** Exporta Observaciones (Bitácora) a Excel */
-export async function exportarObservacionesExcel(rows: ObservacionRow[], nombre: string) {
-  if (!rows.length) return;
-  const XLSX = await import("xlsx");
-  const ws = XLSX.utils.json_to_sheet(rows);
-
+/** Excel: aplica anchos específicos para Observaciones */
+function setColsObservaciones(ws: any) {
   ws["!cols"] = [
     { wch: 26 }, // Activo
     { wch: 16 }, // Tipo
@@ -201,9 +233,48 @@ export async function exportarObservacionesExcel(rows: ObservacionRow[], nombre:
     { wch: 22 }, // Valor anterior
     { wch: 22 }, // Valor nuevo
   ];
+}
 
+/** Exporta Observaciones (Bitácora) a Excel — AHORA separando por hojas por Tipo */
+export async function exportarObservacionesExcel(rows: ObservacionRow[], nombre: string) {
+  if (!rows.length) return;
+  const XLSX = await import("xlsx");
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Observaciones");
+
+  // (Opcional) Hoja consolidada
+  const wsTodas = XLSX.utils.json_to_sheet(rows);
+  setColsObservaciones(wsTodas);
+  XLSX.utils.book_append_sheet(wb, wsTodas, nombreHojaSeguro("Todas"));
+
+  // Agrupar por Tipo (usa los labels del propio row.Tipo: "Servidor", "Base de Datos", etc.)
+  const grupos = rows.reduce<Record<string, ObservacionRow[]>>((acc, r) => {
+    const key = (r.Tipo || "Otros").trim();
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(r);
+    return acc;
+  }, {});
+
+  // Crear una hoja por cada grupo
+  for (const [tipoSingular, lista] of Object.entries(grupos)) {
+    if (!lista.length) continue;
+    const ws = XLSX.utils.json_to_sheet(lista);
+    setColsObservaciones(ws);
+
+    // Convertir singular a plural para la hoja si coincide con nuestros mapeos
+    // "Servidor" -> "Servidores", "Base de Datos" -> "Bases de Datos", etc.
+    let nombreHoja = tipoSingular;
+    const singularToPlural: Record<string, string> = {
+      "Servidor": "Servidores",
+      "Base de Datos": "Bases de Datos",
+      "Red": "Red",
+      "UPS": "UPS",
+    };
+    if (singularToPlural[tipoSingular]) {
+      nombreHoja = singularToPlural[tipoSingular];
+    }
+    XLSX.utils.book_append_sheet(wb, ws, nombreHojaSeguro(nombreHoja));
+  }
+
   XLSX.writeFile(wb, `Observaciones_${nombre}_${fechaArchivo()}.xlsx`);
 }
 

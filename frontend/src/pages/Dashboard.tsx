@@ -12,7 +12,7 @@ import {
 } from "../utils/exporters";
 import Modal from "../components/Modal"
 
-const GRAD = "linear-gradient(135deg, #FA8200 0%, #861F41 35%, #B7312C 70%, #D86018 100%)";
+const GRAD = "linear-gradient(135deg, #fa8100 0%, #861F41 35%, #B7312C 70%, #D86018 100%)";
 
 const TIPO_LABEL: Record<string, string> = {
   SERVIDOR:   "Servidores",
@@ -66,7 +66,7 @@ function StatCard({
       onMouseLeave={() => setHov(false)}
       style={{
         background: grad, borderRadius: 14, padding: "22px 20px",
-        boxShadow: hov ? "0 12px 32px rgba(0,0,0,.3)" : "0 4px 16px rgba(0,0,0,.2)",
+        boxShadow: hov ? "0 12px 32px rgb(104, 104, 104)" : "0 4px 16px rgba(78, 78, 78, 0.82)",
         cursor: onClick ? "pointer" : "default",
         transition: "all .2s",
         transform: hov ? "translateY(-4px) scale(1.02)" : "none",
@@ -86,7 +86,7 @@ function StatCard({
         <div style={{
           fontSize: 28, marginBottom: 12, lineHeight: 1, display: "inline-block",
           transition: "transform .2s", transform: hov ? "scale(1.2)" : "scale(1)",
-          filter: "drop-shadow(0 2px 6px rgba(0,0,0,.25))",
+          filter: "drop-shadow(0 2px 6px rgba(255, 1, 1, 0.25))",
         }}>
           {icon}
         </div>
@@ -229,7 +229,17 @@ export default function Dashboard() {
         return okTipo && okSearch;
       });
 
-      setPreview(filtrados);
+      // 🔁 CAMBIO: si el modo es "observaciones", traemos detalle (bitácora) de cada activo de la vista previa
+      if (exportMode === "observaciones") {
+        const detallados = await Promise.all(
+          filtrados.map(a =>
+            getAssetById(a.id).catch(() => a) // si falla, dejamos el asset tal cual
+          )
+        );
+        setPreview(detallados);
+      } else {
+        setPreview(filtrados);
+      }
     } catch (err) {
       console.error("Error cargando vista previa:", err);
       setPreview([]);
@@ -877,47 +887,113 @@ export default function Dashboard() {
               </div>
             ) : (
               <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
-                  <thead>
-                    <tr style={{ background: "rgba(0,0,0,.05)" }}>
-                      {["", "Activo", "Tipo", "Código", "Ubicación", "Actualizado"].map((h) => (
-                        <th key={h} style={{
-                          padding: "10px 14px", textAlign: "left",
-                          fontSize: 11, fontWeight: 700, textTransform: "uppercase",
-                          letterSpacing: ".08em", color: "#444",
-                          borderBottom: "1px solid rgba(0,0,0,.06)",
-                        }}>
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {preview.map((a) => {
-                      const checked = seleccion.has(a.id);
-                      return (
-                        <tr key={a.id} style={{ borderBottom: "1px solid rgba(0,0,0,.04)" }}>
-                          <td style={{ padding: "10px 14px" }}>
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => toggleSeleccion(a.id)}
-                            />
-                          </td>
-                          <td style={{ padding: "10px 14px" }}>{a.nombre ?? "—"}</td>
-                          <td style={{ padding: "10px 14px" }}>{TIPO_LABEL[a.tipo]}</td>
-                          <td style={{ padding: "10px 14px" }}>{a.codigoServicio ?? "—"}</td>
-                          <td style={{ padding: "10px 14px" }}>{a.ubicacion ?? "—"}</td>
-                          <td style={{ padding: "10px 14px" }}>
-                            {a.actualizadoEn
-                              ? new Date(a.actualizadoEn).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" })
-                              : "—"}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                {/* ------- TABLA PARA ACTIVOS ------- */}
+                {exportMode === "activos" && (
+                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
+                    <thead>
+                      <tr style={{ background: "rgba(0,0,0,.05)" }}>
+                        {["", "Activo", "Tipo", "Código", "Ubicación", "Actualizado"].map((h) => (
+                          <th key={h} style={{
+                            padding: "10px 14px", textAlign: "left",
+                            fontSize: 11, fontWeight: 700, textTransform: "uppercase",
+                            letterSpacing: ".08em", color: "#444",
+                            borderBottom: "1px solid rgba(0,0,0,.06)",
+                          }}>
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {preview.map((a) => {
+                        const checked = seleccion.has(a.id);
+                        return (
+                          <tr key={a.id} style={{ borderBottom: "1px solid rgba(0,0,0,.04)" }}>
+                            <td style={{ padding: "10px 14px" }}>
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleSeleccion(a.id)}
+                              />
+                            </td>
+                            <td style={{ padding: "10px 14px" }}>{a.nombre ?? "—"}</td>
+                            <td style={{ padding: "10px 14px" }}>{TIPO_LABEL[a.tipo]}</td>
+                            <td style={{ padding: "10px 14px" }}>{a.codigoServicio ?? "—"}</td>
+                            <td style={{ padding: "10px 14px" }}>{a.ubicacion ?? "—"}</td>
+                            <td style={{ padding: "10px 14px" }}>
+                              {a.actualizadoEn
+                                ? new Date(a.actualizadoEn).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" })
+                                : "—"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+
+                {/* ------- TABLA PARA OBSERVACIONES ------- */}
+                {exportMode === "observaciones" && (
+                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
+                    <thead>
+                      <tr style={{ background: "rgba(0,0,0,.05)" }}>
+                        {["", "Activo", "Tipo", "Código", "Fecha", "Autor", "Evento", "Descripción", "Campo modificado", "Valor anterior", "Valor nuevo"].map(h => (
+                          <th key={h} style={{
+                            padding: "10px 14px", textAlign: "left",
+                            fontSize: 11, fontWeight: 700, textTransform: "uppercase",
+                            letterSpacing: ".08em", color: "#444",
+                            borderBottom: "1px solid rgba(0,0,0,.06)",
+                          }}>
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {preview.map((a) => {
+                        // bitácora puede venir solo si cargamos detalle en cargarPreview
+                        const rows = (a as any).bitacora || [];
+                        const visibles = rows.filter((e: any) =>
+                          pasaFiltroObservacion(e, obsAutor, obsDesde, obsHasta, eventosSel, incluirSistema)
+                        );
+
+                        // Si no hay observaciones visibles, no renderizamos filas para ese activo
+                        if (visibles.length === 0) return null;
+
+                        const checked = seleccion.has(a.id);
+
+                        return visibles.map((e: any, idx: number) => {
+                          const esPrimera = idx === 0; // mostramos el checkbox solo en la primera fila del activo
+                          return (
+                            <tr key={a.id + "-" + idx} style={{ borderBottom: "1px solid rgba(0,0,0,.04)" }}>
+                              <td style={{ padding: "10px 14px" }}>
+                                {esPrimera && (
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => toggleSeleccion(a.id)}
+                                  />
+                                )}
+                              </td>
+                              <td style={{ padding: "10px 14px" }}>{a.nombre ?? "—"}</td>
+                              <td style={{ padding: "10px 14px" }}>{TIPO_LABEL_SINGULAR[a.tipo] ?? a.tipo}</td>
+                              <td style={{ padding: "10px 14px" }}>{a.codigoServicio ?? "—"}</td>
+                              <td style={{ padding: "10px 14px" }}>
+                                {e.creadoEn ? new Date(e.creadoEn).toLocaleString("es-CO") : "—"}
+                              </td>
+                              <td style={{ padding: "10px 14px" }}>{e.autor ?? "—"}</td>
+                              <td style={{ padding: "10px 14px" }}>{EVENTO_LABEL_MAP[e.tipoEvento] ?? e.tipoEvento ?? "—"}</td>
+                              <td style={{ padding: "10px 14px" }}>{e.descripcion ?? ""}</td>
+                              <td style={{ padding: "10px 14px" }}>{e.campoModificado ?? ""}</td>
+                              <td style={{ padding: "10px 14px" }}>{e.valorAnterior ?? ""}</td>
+                              <td style={{ padding: "10px 14px" }}>{e.valorNuevo ?? ""}</td>
+                            </tr>
+                          );
+                        });
+                      })}
+                    </tbody>
+                  </table>
+                )}
               </div>
             )}
           </div>
