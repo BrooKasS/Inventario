@@ -10,7 +10,13 @@ import {
   exportarObservacionesPDF,
   type ObservacionRow
 } from "../utils/exporters";
-import Modal from "../components/Modal"
+import Modal from "../components/Modal";
+
+// 🟢 Recharts (solo barras)
+import {
+  ResponsiveContainer,
+  BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Cell
+} from "recharts";
 
 const GRAD = "linear-gradient(135deg, #fa8100 0%, #861F41 35%, #B7312C 70%, #D86018 100%)";
 
@@ -42,6 +48,15 @@ const TIPO_GRAD: Record<string, string> = {
   UPS:        "linear-gradient(135deg, #FA8200, #861F41)",
 };
 
+// 🟢 Colores sólidos para las barras
+const COLOR_TIPO: Record<string, string> = {
+  SERVIDOR:   "#FA8200",
+  BASE_DATOS: "#861F41",
+  RED:        "#B7312C",
+  UPS:        "#D86018",
+};
+
+// Mapeo de eventos
 const EVENTO_LABEL_MAP: Record<string, string> = {
   IMPORTACION: "Importación",
   CAMBIO_CAMPO: "Cambio de campo",
@@ -168,7 +183,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // --- Modal ---
+  // --- Modal (export) ---
   const [modalOpen, setModalOpen] = useState(false);
 
   // --- Panel de exportación ---
@@ -183,12 +198,33 @@ export default function Dashboard() {
   const [seleccion, setSeleccion] = useState<Set<string>>(new Set());
   const [exporting, setExporting] = useState<"excel" | "pdf" | null>(null);
 
-  // Filtros de Observaciones
-  const [eventosSel, setEventosSel] = useState<string[]>([]); // vacío = todos
+  // Filtros de Observaciones (export)
+  const [eventosSel, setEventosSel] = useState<string[]>([]);
   const [obsAutor, setObsAutor] = useState("");
   const [obsDesde, setObsDesde] = useState("");
   const [obsHasta, setObsHasta] = useState("");
-  const [incluirSistema, setIncluirSistema] = useState(false); // EXCLUIR 'sistema' por defecto
+  const [incluirSistema, setIncluirSistema] = useState(false);
+
+  // 🟢 Serie para la gráfica de Observaciones (barras)
+  const [obsChart, setObsChart] = useState<{ key: string; tipo: string; count: number; color: string }[]>([]);
+  const [obsLoading, setObsLoading] = useState(false);
+
+  // 🟢 Modal de Observaciones (al hacer click en la barra)
+  const [obsModalOpen, setObsModalOpen] = useState(false);
+  const [obsModalTipo, setObsModalTipo] = useState<string | null>(null);
+  const [obsModalLoading, setObsModalLoading] = useState(false);
+  const [obsModalRows, setObsModalRows] = useState<Array<{
+    activo: string;
+    tipo: string;
+    codigo: string;
+    fecha: string;
+    autor: string;
+    evento: string;
+    descripcion: string;
+    campo: string;
+    anterior: string;
+    nuevo: string;
+  }>>([]);
 
   useEffect(() => {
     (async () => {
@@ -208,7 +244,58 @@ export default function Dashboard() {
     })();
   }, []);
 
-  // cargar vista previa (primeras N coincidencias)
+  // 🟢 Cargar datos para la barra de Observaciones (agregación por tipoEvento)
+  useEffect(() => {
+    (async () => {
+      try {
+        setObsLoading(true);
+        const resp = await getAssets({ limit: 50, page: 1 });
+        const items: Asset[] = resp.assets || [];
+
+        // Traer detalle (bitácora) por activo en paralelo
+        const detallados = await Promise.all(
+          items.map(a => getAssetById(a.id).catch(() => null))
+        );
+
+        // Inicializar contadores por tipo de evento
+        const counts: Record<string, number> = {};
+        for (const ev of EVENTOS) counts[ev] = 0;
+
+        for (const det of detallados) {
+          if (!det) continue;
+          const bit = (det as any).bitacora ?? [];
+          for (const e of bit) {
+            const ev = e?.tipoEvento as string | undefined;
+            if (!ev) continue;
+            if (EVENTOS.includes(ev as any)) {
+              counts[ev] = (counts[ev] ?? 0) + 1;
+            }
+          }
+        }
+
+        const serie = EVENTOS.map((ev) => ({
+          key: ev,
+          tipo: EVENTO_LABEL_MAP[ev],
+          count: counts[ev] ?? 0,
+          color:
+            ev === "NOTA" ? "#FA8200" :
+            ev === "MANTENIMIENTO" ? "#861F41" :
+            ev === "INCIDENTE" ? "#B7312C" :
+            ev === "CAMBIO_CAMPO" ? "#D86018" :
+            "#7a7a7a",
+        }));
+
+        setObsChart(serie);
+      } catch (err) {
+        console.error("Error cargando datos de observaciones:", err);
+        setObsChart([]);
+      } finally {
+        setObsLoading(false);
+      }
+    })();
+  }, []);
+
+  // cargar vista previa (primeras N coincidencias) para export
   const cargarPreview = async () => {
     try {
       setPreviewLoading(true);
@@ -229,11 +316,11 @@ export default function Dashboard() {
         return okTipo && okSearch;
       });
 
-      // 🔁 CAMBIO: si el modo es "observaciones", traemos detalle (bitácora) de cada activo de la vista previa
+      // si el modo es "observaciones", traemos detalle (bitácora)
       if (exportMode === "observaciones") {
         const detallados = await Promise.all(
           filtrados.map(a =>
-            getAssetById(a.id).catch(() => a) // si falla, dejamos el asset tal cual
+            getAssetById(a.id).catch(() => a)
           )
         );
         setPreview(detallados);
@@ -276,10 +363,10 @@ export default function Dashboard() {
   };
 
   async function fetchAllActivos(tipos: string[], search: string) {
-    const limit = 500; // ajústalo si el backend lo permite
+    const limit = 500;
     let page = 1;
     let out: Asset[] = [];
-    for (let i = 0; i < 20; i++) { // paginación defensiva
+    for (let i = 0; i < 20; i++) {
       const resp = await getAssets({ limit, page, tipos, search });
       const items = resp.assets || [];
       out = out.concat(items);
@@ -326,21 +413,14 @@ export default function Dashboard() {
     eventos: string[],
     incluirSis: boolean
   ) {
-    // Tratamiento especial para "sistema"
     if (esSistema(e.autor)) {
-      // Si NO se incluye sistema → descartar todo lo de sistema
       if (!incluirSis) return false;
-      // Si SÍ se incluye sistema → solo aceptar con campoModificado
       if (!tieneCampoModificado(e)) return false;
     }
 
-    // Tipo(s) de evento
     if (eventos.length > 0 && !eventos.includes(e.tipoEvento)) return false;
-
-    // Autor (contiene, case-insensitive)
     if (autor && !e.autor?.toLowerCase().includes(autor.toLowerCase())) return false;
 
-    // Rango de fechas
     const f = new Date(e.creadoEn);
     if (desde) {
       const d = new Date(desde);
@@ -359,7 +439,6 @@ export default function Dashboard() {
   async function prepararObservacionesRows(): Promise<ObservacionRow[]> {
     const base = await activosParaExportar();
 
-    // Cargar detalle con bitácora (paralelo con manejo de errores)
     const detalles = await Promise.all(
       base.map(a => getAssetById(a.id).catch(() => null))
     );
@@ -385,7 +464,6 @@ export default function Dashboard() {
         });
       }
     }
-    // Si no hay filas, implica que solo activos con observaciones pasan al exporte.
     return rows;
   }
 
@@ -445,6 +523,76 @@ export default function Dashboard() {
     }
   };
 
+  /* ──────────────────────────
+   * 📈 DATOS PARA GRÁFICAS (solo barras)
+   * ────────────────────────── */
+
+  // Activos por tipo (para Bar)
+  const dataPorTipo = useMemo(() => {
+    const lista = stats?.porTipo ?? [];
+    return lista.map(t => ({
+      key: t.tipo,
+      tipo: TIPO_LABEL[t.tipo] ?? t.tipo,
+      count: t.count,
+      color: COLOR_TIPO[t.tipo] ?? "#999999",
+    }));
+  }, [stats]);
+
+  // Tooltip en español
+  const tooltipFormatter = (value: any) => [`${value}`, "Cantidad"];
+
+  // ───────────── Helpers del Modal de Observaciones ─────────────
+  // 🔧 MODIFICADO: incluir autor "sistema" automáticamente para CAMBIO_CAMPO/IMPORTACION
+  async function cargarObservacionesPorTipoEvento(tipoEvento: string) {
+    try {
+      setObsModalLoading(true);
+
+      // Puedes ajustar el límite/criterio según back-end
+      const resp = await getAssets({ limit: 100, page: 1 });
+      const items: Asset[] = resp.assets || [];
+
+      const detalles = await Promise.all(
+        items.map(a => getAssetById(a.id).catch(() => null))
+      );
+      const activosDetallados = detalles.filter((d): d is Asset => !!d);
+
+      const incluirSisAuto =
+        incluirSistema || tipoEvento === "CAMBIO_CAMPO" || tipoEvento === "IMPORTACION";
+
+      const rows: Array<{
+        activo: string; tipo: string; codigo: string; fecha: string; autor: string;
+        evento: string; descripcion: string; campo: string; anterior: string; nuevo: string;
+      }> = [];
+
+      for (const a of activosDetallados) {
+        const bit = (a as any).bitacora ?? [];
+        for (const e of bit) {
+          if (e?.tipoEvento !== tipoEvento) continue;
+          if (!pasaFiltroObservacion(e, obsAutor, obsDesde, obsHasta, [], incluirSisAuto)) continue;
+
+          rows.push({
+            activo: a.nombre ?? "—",
+            tipo: TIPO_LABEL_SINGULAR[a.tipo] ?? a.tipo,
+            codigo: a.codigoServicio ?? "—",
+            fecha: e.creadoEn ? new Date(e.creadoEn).toLocaleString("es-CO") : "—",
+            autor: e.autor ?? "—",
+            evento: EVENTO_LABEL_MAP[e.tipoEvento] ?? e.tipoEvento ?? "—",
+            descripcion: e.descripcion ?? "",
+            campo: e.campoModificado ?? "",
+            anterior: e.valorAnterior ?? "",
+            nuevo: e.valorNuevo ?? "",
+          });
+        }
+      }
+      setObsModalRows(rows);
+    } catch (err) {
+      console.error("Error cargando observaciones por tipo:", err);
+      setObsModalRows([]);
+    } finally {
+      setObsModalLoading(false);
+    }
+  }
+
   return (
     <div style={{
       minHeight: "100%", padding: "32px 28px",
@@ -467,7 +615,7 @@ export default function Dashboard() {
             Estado general del inventario de infraestructura
           </p>
 
-          {/* Botón que abre el modal */}
+          {/* Botón que abre el modal (export) */}
           <button
             onClick={() => setModalOpen(true)}
             style={{
@@ -523,6 +671,131 @@ export default function Dashboard() {
                   onClick={() => navigate(`/inventario/${t.tipo}`)}
                 />
               ))}
+            </div>
+
+            {/* ─────────────────── 📊 BARRAS ─────────────────── */}
+            <div style={{
+              borderRadius: 14, overflow: "hidden",
+              border: "1px solid rgba(255,255,255,.08)",
+              boxShadow: "0 8px 32px rgba(0,0,0,.35)",
+              marginBottom: 24,
+            }}>
+              <div style={{
+                background: GRAD, padding: "14px 20px",
+                display: "flex", alignItems: "center", gap: 10,
+              }}>
+                <span style={{
+                  fontSize: 16, width: 30, height: 30, borderRadius: 8,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  background: "rgba(255,255,255,.18)",
+                }}>📊</span>
+                <span style={{
+                  fontSize: 14, fontWeight: 700, letterSpacing: "0.10em",
+                  textTransform: "uppercase", color: "#fff",
+                }}>
+                  Visualizaciones (Barras)
+                </span>
+              </div>
+
+              <div style={{ background: "#fff", padding: 16 }}>
+                {(!stats || (dataPorTipo.length === 0 && obsChart.length === 0)) ? (
+                  <div style={{ padding: "32px 8px", color: "#777" }}>
+                    No hay datos suficientes para graficar.
+                  </div>
+                ) : (
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+                    gap: 16
+                  }}>
+                    {/* Barras: Activos por tipo */}
+                    <div style={{
+                      border: "1px solid rgba(0,0,0,.06)",
+                      borderRadius: 12, padding: 12, background: "#fafafa"
+                    }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8, color: "#333" }}>
+                        Activos por tipo
+                      </div>
+                      <div style={{ width: "100%", height: 280 }}>
+                        <ResponsiveContainer>
+                          <BarChart data={dataPorTipo} margin={{ top: 8, right: 8, left: -16, bottom: 8 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e6e6e6" />
+                            <XAxis dataKey="tipo" tick={{ fontSize: 11 }} />
+                            <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                            <Tooltip formatter={tooltipFormatter as any} />
+                            <Legend />
+                            <Bar
+                              dataKey="count"
+                              name="Cantidad"
+                              onClick={(_, idx: number) => {
+                                const item = dataPorTipo[idx];
+                                if (item?.key) navigate(`/inventario/${item.key}`);
+                              }}
+                              cursor="pointer"
+                            >
+                              {dataPorTipo.map((d, i) => (
+                                <Cell key={i} fill={d.color} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    {/* Barras: Observaciones por tipo de evento */}
+                    <div style={{
+                      border: "1px solid rgba(0,0,0,.06)",
+                      borderRadius: 12, padding: 12, background: "#fafafa"
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8, color: "#333" }}>
+                          Observaciones por tipo de evento
+                        </div>
+                        {obsLoading && <span style={{ fontSize: 12, color: "#777" }}>Cargando…</span>}
+                      </div>
+                      <div style={{ width: "100%", height: 280 }}>
+                        <ResponsiveContainer>
+                          <BarChart data={obsChart} margin={{ top: 8, right: 8, left: -16, bottom: 8 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e6e6e6" />
+                            <XAxis dataKey="tipo" tick={{ fontSize: 11 }} />
+                            <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                            <Tooltip formatter={tooltipFormatter as any} />
+                            <Legend />
+                            <Bar
+                              dataKey="count"
+                              name="Cantidad"
+                              // 🔧 MODIFICADO: usar entry.payload.key para mayor robustez
+                              onClick={async (entry: any) => {
+                                const tipoEvento = entry?.payload?.key as string | undefined;
+                                if (!tipoEvento) return;
+                                setObsModalTipo(tipoEvento);
+                                setObsModalOpen(true);
+                                await cargarObservacionesPorTipoEvento(tipoEvento);
+                              }}
+                              cursor="pointer"
+                            >
+                              {obsChart.map((d, i) => (
+                                <Cell key={i} fill={d.color} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div style={{ fontSize: 11, color: "#666", marginTop: 6 }}>
+                        *Se agregan observaciones de hasta 50 activos recientes.
+                      </div>
+
+                      {/*
+                      👉 Si prefieres NAVEGAR en vez de modal, usa este onClick:
+                          onClick={(_, index) => {
+                            const tipoEvento = obsChart?.[index]?.key;
+                            if (tipoEvento) navigate(`/observaciones?tipo=${encodeURIComponent(tipoEvento)}`);
+                          }}
+                      */}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* ── Actividad Reciente ── */}
@@ -951,19 +1224,17 @@ export default function Dashboard() {
                     </thead>
                     <tbody>
                       {preview.map((a) => {
-                        // bitácora puede venir solo si cargamos detalle en cargarPreview
                         const rows = (a as any).bitacora || [];
                         const visibles = rows.filter((e: any) =>
                           pasaFiltroObservacion(e, obsAutor, obsDesde, obsHasta, eventosSel, incluirSistema)
                         );
 
-                        // Si no hay observaciones visibles, no renderizamos filas para ese activo
                         if (visibles.length === 0) return null;
 
                         const checked = seleccion.has(a.id);
 
                         return visibles.map((e: any, idx: number) => {
-                          const esPrimera = idx === 0; // mostramos el checkbox solo en la primera fila del activo
+                          const esPrimera = idx === 0;
                           return (
                             <tr key={a.id + "-" + idx} style={{ borderBottom: "1px solid rgba(0,0,0,.04)" }}>
                               <td style={{ padding: "10px 14px" }}>
@@ -997,6 +1268,71 @@ export default function Dashboard() {
               </div>
             )}
           </div>
+        </div>
+      </Modal>
+
+      {/* ────────────────────────── MODAL: Observaciones por evento (click en barra) ────────────────────────── */}
+      <Modal
+        open={obsModalOpen}
+        onClose={() => setObsModalOpen(false)}
+        title={obsModalTipo ? `Observaciones — ${EVENTO_LABEL_MAP[obsModalTipo] ?? obsModalTipo}` : "Observaciones"}
+        width={1150}
+      >
+        <div style={{ background: "#fff", borderRadius: 12, overflow: "hidden", border: "1px solid rgba(0,0,0,.06)" }}>
+          <div style={{ padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ fontWeight: 700, color: "#333" }}>
+              {obsModalTipo ? `Tipo de evento: ${EVENTO_LABEL_MAP[obsModalTipo] ?? obsModalTipo}` : ""}
+            </div>
+            {obsModalLoading && <span style={{ fontSize: 12, color: "#777" }}>Cargando…</span>}
+          </div>
+
+          {/* 🔔 Aviso UX cuando se incluyen registros de "sistema" automáticamente */}
+          {obsModalTipo && !incluirSistema && (obsModalTipo === "CAMBIO_CAMPO" || obsModalTipo === "IMPORTACION") && (
+            <div style={{ padding: "8px 12px", color: "#b35b00", background: "#fff6e8", borderTop: "1px solid #ffe2bf" }}>
+              Mostrando registros del autor <b>sistema</b> para este tipo de evento .
+            </div>
+          )}
+
+          {obsModalRows.length === 0 && !obsModalLoading ? (
+            <div style={{ padding: 16, color: "#666" }}>
+              No se encontraron observaciones para este tipo con los filtros actuales.
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
+                <thead>
+                  <tr style={{ background: "rgba(0,0,0,.05)" }}>
+                    {["Activo","Tipo","Código","Fecha","Autor","Evento","Descripción","Campo modificado","Valor anterior","Valor nuevo"].map(h => (
+                      <th key={h} style={{
+                        padding: "10px 14px", textAlign: "left",
+                        fontSize: 11, fontWeight: 700, textTransform: "uppercase",
+                        letterSpacing: ".08em", color: "#444",
+                        borderBottom: "1px solid rgba(0,0,0,.06)",
+                      }}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {obsModalRows.map((r, idx) => (
+                    <tr key={idx} style={{ borderBottom: "1px solid rgba(0,0,0,.06)" }}>
+                      <td style={{ padding: "10px 14px" }}>{r.activo}</td>
+                      <td style={{ padding: "10px 14px" }}>{r.tipo}</td>
+                      <td style={{ padding: "10px 14px" }}>{r.codigo}</td>
+                      <td style={{ padding: "10px 14px" }}>{r.fecha}</td>
+                      <td style={{ padding: "10px 14px" }}>{r.autor}</td>
+                      <td style={{ padding: "10px 14px" }}>{r.evento}</td>
+                      <td style={{ padding: "10px 14px" }}>{r.descripcion}</td>
+                      <td style={{ padding: "10px 14px" }}>{r.campo}</td>
+                      <td style={{ padding: "10px 14px" }}>{r.anterior}</td>
+                      <td style={{ padding: "10px 14px" }}>{r.nuevo}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </Modal>
     </div>
