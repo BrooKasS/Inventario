@@ -22,4 +22,9 @@ router.get("/:id/bitacora", asyncHandler(assetsController.getBitacora.bind(asset
 // POST /assets/:id/bitacora - Agregar entrada manual a bitácora
 router.post("/:id/bitacora", asyncHandler(assetsController.addBitacoraEntry.bind(assetsController)));
 
+
+// POST /assets/sync-excel - Sincroniza registros a Excel vía Power Automate
+router.post("/sync-excel",asyncHandler(assetsController.syncExcel.bind(assetsController)));
+
+
 export default router;

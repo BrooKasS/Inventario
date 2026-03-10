@@ -305,6 +305,23 @@ export class AssetsService {
       porTipo: porTipo.map((t) => ({ tipo: t.tipo, count: t._count })),
     };
   }
+  
+async getAssetsByTipoAndIds(opts: { tipo?: string; ids?: string[] }) {
+    const where: Prisma.AssetWhereInput = {};
+
+    if (opts.tipo) where.tipo = opts.tipo as any;
+    if (opts.ids && opts.ids.length > 0) where.id = { in: opts.ids };
+
+    const assets = await prisma.asset.findMany({
+      where,
+      include: { servidor: true, red: true, ups: true, baseDatos: true },
+      orderBy: { actualizadoEn: "desc" },
+      take: 10_000, // suficiente para sincronizar todo
+    });
+
+    return assets;
+  }
+
 }
 
 export const assetsService = new AssetsService();

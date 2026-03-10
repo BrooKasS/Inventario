@@ -1286,7 +1286,7 @@ export default function Dashboard() {
             {obsModalLoading && <span style={{ fontSize: 12, color: "#777" }}>Cargando…</span>}
           </div>
 
-          {/* 🔔 Aviso UX cuando se incluyen registros de "sistema" automáticamente */}
+          {/*  Aviso UX cuando se incluyen registros de "sistema" automáticamente */}
           {obsModalTipo && !incluirSistema && (obsModalTipo === "CAMBIO_CAMPO" || obsModalTipo === "IMPORTACION") && (
             <div style={{ padding: "8px 12px", color: "#b35b00", background: "#fff6e8", borderTop: "1px solid #ffe2bf" }}>
               Mostrando registros del autor <b>sistema</b> para este tipo de evento .
