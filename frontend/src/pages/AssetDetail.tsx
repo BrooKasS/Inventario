@@ -416,6 +416,7 @@ export default function AssetDetail() {
   const r = asset.red;
   const u = asset.ups;
   const b = asset.baseDatos;
+  const v = asset.vpn;
 
   const inputStyle: React.CSSProperties = {
     width: "100%", padding: "10px 14px", border: "2px solid #e0e0e0",
@@ -562,7 +563,7 @@ export default function AssetDetail() {
           </Section>
           <Section title="Recursos" icon="⚙️">
             <Field label="vCPU"              value={s.vcpu}            editing={editing} field="vcpu"            onChange={(f, v) => handleChange("servidor", f, v)} />
-            <Field label="vRAM (MB)"         value={s.vramMb}          editing={editing} field="vramMb"          onChange={(f, v) => handleChange("servidor", f, v)} />
+            <Field label="vRAM (MB)"         value={s.Mb}          editing={editing} field="vramMb"          onChange={(f, v) => handleChange("servidor", f, v)} />
             <Field label="Sistema Operativo" value={s.sistemaOperativo} editing={editing} field="sistemaOperativo" onChange={(f, v) => handleChange("servidor", f, v)} />
           </Section>
           <Section title="Operación" icon="🔧">
@@ -616,6 +617,15 @@ export default function AssetDetail() {
         </Section>
       )}
 
+{/* ── VPN ── */}
+{v && (
+  <Section title="VPN" icon="🔒">
+    <Field label="Conexión" value={v.conexion} editing={editing} field="conexion" onChange={(f, val) => handleChange("vpn", f, val)} />
+    <Field label="Fases"    value={v.fases}    editing={editing} field="fases"    onChange={(f, val) => handleChange("vpn", f, val)} />
+    <Field label="Origen"   value={v.origen}   editing={editing} field="origen"   onChange={(f, val) => handleChange("vpn", f, val)} />
+    <Field label="Destino"  value={v.destino}  editing={editing} field="destino"  onChange={(f, val) => handleChange("vpn", f, val)} />
+  </Section>
+)}
       {/* ══════════════════════════════════════════
           BITÁCORA
       ══════════════════════════════════════════ */}

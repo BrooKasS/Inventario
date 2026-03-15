@@ -23,6 +23,8 @@ model Asset {
   ups        Ups?
   baseDatos  BaseDatos?
   bitacora   Bitacora[]
+  vpn        Vpn?
+  
 
   @@index([tipo])
   @@index([nombre])
@@ -90,6 +92,16 @@ model BaseDatos {
   contenedorFisico   String?
   contratoQueSoporta String?
 }
+model Vpn {
+  id        String  @id @default(cuid())
+  assetId   String  @unique
+  asset     Asset   @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  conexion  String?   // IP del peer remoto
+  fases     String?   // "Phase 2"
+  origen    String?   // separado de la celda original
+  destino   String?   // separado de la celda original
+}
 
 model Bitacora {
   id              String     @id @default(cuid())
@@ -113,6 +125,7 @@ enum TipoActivo {
   RED
   UPS
   BASE_DATOS
+  VPN
 }
 
 enum TipoEvento {

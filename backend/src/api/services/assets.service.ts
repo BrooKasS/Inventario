@@ -28,6 +28,7 @@ export class AssetsService {
           red: true,
           ups: true,
           baseDatos: true,
+          vpn: true, 
         },
         orderBy: { actualizadoEn: "desc" },
       }),
@@ -53,6 +54,7 @@ export class AssetsService {
         red: true,
         ups: true,
         baseDatos: true,
+        vpn: true,
         bitacora: {
           orderBy: { creadoEn: "desc" },
           take: 50,
@@ -72,6 +74,7 @@ export class AssetsService {
         red: true,
         ups: true,
         baseDatos: true,
+        vpn: true,
       },
     });
     if (!data || typeof data !== "object") {
@@ -199,6 +202,7 @@ export class AssetsService {
       Object.keys(data.ups).forEach((key) => {
         const oldVal = (ups as any)[key];
         const newVal = data.ups[key];
+
         if (newVal !== undefined && newVal !== oldVal) {
           detailUpdates[key] = newVal;
           bitacoraEntries.push({
@@ -245,6 +249,33 @@ export class AssetsService {
         });
       }
     }
+    // ======================
+// VPN
+// ======================
+if (asset.tipo === "VPN" && asset.vpn && data.vpn) {
+  const detailUpdates: any = {};
+  const vpn = asset.vpn;
+
+  Object.keys(data.vpn).forEach((key) => {
+    const oldVal = (vpn as any)[key];
+    const newVal = data.vpn[key];
+    if (newVal !== undefined && newVal !== oldVal) {
+      detailUpdates[key] = newVal;
+      bitacoraEntries.push({
+        campoModificado: key,
+        valorAnterior: String(oldVal ?? ""),
+        valorNuevo: String(newVal ?? ""),
+      });
+    }
+  });
+
+  if (Object.keys(detailUpdates).length > 0) {
+    await prisma.vpn.update({
+      where: { assetId: id },
+      data: detailUpdates,
+    });
+  }
+}
 
     // ======================
     // BITÁCORA

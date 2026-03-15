@@ -22,6 +22,8 @@ export const getBitacora = (id: string) =>
 
 export const addObservacion = (id: string, data: { autor: string; tipoEvento: string; descripcion: string }) =>
   api.post(`/assets/${id}/bitacora`, data).then(r => r.data.data);
+ 
+
 
 export const importExcel = (file: File) => {
   const form = new FormData();

@@ -37,6 +37,7 @@ CREATE TABLE "Servidor" (
     "fechaFinSoporte" TIMESTAMP(3),
     "rutasBackup" TEXT,
     "contratoQueSoporta" TEXT,
+    
 
     CONSTRAINT "Servidor_pkey" PRIMARY KEY ("id")
 );

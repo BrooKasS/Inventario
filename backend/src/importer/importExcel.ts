@@ -33,33 +33,22 @@ function fixIp(val: any): string | null {
   return toStr(val);
 }
 
-/**
- * Convierte valor de Excel a Date para campos DateTime? en Prisma.
- * Si el valor no es una fecha válida (ej: texto largo), retorna null.
- */
 function toDate(val: any): Date | null {
   if (val === null || val === undefined) return null;
-
-  // Número serial de Excel
   if (typeof val === "number" && !isNaN(val) && val > 0) {
     const parsed = XLSX.SSF.parse_date_code(val);
     if (!parsed) return null;
     return new Date(Date.UTC(parsed.y, parsed.m - 1, parsed.d));
   }
-
-  // Objeto Date (xlsx lo parsea directamente en algunos casos)
   if (val instanceof Date) {
     return isNaN(val.getTime()) ? null : val;
   }
-
-  // String — solo parsear si parece fecha, no texto largo
   if (typeof val === "string") {
     const trimmed = val.trim();
-    if (!trimmed || trimmed.length > 30) return null; // texto largo = no es fecha
+    if (!trimmed || trimmed.length > 30) return null;
     const d = new Date(trimmed);
     return isNaN(d.getTime()) ? null : d;
   }
-
   return null;
 }
 
@@ -69,12 +58,11 @@ function parseSheet(sheet: XLSX.WorkSheet): Record<string, any>[] {
     defval: null,
   }) as any[][];
 
-  const HEADER_ROW = 7;
+  const HEADER_ROW = 10;
   const headerRow = rawRows[HEADER_ROW] as any[];
   const firstIsNull = headerRow[0] === null || headerRow[0] === undefined;
   const startCol = firstIsNull ? 1 : 0;
 
-  // CRÍTICO: trim() para eliminar espacios en headers del Excel
   const headers = headerRow
     .slice(startCol)
     .map((h: any) => (typeof h === "string" ? h.trim() : null));
@@ -99,7 +87,6 @@ interface Resumen {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SERVIDORES — llave compuesta: codigoServicio + nombre
-// FLP0118 tiene dos servidores distintos (SRINFOMPRU y srinfompru2)
 // ─────────────────────────────────────────────────────────────────────────────
 async function importarServidores(workbook: XLSX.WorkBook, autor: string, resumen: Resumen) {
   const sheet = workbook.Sheets["InventarioServidores"];
@@ -180,7 +167,6 @@ async function importarServidores(workbook: XLSX.WorkBook, autor: string, resume
 
 // ─────────────────────────────────────────────────────────────────────────────
 // REDES — llave compuesta: nombre + serial
-// sw_cartagena aparece 2 veces con diferente serial
 // ─────────────────────────────────────────────────────────────────────────────
 async function importarRedes(workbook: XLSX.WorkBook, autor: string, resumen: Resumen) {
   const sheet = workbook.Sheets["InventarioRedes"];
@@ -259,7 +245,7 @@ async function importarRedes(workbook: XLSX.WorkBook, autor: string, resumen: Re
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// UPS — llave: serial (sin duplicados en el Excel)
+// UPS — llave: serial
 // ─────────────────────────────────────────────────────────────────────────────
 async function importarUps(workbook: XLSX.WorkBook, autor: string, resumen: Resumen) {
   const sheet = workbook.Sheets["InventarioUPS"];
@@ -331,7 +317,6 @@ async function importarUps(workbook: XLSX.WorkBook, autor: string, resumen: Resu
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BASES DE DATOS — llave compuesta: nombre + servidor1
-// OLIMPO aparece 2 veces con distinto servidor1 (ISRALE vs OLIMPO)
 // ─────────────────────────────────────────────────────────────────────────────
 async function importarBD(workbook: XLSX.WorkBook, autor: string, resumen: Resumen) {
   const sheet = workbook.Sheets["InventarioBD"];
@@ -408,8 +393,178 @@ async function importarBD(workbook: XLSX.WorkBook, autor: string, resumen: Resum
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// EXPORTACIÓN PRINCIPAL
+// VPN — llave: nombre (único en el Excel)
+//
+// Estructura hoja "Export" (datos desde fila 3, índice 2):
+//   Col B (idx 1) → Nombre de la VPN
+//   Col C (idx 2) → Conexión  (IP peer — puede ser número sin puntos)
+//   Col D (idx 3) → Fases     (siempre "Phase 2")
+//   Col E (idx 4) → Origen y Destino ("Origen: X, Destino: Y")
+//
+// Casos especiales manejados:
+//   - IPs numéricas (ej: 177253101154 → "177.253.101.154")
+//   - N/A en Conexión → null
+//   - N/A en Origen/Destino → null
+//   - Nombres simbólicos (ej: "GRP_DU-TORRETAS") → guardados tal cual
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Reconstruye una IP desde número entero (Excel elimina los puntos).
+ * Usa backtracking para encontrar la partición correcta en 4 octetos ≤ 255.
+ */
+function reconstruirIP(num: number): string {
+  const s = String(Math.round(num));
+
+  function backtrack(pos: number, partes: number[]): string[] | null {
+    if (partes.length === 4 && pos === s.length) return partes.map(String);
+    if (partes.length === 4 || pos === s.length) return null;
+
+    const restantes = 4 - partes.length;
+    const maxLen    = Math.min(3, s.length - pos - (restantes - 1));
+
+    for (let len = 1; len <= maxLen; len++) {
+      const seg = parseInt(s.slice(pos, pos + len), 10);
+      if (seg > 255) break;
+      if (len > 1 && s[pos] === "0") break;
+      const result = backtrack(pos + len, [...partes, seg]);
+      if (result) return result;
+    }
+    return null;
+  }
+
+  const partes = backtrack(0, []);
+  return partes ? partes.join(".") : s; // fallback: guardar tal cual
+}
+
+/** Parsea el campo Conexión — maneja string, número y N/A */
+function parsearConexion(raw: unknown): string | null {
+  if (raw === null || raw === undefined || raw === "") return null;
+  if (typeof raw === "number") return reconstruirIP(raw);
+  const s = String(raw).trim();
+  if (!s || s.toUpperCase() === "N/A") return null;
+  return s;
+}
+
+/** Limpia un valor N/A del Excel VPN (incluyendo el texto largo explicativo) */
+function limpiarValorVPN(s: string): string | null {
+  if (!s) return null;
+  const limpio = s.trim();
+  if (limpio.toUpperCase().startsWith("N/A")) return null;
+  return limpio || null;
+}
+
+/** Separa "Origen: X, Destino: Y" en dos campos independientes */
+function parsearOrigenDestino(raw: unknown): { origen: string | null; destino: string | null } {
+  if (raw === null || raw === undefined) return { origen: null, destino: null };
+
+  const s = String(raw).trim();
+  if (!s) return { origen: null, destino: null };
+
+  const sepIdx = s.indexOf(", Destino:");
+  if (sepIdx === -1) {
+    // Sin separador esperado — poner todo en origen por si acaso
+    return { origen: limpiarValorVPN(s.replace(/^Origen:\s*/i, "")), destino: null };
+  }
+
+  const origenPart  = s.slice(0, sepIdx).replace(/^Origen:\s*/i, "").trim();
+  const destinoPart = s.slice(sepIdx + 2).replace(/^Destino:\s*/i, "").trim();
+
+  return {
+    origen:  limpiarValorVPN(origenPart),
+    destino: limpiarValorVPN(destinoPart),
+  };
+}
+
+async function importarVPN(workbook: XLSX.WorkBook, autor: string, resumen: Resumen) {
+  const sheet = workbook.Sheets["Export"];
+  if (!sheet) {
+    
+    return;
+  }
+
+  // Leer con raw:true para preservar números (IPs sin puntos)
+  const filas = XLSX.utils.sheet_to_json(sheet, {
+    header: 1,
+    defval: null,
+    raw:    true,
+  }) as unknown[][];
+
+  // Fila 1 (índice 0): vacía
+  // Fila 2 (índice 1): encabezados
+  // Fila 3+ (índice 2+): datos
+  const FILA_INICIO = 1;
+
+  let procesadas = 0;
+
+  for (let i = FILA_INICIO; i < filas.length; i++) {
+    const fila   = filas[i];
+    const numFila = i + 1;
+
+    // Columnas B=1, C=2, D=3, E=
+
+    const nombre = toStr(fila[0]);
+ 
+    if (!nombre) continue;
+
+    const conexion = parsearConexion(fila[1]);
+    const fases    = toStr(fila[2]);
+    const { origen, destino } = parsearOrigenDestino(fila[3]);
+
+    const datosVpn = { conexion, fases, origen, destino };
+
+    try {
+      const existing = await prisma.asset.findFirst({
+        where: { tipo: "VPN", nombre },
+      });
+
+      if (!existing) {
+        const asset = await prisma.asset.create({
+          data: {
+            tipo: "VPN",
+            nombre,
+            vpn: { create: datosVpn },
+          },
+        });
+        await prisma.bitacora.create({
+          data: {
+            assetId:     asset.id,
+            autor,
+            tipoEvento:  "IMPORTACION",
+            descripcion: "VPN importada desde Excel.",
+          },
+        });
+        resumen.creados++;
+      } else {
+        console.log(`ACTUALIZANDO: "${nombre}" id=${existing.id}`);
+        await prisma.vpn.upsert({
+          where:  { assetId: existing.id },
+          update: datosVpn,
+          create: { assetId: existing.id, ...datosVpn },
+        });
+        await prisma.bitacora.create({
+          data: {
+            assetId:     existing.id,
+            autor,
+            tipoEvento:  "IMPORTACION",
+            descripcion: "VPN actualizada desde Excel.",
+          },
+        });
+        resumen.actualizados++;
+      }
+
+      procesadas++;
+    } catch (e: any) {
+      console.error(`  ❌ VPN fila ${numFila} "${nombre}": ${e.message}`);
+      resumen.errores++;
+    }
+  }
+
+  if (procesadas > 0) {
+    console.log(`   → ${procesadas} VPNs procesadas`);
+  }
+}
+
+//esta es la exportación principal 
 export async function importExcel(
   path: string,
   autor: string = "Sistema"
@@ -431,6 +586,9 @@ export async function importExcel(
 
   console.log("📂 InventarioBD...");
   await importarBD(workbook, autor, resumen);
+
+  console.log("📂 VPN (Export)...");
+  await importarVPN(workbook, autor, resumen);
 
   console.log("\n─────────────────────────────────");
   console.log(`✅ Creados:      ${resumen.creados}`);

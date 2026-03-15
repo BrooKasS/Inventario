@@ -1,4 +1,4 @@
-export type TipoActivo = "SERVIDOR" | "RED" | "UPS" | "BASE_DATOS";
+export type TipoActivo = "SERVIDOR" | "RED" | "UPS" | "BASE_DATOS"| "VPN";
 export type TipoEvento = "IMPORTACION" | "CAMBIO_CAMPO" | "MANTENIMIENTO" | "INCIDENTE" | "NOTA";
 
 export interface Servidor {
@@ -82,6 +82,7 @@ export interface Asset {
   ups: Ups | null;
   baseDatos: BaseDatos | null;
   bitacora?: BitacoraEntry[];
+  vpn: Vpn | null;
 }
 
 export interface Pagination {
@@ -89,6 +90,15 @@ export interface Pagination {
   limit: number;
   total: number;
   totalPages: number;
+}
+
+export interface Vpn {
+  id: string;
+  assetId: string;
+  conexion: string | null;
+  fases: string | null;
+  origen: string | null;
+  destino: string | null;
 }
 
 export interface AssetsResponse {

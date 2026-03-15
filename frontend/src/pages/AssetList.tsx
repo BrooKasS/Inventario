@@ -5,12 +5,12 @@ import type { Asset, Pagination, TipoActivo } from "../types";
 
 const GRAD    = "linear-gradient(135deg, #fa8e00 , #89183e 25%, 35% #861F41 35%, #B7312C 70%, #D86018 100%)";
 const PRIMARY = "hsl(32, 94%, 56%)";
-
 const TIPO_LABEL: Record<string, string> = {
   SERVIDOR:   "Servidores",
   BASE_DATOS: "Bases de Datos",
   RED:        "Red",
   UPS:        "UPS",
+  VPN:        "VPN S2S",
 };
 
 const TIPO_ICON: Record<string, string> = {
@@ -18,6 +18,7 @@ const TIPO_ICON: Record<string, string> = {
   BASE_DATOS: "🗄️",
   RED:        "🌐",
   UPS:        "⚡",
+  VPN:        "🔒",
 };
 
 const TIPO_GRAD: Record<string, string> = {
@@ -25,6 +26,7 @@ const TIPO_GRAD: Record<string, string> = {
   BASE_DATOS: "linear-gradient(135deg, #861F41, #B7312C)",
   RED:        "linear-gradient(135deg, #B7312C, #D86018)",
   UPS:        "linear-gradient(135deg, #FA8200, #861F41)",
+  VPN: "linear-gradient(135deg, #861F41, #FA8200)",
 };
 
 const FILTER_FIELDS: Record<string, { key: string; label: string }[]> = {
@@ -34,10 +36,13 @@ const FILTER_FIELDS: Record<string, { key: string; label: string }[]> = {
     { key: "sistemaOperativo", label: "Sistema operativo" },
     { key: "monitoreo",        label: "Monitoreo" },
     { key: "backup",           label: "Backup" },
+    
+    
   ],
   RED:        [{ key: "estado", label: "Estado" }, { key: "modelo", label: "Modelo" }],
   UPS:        [{ key: "estado", label: "Estado" }, { key: "modelo", label: "Modelo" }],
   BASE_DATOS: [{ key: "ambiente", label: "Ambiente" }, { key: "versionBd", label: "Versión BD" }],
+  VPN: [{ key: "conexion", label: "conexión" },{ key: "origen", label: "Origen" },{ key: "destino", label: "Destino" },{key: "fases", label:"Fases"}],
 };
 
 function normalize(text: string) {
@@ -172,7 +177,7 @@ function ServidorRow({ a, onClick }: { a: Asset; onClick: () => void }) {
     <strong style={{ color: "#000000" }}>{a.nombre ?? "—"}</strong>,
     a.codigoServicio ?? "—", <Badge text={s?.ambiente ?? null} />,
     <code style={{ fontSize: 14 }}>{s?.ipInterna ?? "—"}</code>,
-    s?.vcpu ?? "—", s?.vramMb ? `${s.vramMb / 1024} GB` : "—",
+    s?.vcpu ?? "—", s?.Mb ? `${s.Mb / 1024} GB` : "—",
     s?.sistemaOperativo ?? "—", a.ubicacion ?? "—",
   ]} />;
 }
@@ -202,12 +207,23 @@ function BDRow({ a, onClick }: { a: Asset; onClick: () => void }) {
     b?.versionBd ?? "—", b?.racScan ?? "—", a.propietario ?? "—",
   ]} />;
 }
+function VpnRow({ a, onClick }: { a: Asset; onClick: () => void }) {
+  const v = a.vpn;
+  return <Row onClick={onClick} cells={[
+    <strong style={{ color: "#000000" }}>{a.nombre ?? "—"}</strong>,
+    <code style={{ fontSize: 14 }}>{v?.conexion ?? "—"}</code>,
+    v?.fases ?? "—",
+    v?.origen ?? "—",
+    v?.destino ?? "—",
+  ]} />;
+}
 
 const HEADERS: Record<string, string[]> = {
   SERVIDOR:   ["Nombre", "Código", "Ambiente", "IP Interna", "vCPU", "vRAM", "Sistema Operativo", "Ubicación"],
   RED:        ["Nombre", "Serial", "Modelo", "IP Gestión", "Estado", "Ubicación", "Código"],
   UPS:        ["Nombre", "Serial", "Modelo", "Placa", "Estado", "Ubicación"],
   BASE_DATOS: ["Nombre", "Ambiente", "Aplicación", "Servidor 1", "Versión", "RAC/Scan", "Propietario"],
+  VPN: ["Nombre", "Conexión", "Fases", "Origen", "Destino"]
 };
 
 const labelStyle: React.CSSProperties = {
@@ -237,7 +253,7 @@ function uniqueVals(assets: Asset[], getter: (a: Asset) => string | null | undef
 }
 function uniqueSubVals(assets: Asset[], key: string): string[] {
   return Array.from(new Set(assets.map(a => {
-    const sub: any = a.servidor ?? a.red ?? a.ups ?? a.baseDatos ?? {};
+    const sub: any = a.servidor ?? a.red ?? a.ups ?? a.baseDatos ?? a.vpn ??{};
     return sub[key] as string | undefined;
   }).filter(Boolean) as string[])).sort();
 }
@@ -324,7 +340,7 @@ export default function AssetList() {
       const matchExtra = extraFields.every(({ key }) => {
         const val = filtroExtra[key];
         if (!val) return true;
-        const sub: any = a.servidor ?? a.red ?? a.ups ?? a.baseDatos ?? {};
+        const sub: any = a.servidor ?? a.red ?? a.ups ?? a.baseDatos ?? a.vpn ?? {};
         return normalize(String(sub[key] ?? "")).includes(normalize(val));
       });
       return matchNombre && matchCodigo && matchUbicacion && matchExtra;
@@ -444,7 +460,8 @@ export default function AssetList() {
                       if (tipoKey === "SERVIDOR") return <ServidorRow key={a.id} a={a} onClick={onClick} />;
                       if (tipoKey === "RED")      return <RedRow      key={a.id} a={a} onClick={onClick} />;
                       if (tipoKey === "UPS")      return <UpsRow      key={a.id} a={a} onClick={onClick} />;
-                      return                             <BDRow       key={a.id} a={a} onClick={onClick} />;
+                      if (tipoKey === "VPN") return <VpnRow key={a.id} a={a} onClick={onClick} />;
+                      return         <BDRow       key={a.id} a={a} onClick={onClick} />;
                     })}
                   </tbody>
                 </table>
@@ -509,7 +526,7 @@ export default function AssetList() {
                     placeholder="Ej: localhost, sgrlp..."
                   />
                 </div>
-                {tipoKey !== "UPS" && tipoKey !== "BASE_DATOS" && (
+                {tipoKey !== "UPS" && tipoKey !== "BASE_DATOS" && tipoKey !== "VPN"  && (
                   <div>
                     <label style={labelStyle}>Código de servicio</label>
                     <AutoInput
@@ -520,7 +537,7 @@ export default function AssetList() {
                     />
                   </div>
                 )}
-                {tipoKey !== "BASE_DATOS" && (
+                {tipoKey !== "BASE_DATOS" && tipoKey !== "VPN"&&(
                   <div style={{ gridColumn: "1 / -1" }}>
                     <label style={labelStyle}>Ubicación</label>
                     <AutoInput
@@ -564,6 +581,7 @@ export default function AssetList() {
               <button onClick={aplicarFiltros} style={{ padding: "10px 22px", borderRadius: 8, border: "none", background: TIPO_GRAD[tipoKey] ?? GRAD, color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 14, fontFamily: "Calibri, sans-serif", boxShadow: "0 4px 12px rgba(183,49,44,.3)" }}>
                 Aplicar filtros
               </button>
+          
             </div>
           </div>
         </div>

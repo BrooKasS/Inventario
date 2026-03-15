@@ -17,7 +17,7 @@ const TIPO_LABEL_PLURAL: Record<string, string> = {
   UPS:        "UPS",
 };
 
-/** Aplana los activos a filas planas para exportación */
+
 function prepararFilasActivos(assets: Asset[]) {
   return assets.map((a) => {
     const base = {
@@ -41,8 +41,8 @@ function prepararFilasActivos(assets: Asset[]) {
         "IP Gestión": s.ipGestion ?? "",
         "IP Servicio": s.ipServicio ?? "",
         vCPU: s.vcpu ?? "",
-        "vRAM (MB)": s.vramMb ?? "",
-        "Sistema Operativo": s.sistemaOperitivo ?? s.sistemaOperativo ?? "", // tolerante si cambió la key
+        "vRAM (MB)": s.Mb ?? "",
+        "Sistema Operativo": s.sistemaOperativo ?? s.sistemaOperativo ?? "", 
         Ambiente: s.ambiente ?? "",
         "Tipo Servidor": s.tipoServidor ?? "",
         "App Soporta": s.appSoporta ?? "",
@@ -71,7 +71,7 @@ function prepararFilasActivos(assets: Asset[]) {
     }
 
     if (a.tipo === "RED" && a.red) {
-      const r = a.red;
+      const r = a.red; 
       return {
         ...base,
         Serial: r.serial ?? "",
