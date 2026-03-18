@@ -1,4 +1,3 @@
-import { useState } from "react";
 import type { Asset } from "../../../types";
 import {
   MAIN_GRADIENT,
@@ -11,334 +10,6 @@ import {
 import type { ExportMode } from "../types";
 import Modal from "../../../components/Modal";
 
-/* ─── Paleta de colores ─── */
-const C = {
-  primary:   "#B7312C",
-  accent:    "#FA8200",
-  dark:      "#861F41",
-  warm:      "#D86018",
-  grad:      MAIN_GRADIENT,
-  surface:   "#FAFAFA",
-  border:    "#F0E8E8",
-  muted:     "#888",
-  text:      "#1A1A1A",
-  textLight: "#666",
-};
-
-/* ─── Estilos base reutilizables ─── */
-const inputBase: React.CSSProperties = {
-  width: "100%",
-  padding: "9px 12px",
-  borderRadius: 8,
-  border: `1.5px solid ${C.border}`,
-  background: "#fff",
-  color: C.text,
-  fontSize: 13,
-  fontFamily: "Calibri, sans-serif",
-  outline: "none",
-  transition: "border-color .18s",
-  boxSizing: "border-box",
-};
-
-const labelBase: React.CSSProperties = {
-  display: "block",
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: "0.1em",
-  textTransform: "uppercase",
-  color: C.primary,
-  marginBottom: 6,
-  fontFamily: "Calibri, sans-serif",
-};
-
-/* ─── Sub-componentes ─── */
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{
-      fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
-      textTransform: "uppercase", color: C.muted,
-      marginBottom: 12, paddingBottom: 8,
-      borderBottom: `1px solid ${C.border}`,
-      fontFamily: "Calibri, sans-serif",
-    }}>
-      {children}
-    </div>
-  );
-}
-
-function TipoChip({
-  tipo, active, onClick,
-}: { tipo: string; active: boolean; onClick: () => void }) {
-  const [hov, setHov] = useState(false);
-  return (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        display: "flex", alignItems: "center", gap: 5,
-        padding: "6px 12px", borderRadius: 20, cursor: "pointer",
-        border: active ? `1.5px solid ${C.primary}` : `1.5px solid #ddd`,
-        background: active
-          ? `rgba(183,49,44,.10)`
-          : hov ? "#f5f0f0" : "#fff",
-        color: active ? C.primary : C.textLight,
-        fontWeight: active ? 700 : 500,
-        fontSize: 12, fontFamily: "Calibri, sans-serif",
-        transition: "all .15s",
-        boxShadow: active ? `0 0 0 3px rgba(183,49,44,.08)` : "none",
-      }}
-    >
-      <span>{TIPO_ICON[tipo] ?? "📦"}</span>
-      <span>{TIPO_LABEL[tipo] ?? tipo}</span>
-    </button>
-  );
-}
-
-function EventoChip({
-  evento, active, onClick,
-}: { evento: string; active: boolean; onClick: () => void }) {
-  const [hov, setHov] = useState(false);
-  return (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        padding: "5px 11px", borderRadius: 20, cursor: "pointer",
-        border: active ? `1.5px solid ${C.accent}` : `1.5px solid #ddd`,
-        background: active ? `rgba(250,130,0,.10)` : hov ? "#fff8f0" : "#fff",
-        color: active ? C.warm : C.textLight,
-        fontWeight: active ? 700 : 500,
-        fontSize: 12, fontFamily: "Calibri, sans-serif",
-        transition: "all .15s",
-        boxShadow: active ? `0 0 0 3px rgba(250,130,0,.08)` : "none",
-      }}
-    >
-      {EVENTO_LABEL_MAP[evento] ?? evento}
-    </button>
-  );
-}
-
-function ActionBtn({
-  label, icon, onClick, disabled, variant = "secondary",
-}: {
-  label: string; icon?: string; onClick: () => void;
-  disabled?: boolean; variant?: "primary" | "secondary" | "ghost";
-}) {
-  const [hov, setHov] = useState(false);
-  const styles: Record<string, React.CSSProperties> = {
-    primary: {
-      background: hov && !disabled ? "linear-gradient(135deg,#FA8200,#B7312C)" : C.grad,
-      color: "#fff", border: "none",
-      boxShadow: disabled ? "none" : "0 3px 10px rgba(183,49,44,.25)",
-    },
-    secondary: {
-      background: hov && !disabled ? "#f0e8e8" : "#fff",
-      color: C.primary, border: `1.5px solid ${C.border}`,
-    },
-    ghost: {
-      background: hov && !disabled ? "rgba(255,255,255,.15)" : "rgba(255,255,255,.08)",
-      color: "#fff", border: "1.5px solid rgba(255,255,255,.3)",
-    },
-  };
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        display: "flex", alignItems: "center", gap: 6,
-        padding: "8px 16px", borderRadius: 8,
-        fontWeight: 700, fontSize: 13,
-        fontFamily: "Calibri, sans-serif",
-        cursor: disabled ? "not-allowed" : "pointer",
-        opacity: disabled ? 0.5 : 1,
-        transition: "all .15s",
-        whiteSpace: "nowrap",
-        ...styles[variant],
-      }}
-    >
-      {icon && <span>{icon}</span>}
-      <span>{label}</span>
-    </button>
-  );
-}
-
-/* ═══════════════════════════════════════════════
-   TABLAS DE PREVIEW
-═══════════════════════════════════════════════ */
-function PreviewTableActivos({
-  preview, seleccion, toggleSeleccion,
-}: {
-  preview: Asset[];
-  seleccion: Set<string>;
-  toggleSeleccion: (id: string) => void;
-}) {
-  return (
-    <table style={{ width: "100%", borderCollapse: "collapse" }}>
-      <thead>
-        <tr style={{ background: "rgb(90,56,112)" }}>
-          {["", "Activo", "Tipo", "Código", "Ubicación", "Actualizado"].map((h, i) => (
-            <th key={i} style={{
-              padding: "10px 14px", textAlign: "left",
-              fontSize: 10, fontWeight: 700, textTransform: "uppercase",
-              letterSpacing: ".08em", color: "#fff",
-              borderRight: i < 5 ? "1px solid rgba(255,255,255,.08)" : "none",
-            }}>{h}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {preview.map((a, idx) => {
-          const checked = seleccion.has(a.id);
-          return (
-            <tr
-              key={a.id}
-              style={{
-                borderBottom: `1px solid ${C.border}`,
-                background: checked ? "rgba(183,49,44,.04)" : idx % 2 === 0 ? "#fff" : C.surface,
-                cursor: "pointer",
-              }}
-              onClick={() => toggleSeleccion(a.id)}
-            >
-              <td style={{ padding: "10px 14px", width: 36 }}>
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => toggleSeleccion(a.id)}
-                  style={{ accentColor: C.primary, width: 14, height: 14, cursor: "pointer" }}
-                  onClick={e => e.stopPropagation()}
-                />
-              </td>
-              <td style={{ padding: "10px 14px", fontWeight: checked ? 700 : 400, color: checked ? C.primary : C.text, fontSize: 13 }}>
-                {a.nombre ?? "—"}
-              </td>
-              <td style={{ padding: "10px 14px" }}>
-                <span style={{
-                  display: "inline-flex", alignItems: "center", gap: 4,
-                  fontSize: 11, fontWeight: 700, padding: "3px 8px",
-                  borderRadius: 12, background: "rgba(183,49,44,.08)", color: C.primary,
-                }}>
-                  {TIPO_ICON[a.tipo]} {TIPO_LABEL_SINGULAR[a.tipo] ?? a.tipo}
-                </span>
-              </td>
-              <td style={{ padding: "10px 14px", fontSize: 13, color: C.textLight }}>{a.codigoServicio ?? "—"}</td>
-              <td style={{ padding: "10px 14px", fontSize: 13, color: C.textLight }}>{a.ubicacion ?? "—"}</td>
-              <td style={{ padding: "10px 14px", fontSize: 12, color: C.muted }}>
-                {a.actualizadoEn
-                  ? new Date(a.actualizadoEn).toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })
-                  : "—"}
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  );
-}
-
-function PreviewTableObservaciones({
-  preview, seleccion, toggleSeleccion,
-  pasaFiltroObservacion, obsAutor, obsDesde, obsHasta, eventosSel, incluirSistema,
-}: {
-  preview: Asset[];
-  seleccion: Set<string>;
-  toggleSeleccion: (id: string) => void;
-  pasaFiltroObservacion: (e: any, autor: string, desde: string, hasta: string, eventos: string[], incluirSis: boolean) => boolean;
-  obsAutor: string; obsDesde: string; obsHasta: string;
-  eventosSel: string[]; incluirSistema: boolean;
-}) {
-  const EVENTO_BADGE: Record<string, { bg: string; color: string }> = {
-    IMPORTACION:  { bg: "#e0f0ff", color: "#0c5460" },
-    CAMBIO_CAMPO: { bg: "#fff3cd", color: "#856404" },
-    MANTENIMIENTO:{ bg: "#d4edda", color: "#155724" },
-    INCIDENTE:    { bg: "#f8d7da", color: "#721c24" },
-    NOTA:         { bg: "#e2e3e5", color: "#383d41" },
-  };
-
-  return (
-    <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
-      <thead>
-        <tr style={{ background: "rgb(90,56,112)" }}>
-          {["", "Activo", "Tipo", "Fecha", "Autor", "Evento", "Descripción", "Campo", "Anterior", "Nuevo"].map((h, i) => (
-            <th key={i} style={{
-              padding: "10px 14px", textAlign: "left",
-              fontSize: 10, fontWeight: 700, textTransform: "uppercase",
-              letterSpacing: ".08em", color: "#fff",
-              borderRight: i < 9 ? "1px solid rgba(255,255,255,.08)" : "none",
-            }}>{h}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {preview.map((a) => {
-          const rows = (a as any).bitacora || [];
-          const visibles = rows.filter((e: any) =>
-            pasaFiltroObservacion(e, obsAutor, obsDesde, obsHasta, eventosSel, incluirSistema)
-          );
-          if (visibles.length === 0) return null;
-          const checked = seleccion.has(a.id);
-
-          return visibles.map((e: any, idx: number) => {
-            const badge = EVENTO_BADGE[e.tipoEvento] ?? { bg: "#e2e3e5", color: "#383d41" };
-            return (
-              <tr
-                key={`${a.id}-${idx}`}
-                style={{
-                  borderBottom: `1px solid ${C.border}`,
-                  background: checked ? "rgba(183,49,44,.04)" : idx % 2 === 0 ? "#fff" : C.surface,
-                  cursor: "pointer",
-                }}
-                onClick={() => idx === 0 && toggleSeleccion(a.id)}
-              >
-                <td style={{ padding: "10px 14px", width: 36 }}>
-                  {idx === 0 && (
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggleSeleccion(a.id)}
-                      style={{ accentColor: C.primary, width: 14, height: 14, cursor: "pointer" }}
-                      onClick={e => e.stopPropagation()}
-                    />
-                  )}
-                </td>
-                <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: idx === 0 ? 700 : 400, color: C.text }}>
-                  {idx === 0 ? a.nombre ?? "—" : ""}
-                </td>
-                <td style={{ padding: "10px 14px", fontSize: 11, color: C.muted }}>
-                  {idx === 0 ? (TIPO_LABEL_SINGULAR[a.tipo] ?? a.tipo) : ""}
-                </td>
-                <td style={{ padding: "10px 14px", fontSize: 12, color: C.muted, whiteSpace: "nowrap" }}>
-                  {e.creadoEn ? new Date(e.creadoEn).toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" }) : "—"}
-                </td>
-                <td style={{ padding: "10px 14px", fontSize: 13, color: C.text }}>{e.autor ?? "—"}</td>
-                <td style={{ padding: "10px 14px" }}>
-                  <span style={{
-                    display: "inline-block", padding: "2px 8px", borderRadius: 10,
-                    fontSize: 10, fontWeight: 700, textTransform: "uppercase",
-                    letterSpacing: ".06em", background: badge.bg, color: badge.color,
-                  }}>
-                    {EVENTO_LABEL_MAP[e.tipoEvento] ?? e.tipoEvento}
-                  </span>
-                </td>
-                <td style={{ padding: "10px 14px", fontSize: 12, color: C.text, maxWidth: 200 }}>{e.descripcion ?? ""}</td>
-                <td style={{ padding: "10px 14px", fontSize: 12, color: C.muted, fontFamily: "monospace" }}>{e.campoModificado ?? ""}</td>
-                <td style={{ padding: "10px 14px", fontSize: 12, color: "#c0392b" }}>{e.valorAnterior ?? ""}</td>
-                <td style={{ padding: "10px 14px", fontSize: 12, color: "#27ae60" }}>{e.valorNuevo ?? ""}</td>
-              </tr>
-            );
-          });
-        })}
-      </tbody>
-    </table>
-  );
-}
-
-/* ═══════════════════════════════════════════════
-   EXPORT MODAL PRINCIPAL
-═══════════════════════════════════════════════ */
 interface ExportModalProps {
   open: boolean;
   onClose: () => void;
@@ -358,6 +29,7 @@ interface ExportModalProps {
   exporting: "excel" | "pdf" | null;
   handleExportExcel: () => Promise<void>;
   handleExportPDF: () => Promise<void>;
+  // Observaciones
   eventosSel: string[];
   setEventosSel: (events: string[] | ((prev: string[]) => string[])) => void;
   obsAutor: string;
@@ -372,135 +44,218 @@ interface ExportModalProps {
 }
 
 export default function ExportModal({
-  open, onClose, exportMode, setExportMode,
-  tiposSel, toggleTipo, buscar, setBuscar,
-  preview, previewLoading, cargarPreview,
-  seleccion, toggleSeleccion, seleccionarTodos, allSelected,
-  exporting, handleExportExcel, handleExportPDF,
-  eventosSel, setEventosSel, obsAutor, setObsAutor,
-  obsDesde, setObsDesde, obsHasta, setObsHasta,
-  incluirSistema, setIncluirSistema, pasaFiltroObservacion,
+  open,
+  onClose,
+  exportMode,
+  setExportMode,
+  tiposSel,
+  toggleTipo,
+  buscar,
+  setBuscar,
+  preview,
+  previewLoading,
+  cargarPreview,
+  seleccion,
+  toggleSeleccion,
+  seleccionarTodos,
+  allSelected,
+  exporting,
+  handleExportExcel,
+  handleExportPDF,
+  eventosSel,
+  setEventosSel,
+  obsAutor,
+  setObsAutor,
+  obsDesde,
+  setObsDesde,
+  obsHasta,
+  setObsHasta,
+  incluirSistema,
+  setIncluirSistema,
+  pasaFiltroObservacion,
 }: ExportModalProps) {
-
-  const totalSeleccionados = seleccion.size;
-  const totalPreview = preview.length;
-
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title=""
-      width={1140}
+      title={exportMode === "activos" ? "Exportar Activos" : "Exportar Observaciones"}
+      width={1100}
     >
-      <div style={{ fontFamily: "Calibri, 'Segoe UI', sans-serif", display: "flex", flexDirection: "column", maxHeight: "85vh" }}>
-
-        {/* ══ HEADER ══ */}
-        <div style={{
-          background: C.grad,
-          padding: "18px 24px",
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          flexShrink: 0,
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{
-              width: 38, height: 38, borderRadius: 10,
-              background: "rgba(255,255,255,.18)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 18,
-            }}>📤</div>
-            <div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "#fff", letterSpacing: ".02em" }}>
-                Exportar datos
-              </div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,.7)", marginTop: 2 }}>
-                Selecciona activos y descarga en Excel o PDF
-              </div>
-            </div>
+      <div
+        style={{
+          borderRadius: 14,
+          overflow: "hidden",
+          border: "1px solid rgba(0,0,0,.06)",
+          boxShadow: "0 6px 28px rgba(0,0,0,.12)",
+        }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            background: MAIN_GRADIENT,
+            padding: "12px 20px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 10,
+            borderTopLeftRadius: 14,
+            borderTopRightRadius: 14,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span
+              style={{
+                fontSize: 16,
+                width: 30,
+                height: 30,
+                borderRadius: 8,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "rgba(255,255,255,.18)",
+              }}
+            >
+              📤
+            </span>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                color: "#fff",
+              }}
+            >
+              {exportMode === "activos"
+                ? "Exportar Activos (Excel / PDF)"
+                : "Exportar Observaciones (Excel / PDF)"}
+            </span>
           </div>
-
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {/* Toggle modo */}
-            <div style={{
-              display: "flex", background: "rgba(0,0,0,.2)",
-              borderRadius: 10, overflow: "hidden", padding: 3, gap: 3,
-            }}>
-              {(["activos", "observaciones"] as ExportMode[]).map(mode => (
-                <button
-                  key={mode}
-                  onClick={() => setExportMode(mode)}
-                  style={{
-                    padding: "6px 14px", borderRadius: 8, border: "none",
-                    background: exportMode === mode ? "rgba(255,255,255,.95)" : "transparent",
-                    color: exportMode === mode ? C.primary : "rgba(255,255,255,.8)",
-                    fontWeight: 700, fontSize: 12, cursor: "pointer",
-                    transition: "all .15s", fontFamily: "Calibri, sans-serif",
-                    textTransform: "capitalize",
-                  }}
-                >
-                  {mode === "activos" ? "🗂 Activos" : "📋 Observaciones"}
-                </button>
-              ))}
+            {/* Toggle de modo */}
+            <div style={{ display: "flex", background: "rgba(255,255,255,.18)", borderRadius: 10, overflow: "hidden" }}>
+              <button
+                onClick={() => setExportMode("activos")}
+                style={{
+                  padding: "6px 10px",
+                  border: "none",
+                  background: exportMode === "activos" ? "rgba(255,255,255,.4)" : "transparent",
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: 12,
+                  cursor: "pointer",
+                }}
+              >
+                Activos
+              </button>
+              <button
+                onClick={() => setExportMode("observaciones")}
+                style={{
+                  padding: "6px 10px",
+                  border: "none",
+                  background: exportMode === "observaciones" ? "rgba(255,255,255,.4)" : "transparent",
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: 12,
+                  cursor: "pointer",
+                }}
+              >
+                Observaciones
+              </button>
             </div>
-
-            {/* Botones export */}
-            <ActionBtn
-              label={exporting === "excel" ? "Generando..." : "Excel"}
-              icon="📊"
-              onClick={handleExportExcel}
-              disabled={exporting !== null || totalSeleccionados === 0}
-              variant="ghost"
-            />
-            <ActionBtn
-              label={exporting === "pdf" ? "Generando..." : "PDF"}
-              icon="📄"
-              onClick={handleExportPDF}
-              disabled={exporting !== null || totalSeleccionados === 0}
-              variant="ghost"
-            />
 
             <button
-              onClick={onClose}
+              onClick={handleExportExcel}
+              disabled={exporting !== null}
               style={{
-                background: "rgba(255,255,255,.12)", border: "1.5px solid rgba(255,255,255,.25)",
-                color: "#fff", borderRadius: 8, width: 34, height: 34,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                cursor: "pointer", fontSize: 18, lineHeight: 1,
+                padding: "7px 14px",
+                borderRadius: 8,
+                border: "1.5px solid rgba(255,255,255,.4)",
+                background: exporting === "excel" ? "rgba(255,255,255,.25)" : "rgba(255,255,255,.12)",
+                color: "#fff",
+                fontWeight: 700,
+                fontSize: 12,
+                cursor: exporting ? "not-allowed" : "pointer",
               }}
-            >×</button>
+            >
+              {exporting === "excel" ? "Generando..." : "📊 Excel"}
+            </button>
+            <button
+              onClick={handleExportPDF}
+              disabled={exporting !== null}
+              style={{
+                padding: "7px 14px",
+                borderRadius: 8,
+                border: "1.5px solid rgba(255,255,255,.4)",
+                background: exporting === "pdf" ? "rgba(255,255,255,.25)" : "rgba(255,255,255,.12)",
+                color: "#fff",
+                fontWeight: 700,
+                fontSize: 12,
+                cursor: exporting ? "not-allowed" : "pointer",
+              }}
+            >
+              {exporting === "pdf" ? "Generando..." : "📄 PDF"}
+            </button>
           </div>
         </div>
 
-        {/* ══ BODY (scroll) ══ */}
-        <div style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}>
-
-          {/* ── PANEL IZQUIERDO: Filtros ── */}
-          <div style={{
-            width: 300, flexShrink: 0,
-            background: C.surface,
-            borderRight: `1px solid ${C.border}`,
-            overflowY: "auto", padding: "20px 18px",
-            display: "flex", flexDirection: "column", gap: 20,
-          }}>
-
-            {/* Tipos de activo */}
+        {/* Controles */}
+        <div style={{ background: "rgba(255,255,255,.04)", padding: 16 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: 12,
+              alignItems: "end",
+            }}
+          >
+            {/* Tipos */}
             <div>
-              <SectionTitle>Tipo de Activo</SectionTitle>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {["SERVIDOR", "BASE_DATOS", "RED", "UPS", "VPN"].map(tipo => (
-                  <TipoChip
-                    key={tipo}
-                    tipo={tipo}
-                    active={tiposSel.includes(tipo)}
-                    onClick={() => toggleTipo(tipo)}
-                  />
-                ))}
+              <div
+                style={{
+                  color: "#333",
+                  fontSize: 12,
+                  marginBottom: 6,
+                  opacity: 0.9,
+                  fontWeight: 700,
+                  letterSpacing: ".06em",
+                }}
+              >
+                Tipos de Activo
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {["SERVIDOR", "BASE_DATOS", "RED", "UPS","VPN"].map((tipo) => {
+                  const active = tiposSel.includes(tipo);
+                  return (
+                    <button
+                      key={tipo}
+                      onClick={() => toggleTipo(tipo)}
+                      style={{
+                        padding: "6px 10px",
+                        borderRadius: 14,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        border: active ? "1.5px solid #B7312C" : "1.5px solid rgba(0,0,0,.2)",
+                        background: active ? "rgba(183,49,44,.10)" : "rgba(0,0,0,.04)",
+                        color: "#333",
+                        cursor: "pointer",
+                        letterSpacing: ".03em",
+                      }}
+                    >
+                      {TIPO_ICON[tipo]} {TIPO_LABEL[tipo]}
+                    </button>
+                  );
+                })}
                 <button
                   onClick={() => toggleTipo("")}
                   style={{
-                    padding: "6px 12px", borderRadius: 20, cursor: "pointer",
-                    border: "1.5px dashed #ddd", background: "transparent",
-                    color: C.muted, fontSize: 12, fontFamily: "Calibri, sans-serif",
-                    fontWeight: 500,
+                    padding: "6px 10px",
+                    borderRadius: 14,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    border: "1.5px solid rgba(0,0,0,.2)",
+                    background: "rgba(0,0,0,.04)",
+                    color: "#333",
                   }}
                 >
                   Todos
@@ -510,201 +265,269 @@ export default function ExportModal({
 
             {/* Búsqueda */}
             <div>
-              <SectionTitle>Búsqueda</SectionTitle>
-              <div style={{ position: "relative" }}>
-                <span style={{
-                  position: "absolute", left: 10, top: "50%",
-                  transform: "translateY(-50%)", fontSize: 14, pointerEvents: "none",
-                }}>🔍</span>
-                <input
-                  value={buscar}
-                  onChange={e => setBuscar(e.target.value)}
-                  placeholder="Nombre, código, ubicación..."
-                  style={{ ...inputBase, paddingLeft: 32 }}
-                  onFocus={e => (e.currentTarget.style.borderColor = C.primary)}
-                  onBlur={e => (e.currentTarget.style.borderColor = C.border)}
-                />
+              <div
+                style={{
+                  color: "#333",
+                  fontSize: 12,
+                  marginBottom: 6,
+                  opacity: 0.9,
+                  fontWeight: 700,
+                  letterSpacing: ".06em",
+                }}
+              >
+                Buscar (Nombre / Código / Ubicación)
               </div>
+              <input
+                value={buscar}
+                onChange={(e) => setBuscar(e.target.value)}
+                placeholder="Ej. 'Oracle' o 'SRV-001'"
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  borderRadius: 8,
+                  border: "1.5px solid rgba(0,0,0,.2)",
+                  background: "#fff",
+                  color: "#333",
+                  outline: "none",
+                }}
+              />
             </div>
 
-            {/* Filtros de observaciones */}
-            {exportMode === "observaciones" && (
-              <>
-                <div>
-                  <SectionTitle>Tipo de Evento</SectionTitle>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                    {EVENTOS.map(te => (
-                      <EventoChip
-                        key={te}
-                        evento={te}
-                        active={eventosSel.includes(te)}
-                        onClick={() => setEventosSel(prev =>
-                          prev.includes(te) ? prev.filter(x => x !== te) : [...prev, te]
-                        )}
-                      />
-                    ))}
-                    <button
-                      onClick={() => setEventosSel([])}
-                      style={{
-                        padding: "5px 11px", borderRadius: 20, cursor: "pointer",
-                        border: "1.5px dashed #ddd", background: "transparent",
-                        color: C.muted, fontSize: 12, fontFamily: "Calibri, sans-serif",
-                      }}
-                    >Todos</button>
-                  </div>
-                </div>
-
-                <div>
-                  <SectionTitle>Filtros de Fecha</SectionTitle>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    <div>
-                      <label style={labelBase}>Desde</label>
-                      <input
-                        type="date" value={obsDesde}
-                        onChange={e => setObsDesde(e.target.value)}
-                        style={inputBase}
-                        onFocus={e => (e.currentTarget.style.borderColor = C.primary)}
-                        onBlur={e => (e.currentTarget.style.borderColor = C.border)}
-                      />
-                    </div>
-                    <div>
-                      <label style={labelBase}>Hasta</label>
-                      <input
-                        type="date" value={obsHasta}
-                        onChange={e => setObsHasta(e.target.value)}
-                        style={inputBase}
-                        onFocus={e => (e.currentTarget.style.borderColor = C.primary)}
-                        onBlur={e => (e.currentTarget.style.borderColor = C.border)}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <SectionTitle>Autor</SectionTitle>
-                  <input
-                    value={obsAutor}
-                    onChange={e => setObsAutor(e.target.value)}
-                    placeholder="Ej: Juan (contiene)..."
-                    style={inputBase}
-                    onFocus={e => (e.currentTarget.style.borderColor = C.primary)}
-                    onBlur={e => (e.currentTarget.style.borderColor = C.border)}
-                  />
-                </div>
-
-                <div>
-                  <SectionTitle>Autor Sistema</SectionTitle>
-                  <label style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    cursor: "pointer", userSelect: "none",
-                  }}>
-                    <input
-                      type="checkbox"
-                      checked={incluirSistema}
-                      onChange={e => setIncluirSistema(e.target.checked)}
-                      style={{ accentColor: C.primary, width: 14, height: 14 }}
-                    />
-                    <span style={{ fontSize: 12, color: C.textLight, fontFamily: "Calibri, sans-serif" }}>
-                      {incluirSistema ? "Incluir registros de sistema" : "Excluir registros de sistema"}
-                    </span>
-                  </label>
-                </div>
-              </>
-            )}
-
-            {/* Acciones */}
-            <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
-              <ActionBtn
-                label={previewLoading ? "Cargando..." : "Cargar vista previa"}
-                icon={previewLoading ? undefined : "👁"}
+            {/* Acciones vista previa */}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
                 onClick={cargarPreview}
                 disabled={previewLoading}
-                variant="primary"
-              />
-              {preview.length > 0 && (
-                <ActionBtn
-                  label={allSelected ? "Quitar selección" : `Seleccionar todos (${totalPreview})`}
-                  onClick={seleccionarTodos}
-                  variant="secondary"
-                />
-              )}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: "linear-gradient(135deg, #FA8200, #B7312C)",
+                  color: "#fff",
+                  fontWeight: 700,
+                  cursor: previewLoading ? "not-allowed" : "pointer",
+                }}
+              >
+                {previewLoading ? "Cargando..." : "Cargar vista previa"}
+              </button>
+              <button
+                onClick={seleccionarTodos}
+                disabled={preview.length === 0}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: 8,
+                  border: "1.5px solid rgba(0,0,0,.2)",
+                  background: "rgba(0,0,0,.04)",
+                  color: "#333",
+                  fontWeight: 700,
+                  cursor: preview.length === 0 ? "not-allowed" : "pointer",
+                }}
+              >
+                {allSelected ? "Quitar selección" : "Seleccionar todos (vista)"}
+              </button>
             </div>
           </div>
 
-          {/* ── PANEL DERECHO: Vista previa ── */}
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
-
-            {/* Barra info */}
-            <div style={{
-              padding: "12px 20px",
-              borderBottom: `1px solid ${C.border}`,
-              display: "flex", justifyContent: "space-between", alignItems: "center",
-              background: "#fff", flexShrink: 0,
-            }}>
-              <div style={{ display: "flex", align: "center", gap: 12 }}>
-                <span style={{ fontSize: 13, color: C.textLight, fontFamily: "Calibri, sans-serif" }}>
-                  Vista previa
-                  {totalPreview > 0 && (
-                    <span style={{ marginLeft: 6, fontWeight: 700, color: C.text }}>
-                      {totalPreview} registro{totalPreview !== 1 ? "s" : ""}
-                    </span>
-                  )}
-                </span>
+          {/* Filtros de Observaciones */}
+          {exportMode === "observaciones" && (
+            <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr", gap: 12 }}>
+              {/* Tipos de evento */}
+              <div>
+                <div
+                  style={{
+                    color: "#333",
+                    fontSize: 12,
+                    marginBottom: 6,
+                    opacity: 0.9,
+                    fontWeight: 700,
+                    letterSpacing: ".06em",
+                  }}
+                >
+                  Tipos de evento
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {EVENTOS.map((te) => {
+                    const active = eventosSel.includes(te);
+                    return (
+                      <button
+                        key={te}
+                        onClick={() =>
+                          setEventosSel(
+                            (prev) =>
+                              prev.includes(te) ? prev.filter((x) => x !== te) : [...prev, te]
+                          )
+                        }
+                        style={{
+                          padding: "6px 10px",
+                          borderRadius: 14,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          border: active ? "1.5px solid #B7312C" : "1.5px solid rgba(0,0,0,.2)",
+                          background: active ? "rgba(183,49,44,.10)" : "rgba(0,0,0,.04)",
+                          color: "#333",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {EVENTO_LABEL_MAP[te]}
+                      </button>
+                    );
+                  })}
+                  <button
+                    onClick={() => setEventosSel([])}
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: 14,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      border: "1.5px solid rgba(0,0,0,.2)",
+                      background: "rgba(0,0,0,.04)",
+                      color: "#333",
+                    }}
+                  >
+                    Todos
+                  </button>
+                </div>
               </div>
 
-              {totalSeleccionados > 0 && (
-                <div style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  background: "rgba(183,49,44,.08)",
-                  border: `1px solid rgba(183,49,44,.2)`,
-                  borderRadius: 20, padding: "4px 12px",
-                }}>
-                  <span style={{
-                    width: 20, height: 20, borderRadius: "50%",
-                    background: C.grad, color: "#fff",
-                    fontSize: 10, fontWeight: 700,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>
-                    {totalSeleccionados}
-                  </span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: C.primary, fontFamily: "Calibri, sans-serif" }}>
-                    seleccionado{totalSeleccionados !== 1 ? "s" : ""} para exportar
-                  </span>
+              {/* Autor */}
+              <div>
+                <div
+                  style={{
+                    color: "#333",
+                    fontSize: 12,
+                    marginBottom: 6,
+                    opacity: 0.9,
+                    fontWeight: 700,
+                    letterSpacing: ".06em",
+                  }}
+                >
+                  Autor
                 </div>
-              )}
-            </div>
+                <input
+                  value={obsAutor}
+                  onChange={(e) => setObsAutor(e.target.value)}
+                  placeholder="Ej. 'Juan' (contiene)"
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    border: "1.5px solid rgba(0,0,0,.2)",
+                    background: "#fff",
+                    color: "#333",
+                    outline: "none",
+                  }}
+                />
+              </div>
 
-            {/* Tabla */}
-            <div style={{ flex: 1, overflowY: "auto", overflowX: "auto" }}>
-              {previewLoading ? (
-                <div style={{
-                  padding: "60px 40px", textAlign: "center",
-                  display: "flex", flexDirection: "column", alignItems: "center", gap: 12,
-                }}>
-                  <div style={{
-                    width: 36, height: 36, borderRadius: "50%",
-                    border: "3px solid #f0e8e8",
-                    borderTop: `3px solid ${C.accent}`,
-                    animation: "spin 1s linear infinite",
-                  }} />
-                  <span style={{ color: C.muted, fontSize: 13, fontFamily: "Calibri, sans-serif" }}>
-                    Cargando datos...
+              {/* Desde */}
+              <div>
+                <div
+                  style={{
+                    color: "#333",
+                    fontSize: 12,
+                    marginBottom: 6,
+                    opacity: 0.9,
+                    fontWeight: 700,
+                    letterSpacing: ".06em",
+                  }}
+                >
+                  Desde
+                </div>
+                <input
+                  type="date"
+                  value={obsDesde}
+                  onChange={(e) => setObsDesde(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    border: "1.5px solid rgba(0,0,0,.2)",
+                    background: "#fff",
+                    color: "#333",
+                    outline: "none",
+                  }}
+                />
+              </div>
+
+              {/* Hasta */}
+              <div>
+                <div
+                  style={{
+                    color: "#333",
+                    fontSize: 12,
+                    marginBottom: 6,
+                    opacity: 0.9,
+                    fontWeight: 700,
+                    letterSpacing: ".06em",
+                  }}
+                >
+                  Hasta
+                </div>
+                <input
+                  type="date"
+                  value={obsHasta}
+                  onChange={(e) => setObsHasta(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    border: "1.5px solid rgba(0,0,0,.2)",
+                    background: "#fff",
+                    color: "#333",
+                    outline: "none",
+                  }}
+                />
+              </div>
+
+              {/* Incluir Sistema */}
+              <div>
+                <div
+                  style={{
+                    color: "#333",
+                    fontSize: 12,
+                    marginBottom: 6,
+                    opacity: 0.9,
+                    fontWeight: 700,
+                    letterSpacing: ".06em",
+                  }}
+                >
+                  Autor "sistema"
+                </div>
+                <label style={{ display: "flex", gap: 8, alignItems: "center", color: "#333" }}>
+                  <input
+                    type="checkbox"
+                    checked={incluirSistema}
+                    onChange={(e) => setIncluirSistema(e.target.checked)}
+                  />
+                  <span style={{ fontSize: 13 }}>
+                    {incluirSistema
+                      ? "Incluir registros de sistema (solo con campo modificado)"
+                      : "Excluir registros de sistema"}
                   </span>
-                </div>
-              ) : preview.length === 0 ? (
-                <div style={{
-                  padding: "60px 40px", textAlign: "center",
-                  display: "flex", flexDirection: "column", alignItems: "center", gap: 10,
-                }}>
-                  <div style={{ fontSize: 40, opacity: 0.25 }}>📭</div>
-                  <p style={{ color: C.muted, fontSize: 14, margin: 0, fontFamily: "Calibri, sans-serif" }}>
-                    No hay datos para mostrar
-                  </p>
-                  <p style={{ color: "#bbb", fontSize: 12, margin: 0, fontFamily: "Calibri, sans-serif" }}>
-                    Configura los filtros y haz clic en "Cargar vista previa"
-                  </p>
-                </div>
-              ) : exportMode === "activos" ? (
+                </label>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Tabla vista previa */}
+        <div
+          style={{
+            background: "#e2e2e2",
+            borderTop: "1px solid rgba(0,0,0,.06)",
+            borderBottomLeftRadius: 14,
+            borderBottomRightRadius: 14,
+          }}
+        >
+          {previewLoading ? (
+            <div style={{ padding: "28px 20px" }}>Cargando vista previa…</div>
+          ) : preview.length === 0 ? (
+            <div style={{ padding: "28px 20px", color: "#777" }}>
+              No hay resultados con los filtros actuales. Carga la vista previa para ver y seleccionar.
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              {exportMode === "activos" ? (
                 <PreviewTableActivos
                   preview={preview}
                   seleccion={seleccion}
@@ -724,41 +547,157 @@ export default function ExportModal({
                 />
               )}
             </div>
-
-            {/* Footer con acciones de exportación */}
-            {totalSeleccionados > 0 && (
-              <div style={{
-                padding: "14px 20px",
-                borderTop: `1px solid ${C.border}`,
-                background: "#fff",
-                display: "flex", justifyContent: "space-between", alignItems: "center",
-                flexShrink: 0,
-              }}>
-                <span style={{ fontSize: 13, color: C.textLight, fontFamily: "Calibri, sans-serif" }}>
-                  Exportando <strong style={{ color: C.primary }}>{totalSeleccionados}</strong> activo{totalSeleccionados !== 1 ? "s" : ""}
-                  {exportMode === "observaciones" && " con sus observaciones"}
-                </span>
-                <div style={{ display: "flex", gap: 10 }}>
-                  <ActionBtn
-                    label={exporting === "excel" ? "Generando..." : "Descargar Excel"}
-                    icon="📊"
-                    onClick={handleExportExcel}
-                    disabled={exporting !== null}
-                    variant="secondary"
-                  />
-                  <ActionBtn
-                    label={exporting === "pdf" ? "Generando..." : "Descargar PDF"}
-                    icon="📄"
-                    onClick={handleExportPDF}
-                    disabled={exporting !== null}
-                    variant="primary"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </div>
     </Modal>
+  );
+}
+
+function PreviewTableActivos({
+  preview,
+  seleccion,
+  toggleSeleccion,
+}: {
+  preview: Asset[];
+  seleccion: Set<string>;
+  toggleSeleccion: (id: string) => void;
+}) {
+  return (
+    <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
+      <thead>
+        <tr style={{ background: "rgba(0,0,0,.05)" }}>
+          {["", "Activo", "Tipo", "Código", "Ubicación", "Actualizado"].map((h) => (
+            <th
+              key={h}
+              style={{
+                padding: "10px 14px",
+                textAlign: "left",
+                fontSize: 11,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: ".08em",
+                color: "#444",
+                borderBottom: "1px solid rgba(0,0,0,.06)",
+              }}
+            >
+              {h}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {preview.map((a) => {
+          const checked = seleccion.has(a.id);
+          return (
+            <tr key={a.id} style={{ borderBottom: "1px solid rgba(0,0,0,.04)" }}>
+              <td style={{ padding: "10px 14px" }}>
+                <input type="checkbox" checked={checked} onChange={() => toggleSeleccion(a.id)} />
+              </td>
+              <td style={{ padding: "10px 14px" }}>{a.nombre ?? "—"}</td>
+              <td style={{ padding: "10px 14px" }}>{TIPO_LABEL[a.tipo]}</td>
+              <td style={{ padding: "10px 14px" }}>{a.codigoServicio ?? "—"}</td>
+              <td style={{ padding: "10px 14px" }}>{a.ubicacion ?? "—"}</td>
+              <td style={{ padding: "10px 14px" }}>
+                {a.actualizadoEn
+                  ? new Date(a.actualizadoEn).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" })
+                  : "—"}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+function PreviewTableObservaciones({
+  preview,
+  seleccion,
+  toggleSeleccion,
+  pasaFiltroObservacion,
+  obsAutor,
+  obsDesde,
+  obsHasta,
+  eventosSel,
+  incluirSistema,
+}: {
+  preview: Asset[];
+  seleccion: Set<string>;
+  toggleSeleccion: (id: string) => void;
+  pasaFiltroObservacion: (e: any, autor: string, desde: string, hasta: string, eventos: string[], incluirSis: boolean) => boolean;
+  obsAutor: string;
+  obsDesde: string;
+  obsHasta: string;
+  eventosSel: string[];
+  incluirSistema: boolean;
+}) {
+  return (
+    <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
+      <thead>
+        <tr style={{ background: "rgba(0,0,0,.05)" }}>
+          {["", "Activo", "Tipo", "Código", "Fecha", "Autor", "Evento", "Descripción", "Campo modificado", "Valor anterior", "Valor nuevo"].map(
+            (h) => (
+              <th
+                key={h}
+                style={{
+                  padding: "10px 14px",
+                  textAlign: "left",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: ".08em",
+                  color: "#444",
+                  borderBottom: "1px solid rgba(0,0,0,.06)",
+                }}
+              >
+                {h}
+              </th>
+            )
+          )}
+        </tr>
+      </thead>
+      <tbody>
+        {preview.map((a) => {
+          const rows = (a as any).bitacora || [];
+          const visibles = rows.filter((e: any) =>
+            pasaFiltroObservacion(e, obsAutor, obsDesde, obsHasta, eventosSel, incluirSistema)
+          );
+
+          if (visibles.length === 0) return null;
+
+          const checked = seleccion.has(a.id);
+
+          return visibles.map((e: any, idx: number) => {
+            const esPrimera = idx === 0;
+            return (
+              <tr key={a.id + "-" + idx} style={{ borderBottom: "1px solid rgba(0,0,0,.04)" }}>
+                <td style={{ padding: "10px 14px" }}>
+                  {esPrimera && (
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleSeleccion(a.id)}
+                    />
+                  )}
+                </td>
+                <td style={{ padding: "10px 14px" }}>{a.nombre ?? "—"}</td>
+                <td style={{ padding: "10px 14px" }}>{TIPO_LABEL_SINGULAR[a.tipo] ?? a.tipo}</td>
+                <td style={{ padding: "10px 14px" }}>{a.codigoServicio ?? "—"}</td>
+                <td style={{ padding: "10px 14px" }}>
+                  {e.creadoEn ? new Date(e.creadoEn).toLocaleString("es-CO") : "—"}
+                </td>
+                <td style={{ padding: "10px 14px" }}>{e.autor ?? "—"}</td>
+                <td style={{ padding: "10px 14px" }}>{EVENTO_LABEL_MAP[e.tipoEvento] ?? e.tipoEvento ?? "—"}</td>
+                <td style={{ padding: "10px 14px" }}>{e.descripcion ?? ""}</td>
+                <td style={{ padding: "10px 14px" }}>{e.campoModificado ?? ""}</td>
+                <td style={{ padding: "10px 14px" }}>{e.valorAnterior ?? ""}</td>
+                <td style={{ padding: "10px 14px" }}>{e.valorNuevo ?? ""}</td>
+              </tr>
+            );
+          });
+        })}
+      </tbody>
+    </table>
   );
 }

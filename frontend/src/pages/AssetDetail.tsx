@@ -563,7 +563,7 @@ export default function AssetDetail() {
           </Section>
           <Section title="Recursos" icon="⚙️">
             <Field label="vCPU"              value={s.vcpu}            editing={editing} field="vcpu"            onChange={(f, v) => handleChange("servidor", f, v)} />
-            <Field label="vRAM (MB)"         value={s.Mb}          editing={editing} field="vramMb"          onChange={(f, v) => handleChange("servidor", f, v)} />
+            <Field label="vRAM (MB)" value={s.vramMb} editing={editing} field="vramMb"       onChange={(f, v) => handleChange("servidor", f, v)} />
             <Field label="Sistema Operativo" value={s.sistemaOperativo} editing={editing} field="sistemaOperativo" onChange={(f, v) => handleChange("servidor", f, v)} />
           </Section>
           <Section title="Operación" icon="🔧">
