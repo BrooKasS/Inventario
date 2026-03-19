@@ -1,8 +1,12 @@
 import { prisma } from "../../config/database";
 import { AssetFilters } from "../../types/api.types";
 import { Prisma } from "@prisma/client";
+import { sendToFlow } from "../utils/flow";
+import { sanitizePayloadForFlow } from "../utils/flowSanitizer";
+import { mapAssetsToFlowPayload } from "../utils/flowMappers";
 
 export class AssetsService {
+
   async getAssets(filters: AssetFilters) {
     const { tipo, q, page = 1, limit = 50 } = filters;
     const skip = (page - 1) * limit;
@@ -64,6 +68,9 @@ export class AssetsService {
     return asset;
   }
 
+  // ==================================================
+  // UPDATE + SYNC AUTOMÁTICO
+  // ==================================================
   async updateAsset(id: string, data: any, autor: string) {
     const asset = await prisma.asset.findUnique({
       where: { id },
@@ -74,19 +81,18 @@ export class AssetsService {
         baseDatos: true,
       },
     });
-    if (!data || typeof data !== "object") {
-  throw new Error("Body inválido");
-}
 
+    if (!data || typeof data !== "object") {
+      throw new Error("Body inválido");
+    }
     if (!asset) throw new Error("Asset no encontrado");
 
     const updates: any = {};
     const bitacoraEntries: any[] = [];
 
     // ======================
-    // CAMPOS BASE DE ASSET
+    // CAMPOS BASE
     // ======================
-
     if (data.nombre !== undefined && data.nombre !== asset.nombre) {
       updates.nombre = data.nombre;
       bitacoraEntries.push({
@@ -131,125 +137,44 @@ export class AssetsService {
     }
 
     // ======================
-    // SERVIDOR
+    // DETALLES POR TIPO
     // ======================
-
-    if (asset.tipo === "SERVIDOR" && asset.servidor && data.servidor) {
+    const updateDetalle = async (actual: any, nuevo: any, repo: any) => {
       const detailUpdates: any = {};
-      const servidor = asset.servidor;
-
-      Object.keys(data.servidor).forEach((key) => {
-        const oldVal = (servidor as any)[key];
-        const newVal = data.servidor[key];
-        if (newVal !== undefined && newVal !== oldVal) {
-          detailUpdates[key] = newVal;
+      Object.keys(nuevo).forEach((key) => {
+        if (nuevo[key] !== undefined && nuevo[key] !== actual[key]) {
+          detailUpdates[key] = nuevo[key];
           bitacoraEntries.push({
             campoModificado: key,
-            valorAnterior: String(oldVal ?? ""),
-            valorNuevo: String(newVal ?? ""),
+            valorAnterior: String(actual[key] ?? ""),
+            valorNuevo: String(nuevo[key] ?? ""),
           });
         }
       });
 
       if (Object.keys(detailUpdates).length > 0) {
-        await prisma.servidor.update({
+        await repo.update({
           where: { assetId: id },
           data: detailUpdates,
         });
       }
-    }
+    };
 
-    // ======================
-    // RED
-    // ======================
+    if (asset.tipo === "SERVIDOR" && asset.servidor && data.servidor)
+      await updateDetalle(asset.servidor, data.servidor, prisma.servidor);
 
-    if (asset.tipo === "RED" && asset.red && data.red) {
-      const detailUpdates: any = {};
-      const red = asset.red;
+    if (asset.tipo === "RED" && asset.red && data.red)
+      await updateDetalle(asset.red, data.red, prisma.red);
 
-      Object.keys(data.red).forEach((key) => {
-        const oldVal = (red as any)[key];
-        const newVal = data.red[key];
-        if (newVal !== undefined && newVal !== oldVal) {
-          detailUpdates[key] = newVal;
-          bitacoraEntries.push({
-            campoModificado: key,
-            valorAnterior: String(oldVal ?? ""),
-            valorNuevo: String(newVal ?? ""),
-          });
-        }
-      });
+    if (asset.tipo === "UPS" && asset.ups && data.ups)
+      await updateDetalle(asset.ups, data.ups, prisma.ups);
 
-      if (Object.keys(detailUpdates).length > 0) {
-        await prisma.red.update({
-          where: { assetId: id },
-          data: detailUpdates,
-        });
-      }
-    }
-
-    // ======================
-    // UPS
-    // ======================
-
-    if (asset.tipo === "UPS" && asset.ups && data.ups) {
-      const detailUpdates: any = {};
-      const ups = asset.ups;
-
-      Object.keys(data.ups).forEach((key) => {
-        const oldVal = (ups as any)[key];
-        const newVal = data.ups[key];
-        if (newVal !== undefined && newVal !== oldVal) {
-          detailUpdates[key] = newVal;
-          bitacoraEntries.push({
-            campoModificado: key,
-            valorAnterior: String(oldVal ?? ""),
-            valorNuevo: String(newVal ?? ""),
-          });
-        }
-      });
-
-      if (Object.keys(detailUpdates).length > 0) {
-        await prisma.ups.update({
-          where: { assetId: id },
-          data: detailUpdates,
-        });
-      }
-    }
-
-    // ======================
-    // BASE_DATOS
-    // ======================
-
-    if (asset.tipo === "BASE_DATOS" && asset.baseDatos && data.baseDatos) {
-      const detailUpdates: any = {};
-      const baseDatos = asset.baseDatos;
-
-      Object.keys(data.baseDatos).forEach((key) => {
-        const oldVal = (baseDatos as any)[key];
-        const newVal = data.baseDatos[key];
-        if (newVal !== undefined && newVal !== oldVal) {
-          detailUpdates[key] = newVal;
-          bitacoraEntries.push({
-            campoModificado: key,
-            valorAnterior: String(oldVal ?? ""),
-            valorNuevo: String(newVal ?? ""),
-          });
-        }
-      });
-
-      if (Object.keys(detailUpdates).length > 0) {
-        await prisma.baseDatos.update({
-          where: { assetId: id },
-          data: detailUpdates,
-        });
-      }
-    }
+    if (asset.tipo === "BASE_DATOS" && asset.baseDatos && data.baseDatos)
+      await updateDetalle(asset.baseDatos, data.baseDatos, prisma.baseDatos);
 
     // ======================
     // BITÁCORA
     // ======================
-
     if (bitacoraEntries.length > 0) {
       await prisma.bitacora.createMany({
         data: bitacoraEntries.map((entry) => ({
@@ -260,6 +185,31 @@ export class AssetsService {
           ...entry,
         })),
       });
+    }
+
+    // ======================
+    // 🔥 SYNC AUTOMÁTICO A EXCEL
+    // ======================
+    if (bitacoraEntries.length > 0) {
+      const flowTipo =
+        asset.tipo === "SERVIDOR"
+          ? "TServidores"
+          : asset.tipo === "RED"
+          ? "TRedes"
+          : asset.tipo === "UPS"
+          ? "TUPS"
+          : "TBD";
+
+      // ✅ no bloqueante
+      this.syncExcelInternal({
+        tipo: flowTipo,
+        ids: [id],
+      }).catch((err) =>
+        console.error(
+          "[updateAsset][syncExcelInternal] Error:",
+          err?.message || err
+        )
+      );
     }
 
     return this.getAssetById(id);
@@ -282,12 +232,8 @@ export class AssetsService {
     }
   ) {
     await this.getAssetById(assetId);
-
     return prisma.bitacora.create({
-      data: {
-        assetId,
-        ...data,
-      },
+      data: { assetId, ...data },
     });
   }
 
@@ -305,23 +251,47 @@ export class AssetsService {
       porTipo: porTipo.map((t) => ({ tipo: t.tipo, count: t._count })),
     };
   }
-  
-async getAssetsByTipoAndIds(opts: { tipo?: string; ids?: string[] }) {
+
+  async getAssetsByTipoAndIds(opts: { tipo?: string; ids?: string[] }) {
     const where: Prisma.AssetWhereInput = {};
 
     if (opts.tipo) where.tipo = opts.tipo as any;
-    if (opts.ids && opts.ids.length > 0) where.id = { in: opts.ids };
+    if (opts.ids?.length) where.id = { in: opts.ids };
 
-    const assets = await prisma.asset.findMany({
+    return prisma.asset.findMany({
       where,
       include: { servidor: true, red: true, ups: true, baseDatos: true },
       orderBy: { actualizadoEn: "desc" },
-      take: 10_000, // suficiente para sincronizar todo
+      take: 10_000,
     });
-
-    return assets;
   }
 
+  // ==================================================
+  // ✅ ÚNICO MÉTODO QUE HABLA CON POWER AUTOMATE
+  // ==================================================
+  async syncExcelInternal(opts: { tipo: string; ids: string[] }) {
+    const dbTipo =
+      opts.tipo === "TServidores"
+        ? "SERVIDOR"
+        : opts.tipo === "TRedes"
+        ? "RED"
+        : opts.tipo === "TUPS"
+        ? "UPS"
+        : "BASE_DATOS";
+
+    const assets = await this.getAssetsByTipoAndIds({
+      tipo: dbTipo,
+      ids: opts.ids.length ? opts.ids : undefined,
+    });
+
+    if (!assets.length) return;
+
+    const payload = mapAssetsToFlowPayload(opts.tipo, assets);
+    const cleanPayload = sanitizePayloadForFlow(payload);
+
+    // ✅ Flow recibe EXACTAMENTE { tipo, assets }
+    await sendToFlow(cleanPayload);
+  }
 }
 
 export const assetsService = new AssetsService();
