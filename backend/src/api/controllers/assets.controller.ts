@@ -5,6 +5,8 @@ import { ApiResponse } from "../../types/api.types";
 import { sendToFlow } from "../utils/flow";
 import { mapAssetsToFlowPayload, toFlowTipo } from "../utils/flowMappers";
 import { sanitizePayloadForFlow } from "../utils/flowSanitizer";
+import { prisma } from "../../config/database";
+
 
 
 const r = Router();
@@ -17,12 +19,13 @@ export class AssetsController {
       page: req.query.page ? parseInt(req.query.page as string) : 1,
       limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
     };
-
+  
     const result = await assetsService.getAssets(filters);
 
     res.json({
-      success: true,
-      data: result,
+     success: true,
+     data: result,
+     
     } as ApiResponse<typeof result>);
   }
 
@@ -35,10 +38,27 @@ export class AssetsController {
       data: asset,
     } as ApiResponse<typeof asset>);
   }
+  async createAsset(req: Request, res: Response) {
+  const data = req.body;
+  if (!data.tipo || !data.nombre) {
+    return res.status(400).json({
+      success: false,
+      error: "Los campos tipo y nombre son requeridos",
+    });
+  }
+  const asset = await assetsService.createAsset(data, "Sistema");
+  res.status(201).json({
+    success: true,
+    data: asset,
+    message: "Activo creado correctamente",
+  });
+}
+  
 
   async updateAsset(req: Request, res: Response) {
   const id = req.params.id as string;
   const data = req.body;
+  
 
   const asset = await assetsService.updateAsset(id, data, "Sistema");
 
@@ -52,7 +72,6 @@ export class AssetsController {
   async getBitacora(req: Request, res: Response) {
     const id = req.params.id as string;
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
-
     const bitacora = await assetsService.getBitacora(id, limit);
 
     res.json({

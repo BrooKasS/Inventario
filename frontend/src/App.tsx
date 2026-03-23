@@ -13,7 +13,10 @@ export default function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="inventario/:tipo" element={<AssetList />} />
           <Route path="activo/:id" element={<AssetDetail />} />
+          
+          
         </Route>
+      
       </Routes>
     </BrowserRouter>
   );

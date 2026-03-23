@@ -10,6 +10,10 @@ router.get("/", asyncHandler(assetsController.getAssets.bind(assetsController)))
 // GET /assets/stats - Estadísticas
 router.get("/stats", asyncHandler(assetsController.getStats.bind(assetsController)));
 
+
+// POST /assets - Crear nuevo asset
+router.post("/", asyncHandler(assetsController.createAsset.bind(assetsController)));
+
 // GET /assets/:id - Detalle de un asset
 router.get("/:id", asyncHandler(assetsController.getAssetById.bind(assetsController)));
 
@@ -25,6 +29,7 @@ router.post("/:id/bitacora", asyncHandler(assetsController.addBitacoraEntry.bind
 
 // POST /assets/sync-excel - Sincroniza registros a Excel vía Power Automate
 router.post("/sync-excel",asyncHandler(assetsController.syncExcel.bind(assetsController)));
+
 
 
 export default router;

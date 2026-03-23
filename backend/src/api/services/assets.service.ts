@@ -6,7 +6,7 @@ export class AssetsService {
   async getAssets(filters: AssetFilters) {
     const { tipo, q, page = 1, limit = 50 } = filters;
     const skip = (page - 1) * limit;
-
+  
     const where: Prisma.AssetWhereInput = {};
 
     if (tipo) where.tipo = tipo;
@@ -63,8 +63,42 @@ export class AssetsService {
     });
 
     if (!asset) throw new Error("Asset no encontrado");
-    return asset;
+   return asset;
   }
+
+
+  async createAsset(data: any, autor: string = "Sistema") {
+  const { tipo, nombre, ubicacion, propietario, custodio, codigoServicio,
+          servidor, red, ups, baseDatos, vpn } = data;
+
+  const asset = await prisma.asset.create({
+    data: {
+      tipo,
+      nombre,
+      ubicacion:      ubicacion      ?? null,
+      propietario:    propietario    ?? null,
+      custodio:       custodio       ?? null,
+      codigoServicio: codigoServicio ?? null,
+      ...(servidor   && { servidor:   { create: servidor   } }),
+      ...(red        && { red:        { create: red        } }),
+      ...(ups        && { ups:        { create: ups        } }),
+      ...(baseDatos  && { baseDatos:  { create: baseDatos  } }),
+      ...(vpn        && { vpn:        { create: vpn        } }),
+    },
+    include: { servidor: true, red: true, ups: true, baseDatos: true, vpn: true },
+  });
+
+  await prisma.bitacora.create({
+    data: {
+      assetId:     asset.id,
+      autor,
+      tipoEvento:  "IMPORTACION",
+      descripcion: "Activo creado manualmente.",
+    },
+  });
+
+  return asset;
+}
 
   async updateAsset(id: string, data: any, autor: string) {
     const asset = await prisma.asset.findUnique({
@@ -75,10 +109,12 @@ export class AssetsService {
         ups: true,
         baseDatos: true,
         vpn: true,
+       
       },
     });
     if (!data || typeof data !== "object") {
   throw new Error("Body inválido");
+  
 }
 
     if (!asset) throw new Error("Asset no encontrado");
@@ -153,6 +189,10 @@ export class AssetsService {
           });
         }
       });
+
+      if (detailUpdates.vcpu !== undefined)   detailUpdates.vcpu   = detailUpdates.vcpu   ? parseInt(detailUpdates.vcpu)   : null;
+if (detailUpdates.vramMb !== undefined) detailUpdates.vramMb = detailUpdates.vramMb ? parseInt(detailUpdates.vramMb) : null;
+
 
       if (Object.keys(detailUpdates).length > 0) {
         await prisma.servidor.update({

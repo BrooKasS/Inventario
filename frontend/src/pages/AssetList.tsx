@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getAssets } from "../api/client";
 import type { Asset, Pagination, TipoActivo } from "../types";
+import AssetCreateModal from "../components/AssetCreateModal";
 
 const GRAD    = "linear-gradient(135deg, #fa8e00 , #89183e 25%, 35% #861F41 35%, #B7312C 70%, #D86018 100%)";
 const PRIMARY = "hsl(32, 94%, 56%)";
@@ -177,7 +178,7 @@ function ServidorRow({ a, onClick }: { a: Asset; onClick: () => void }) {
     <strong style={{ color: "#000000" }}>{a.nombre ?? "—"}</strong>,
     a.codigoServicio ?? "—", <Badge text={s?.ambiente ?? null} />,
     <code style={{ fontSize: 14 }}>{s?.ipInterna ?? "—"}</code>,
-    s?.vcpu ?? "—", s?.vramMb ? `${s.vramMb / 1024} GB` : "—",
+   s?.vramMb ? `${Math.round(s.vramMb / 1024)} GB` : "—",
     s?.sistemaOperativo ?? "—", a.ubicacion ?? "—",
   ]} />;
 }
@@ -277,6 +278,7 @@ export default function AssetList() {
   const [filtroCodigo,    setFiltroCodigo]    = useState("");
   const [filtroUbicacion, setFiltroUbicacion] = useState("");
   const [filtroExtra,     setFiltroExtra]     = useState<Record<string, string>>({});
+  const [showCreate, setShowCreate] = useState(false);
 
   const tipoKey    = tipo as TipoActivo;
   const headers    = HEADERS[tipoKey] ?? [];
@@ -407,6 +409,13 @@ export default function AssetList() {
               cursor: "pointer", fontSize: 14, fontFamily: "Calibri, sans-serif",
               boxShadow: "0 4px 12px rgba(0,0,0,.15)",
             }}>🔍 Filtros</button>
+            <button onClick={() => setShowCreate(true)} style={{
+              padding: "10px 20px", borderRadius: 8, border: "none",
+              background: "#B7312C", color: "#fff", fontWeight: 700,
+              cursor: "pointer", fontSize: 14, fontFamily: "Calibri, sans-serif",
+              boxShadow: "0 4px 12px rgba(0,0,0,.15)",
+            }}>➕ Crear</button>
+
           </div>
         </div>
 
@@ -455,6 +464,7 @@ export default function AssetList() {
                     </tr>
                   </thead>
                   <tbody>
+                    
                     {assets.map(a => {
                       const onClick = () => navigate(`/activo/${a.id}`);
                       if (tipoKey === "SERVIDOR") return <ServidorRow key={a.id} a={a} onClick={onClick} />;
@@ -491,6 +501,14 @@ export default function AssetList() {
       </div>
 
       {/* ══════════════ Modal de Filtros ══════════════ */}
+    
+      <AssetCreateModal
+  open={showCreate}
+  onClose={() => setShowCreate(false)}
+  tipo={tipoKey}
+  onCreated={() => { setShowCreate(false); load(); }}
+/>
+
       {showFilters && (
         <div
           onClick={e => e.target === e.currentTarget && setShowFilters(false)}

@@ -63,6 +63,8 @@ export default function ObservationsModal({
                     "Campo modificado",
                     "Valor anterior",
                     "Valor nuevo",
+                    
+              
                   ].map((h) => (
                     <th
                       key={h}

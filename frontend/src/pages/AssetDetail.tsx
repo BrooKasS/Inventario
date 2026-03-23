@@ -561,11 +561,22 @@ export default function AssetDetail() {
             <Field label="IP Gestión"  value={s.ipGestion}  editing={editing} field="ipGestion"  onChange={(f, v) => handleChange("servidor", f, v)} />
             <Field label="IP Servicio" value={s.ipServicio} editing={editing} field="ipServicio" onChange={(f, v) => handleChange("servidor", f, v)} />
           </Section>
-          <Section title="Recursos" icon="⚙️">
-            <Field label="vCPU"              value={s.vcpu}            editing={editing} field="vcpu"            onChange={(f, v) => handleChange("servidor", f, v)} />
-            <Field label="vRAM (MB)" value={s.vramMb} editing={editing} field="vramMb"       onChange={(f, v) => handleChange("servidor", f, v)} />
-            <Field label="Sistema Operativo" value={s.sistemaOperativo} editing={editing} field="sistemaOperativo" onChange={(f, v) => handleChange("servidor", f, v)} />
-          </Section>
+         <Section title="Recursos" icon="⚙️">
+  <Field label="vCPU"
+    value={s.vcpu}
+    editing={editing} field="vcpu"
+    onChange={(f, v) => handleChange("servidor", f, v)} />
+  <Field label={editing ? "vRAM (GB)" : "vRAM"}
+    value={editing
+      ? String(s.vramMb ? Math.round(s.vramMb / 1024) : "")
+      : s.vramMb ? `${(s.vramMb / 1024).toFixed(1)} GB` : null}
+    editing={editing} field="vramMb"
+    onChange={(f, v) => handleChange("servidor", f, v ? String(parseInt(v) * 1024) : "")} />
+  <Field label="Sistema Operativo"
+    value={s.sistemaOperativo}
+    editing={editing} field="sistemaOperativo"
+    onChange={(f, v) => handleChange("servidor", f, v)} />
+</Section>
           <Section title="Operación" icon="🔧">
             <Field label="Ambiente"              value={s.ambiente}           editing={editing} field="ambiente"           onChange={(f, v) => handleChange("servidor", f, v)} />
             <Field label="Tipo Servidor"         value={s.tipoServidor}       editing={editing} field="tipoServidor"       onChange={(f, v) => handleChange("servidor", f, v)} />
