@@ -6,7 +6,7 @@ export class AssetsService {
   async getAssets(filters: AssetFilters) {
     const { tipo, q, page = 1, limit = 50 } = filters;
     const skip = (page - 1) * limit;
-  
+
     const where: Prisma.AssetWhereInput = {};
 
     if (tipo) where.tipo = tipo;
@@ -18,9 +18,11 @@ export class AssetsService {
       ];
     }
 
+    const whereConFiltro = { ...where, deletedAt: null };
+
     const [assets, total] = await Promise.all([
       prisma.asset.findMany({
-        where,
+        where: whereConFiltro,
         skip,
         take: limit,
         include: {
@@ -28,11 +30,11 @@ export class AssetsService {
           red: true,
           ups: true,
           baseDatos: true,
-          vpn: true, 
+          vpn: true,
         },
         orderBy: { actualizadoEn: "desc" },
       }),
-      prisma.asset.count({ where }),
+      prisma.asset.count({ where: whereConFiltro }),
     ]);
 
     return {
@@ -63,42 +65,41 @@ export class AssetsService {
     });
 
     if (!asset) throw new Error("Asset no encontrado");
-   return asset;
+    return asset;
   }
 
-
   async createAsset(data: any, autor: string = "Sistema") {
-  const { tipo, nombre, ubicacion, propietario, custodio, codigoServicio,
-          servidor, red, ups, baseDatos, vpn } = data;
+    const { tipo, nombre, ubicacion, propietario, custodio, codigoServicio,
+            servidor, red, ups, baseDatos, vpn } = data;
 
-  const asset = await prisma.asset.create({
-    data: {
-      tipo,
-      nombre,
-      ubicacion:      ubicacion      ?? null,
-      propietario:    propietario    ?? null,
-      custodio:       custodio       ?? null,
-      codigoServicio: codigoServicio ?? null,
-      ...(servidor   && { servidor:   { create: servidor   } }),
-      ...(red        && { red:        { create: red        } }),
-      ...(ups        && { ups:        { create: ups        } }),
-      ...(baseDatos  && { baseDatos:  { create: baseDatos  } }),
-      ...(vpn        && { vpn:        { create: vpn        } }),
-    },
-    include: { servidor: true, red: true, ups: true, baseDatos: true, vpn: true },
-  });
+    const asset = await prisma.asset.create({
+      data: {
+        tipo,
+        nombre,
+        ubicacion:      ubicacion      ?? null,
+        propietario:    propietario    ?? null,
+        custodio:       custodio       ?? null,
+        codigoServicio: codigoServicio ?? null,
+        ...(servidor  && { servidor:  { create: servidor  } }),
+        ...(red       && { red:       { create: red       } }),
+        ...(ups       && { ups:       { create: ups       } }),
+        ...(baseDatos && { baseDatos: { create: baseDatos } }),
+        ...(vpn       && { vpn:       { create: vpn       } }),
+      },
+      include: { servidor: true, red: true, ups: true, baseDatos: true, vpn: true },
+    });
 
-  await prisma.bitacora.create({
-    data: {
-      assetId:     asset.id,
-      autor,
-      tipoEvento:  "IMPORTACION",
-      descripcion: "Activo creado manualmente.",
-    },
-  });
+    await prisma.bitacora.create({
+      data: {
+        assetId:     asset.id,
+        autor,
+        tipoEvento:  "IMPORTACION",
+        descripcion: "Activo creado manualmente.",
+      },
+    });
 
-  return asset;
-}
+    return asset;
+  }
 
   async updateAsset(id: string, data: any, autor: string) {
     const asset = await prisma.asset.findUnique({
@@ -109,14 +110,10 @@ export class AssetsService {
         ups: true,
         baseDatos: true,
         vpn: true,
-       
       },
     });
-    if (!data || typeof data !== "object") {
-  throw new Error("Body inválido");
-  
-}
 
+    if (!data || typeof data !== "object") throw new Error("Body inválido");
     if (!asset) throw new Error("Asset no encontrado");
 
     const updates: any = {};
@@ -128,45 +125,26 @@ export class AssetsService {
 
     if (data.nombre !== undefined && data.nombre !== asset.nombre) {
       updates.nombre = data.nombre;
-      bitacoraEntries.push({
-        campoModificado: "nombre",
-        valorAnterior: asset.nombre,
-        valorNuevo: data.nombre,
-      });
+      bitacoraEntries.push({ campoModificado: "nombre", valorAnterior: asset.nombre, valorNuevo: data.nombre });
     }
 
     if (data.ubicacion !== undefined && data.ubicacion !== asset.ubicacion) {
       updates.ubicacion = data.ubicacion;
-      bitacoraEntries.push({
-        campoModificado: "ubicacion",
-        valorAnterior: asset.ubicacion,
-        valorNuevo: data.ubicacion,
-      });
+      bitacoraEntries.push({ campoModificado: "ubicacion", valorAnterior: asset.ubicacion, valorNuevo: data.ubicacion });
     }
 
     if (data.propietario !== undefined && data.propietario !== asset.propietario) {
       updates.propietario = data.propietario;
-      bitacoraEntries.push({
-        campoModificado: "propietario",
-        valorAnterior: asset.propietario,
-        valorNuevo: data.propietario,
-      });
+      bitacoraEntries.push({ campoModificado: "propietario", valorAnterior: asset.propietario, valorNuevo: data.propietario });
     }
 
     if (data.custodio !== undefined && data.custodio !== asset.custodio) {
       updates.custodio = data.custodio;
-      bitacoraEntries.push({
-        campoModificado: "custodio",
-        valorAnterior: asset.custodio,
-        valorNuevo: data.custodio,
-      });
+      bitacoraEntries.push({ campoModificado: "custodio", valorAnterior: asset.custodio, valorNuevo: data.custodio });
     }
 
     if (Object.keys(updates).length > 0) {
-      await prisma.asset.update({
-        where: { id },
-        data: updates,
-      });
+      await prisma.asset.update({ where: { id }, data: updates });
     }
 
     // ======================
@@ -182,23 +160,15 @@ export class AssetsService {
         const newVal = data.servidor[key];
         if (newVal !== undefined && newVal !== oldVal) {
           detailUpdates[key] = newVal;
-          bitacoraEntries.push({
-            campoModificado: key,
-            valorAnterior: String(oldVal ?? ""),
-            valorNuevo: String(newVal ?? ""),
-          });
+          bitacoraEntries.push({ campoModificado: key, valorAnterior: String(oldVal ?? ""), valorNuevo: String(newVal ?? "") });
         }
       });
 
       if (detailUpdates.vcpu !== undefined)   detailUpdates.vcpu   = detailUpdates.vcpu   ? parseInt(detailUpdates.vcpu)   : null;
-if (detailUpdates.vramMb !== undefined) detailUpdates.vramMb = detailUpdates.vramMb ? parseInt(detailUpdates.vramMb) : null;
-
+      if (detailUpdates.vramMb !== undefined) detailUpdates.vramMb = detailUpdates.vramMb ? parseInt(detailUpdates.vramMb) : null;
 
       if (Object.keys(detailUpdates).length > 0) {
-        await prisma.servidor.update({
-          where: { assetId: id },
-          data: detailUpdates,
-        });
+        await prisma.servidor.update({ where: { assetId: id }, data: detailUpdates });
       }
     }
 
@@ -215,19 +185,12 @@ if (detailUpdates.vramMb !== undefined) detailUpdates.vramMb = detailUpdates.vra
         const newVal = data.red[key];
         if (newVal !== undefined && newVal !== oldVal) {
           detailUpdates[key] = newVal;
-          bitacoraEntries.push({
-            campoModificado: key,
-            valorAnterior: String(oldVal ?? ""),
-            valorNuevo: String(newVal ?? ""),
-          });
+          bitacoraEntries.push({ campoModificado: key, valorAnterior: String(oldVal ?? ""), valorNuevo: String(newVal ?? "") });
         }
       });
 
       if (Object.keys(detailUpdates).length > 0) {
-        await prisma.red.update({
-          where: { assetId: id },
-          data: detailUpdates,
-        });
+        await prisma.red.update({ where: { assetId: id }, data: detailUpdates });
       }
     }
 
@@ -242,22 +205,14 @@ if (detailUpdates.vramMb !== undefined) detailUpdates.vramMb = detailUpdates.vra
       Object.keys(data.ups).forEach((key) => {
         const oldVal = (ups as any)[key];
         const newVal = data.ups[key];
-
         if (newVal !== undefined && newVal !== oldVal) {
           detailUpdates[key] = newVal;
-          bitacoraEntries.push({
-            campoModificado: key,
-            valorAnterior: String(oldVal ?? ""),
-            valorNuevo: String(newVal ?? ""),
-          });
+          bitacoraEntries.push({ campoModificado: key, valorAnterior: String(oldVal ?? ""), valorNuevo: String(newVal ?? "") });
         }
       });
 
       if (Object.keys(detailUpdates).length > 0) {
-        await prisma.ups.update({
-          where: { assetId: id },
-          data: detailUpdates,
-        });
+        await prisma.ups.update({ where: { assetId: id }, data: detailUpdates });
       }
     }
 
@@ -274,48 +229,36 @@ if (detailUpdates.vramMb !== undefined) detailUpdates.vramMb = detailUpdates.vra
         const newVal = data.baseDatos[key];
         if (newVal !== undefined && newVal !== oldVal) {
           detailUpdates[key] = newVal;
-          bitacoraEntries.push({
-            campoModificado: key,
-            valorAnterior: String(oldVal ?? ""),
-            valorNuevo: String(newVal ?? ""),
-          });
+          bitacoraEntries.push({ campoModificado: key, valorAnterior: String(oldVal ?? ""), valorNuevo: String(newVal ?? "") });
         }
       });
 
       if (Object.keys(detailUpdates).length > 0) {
-        await prisma.baseDatos.update({
-          where: { assetId: id },
-          data: detailUpdates,
-        });
+        await prisma.baseDatos.update({ where: { assetId: id }, data: detailUpdates });
       }
     }
+
     // ======================
-// VPN
-// ======================
-if (asset.tipo === "VPN" && asset.vpn && data.vpn) {
-  const detailUpdates: any = {};
-  const vpn = asset.vpn;
+    // VPN
+    // ======================
 
-  Object.keys(data.vpn).forEach((key) => {
-    const oldVal = (vpn as any)[key];
-    const newVal = data.vpn[key];
-    if (newVal !== undefined && newVal !== oldVal) {
-      detailUpdates[key] = newVal;
-      bitacoraEntries.push({
-        campoModificado: key,
-        valorAnterior: String(oldVal ?? ""),
-        valorNuevo: String(newVal ?? ""),
+    if (asset.tipo === "VPN" && asset.vpn && data.vpn) {
+      const detailUpdates: any = {};
+      const vpn = asset.vpn;
+
+      Object.keys(data.vpn).forEach((key) => {
+        const oldVal = (vpn as any)[key];
+        const newVal = data.vpn[key];
+        if (newVal !== undefined && newVal !== oldVal) {
+          detailUpdates[key] = newVal;
+          bitacoraEntries.push({ campoModificado: key, valorAnterior: String(oldVal ?? ""), valorNuevo: String(newVal ?? "") });
+        }
       });
-    }
-  });
 
-  if (Object.keys(detailUpdates).length > 0) {
-    await prisma.vpn.update({
-      where: { assetId: id },
-      data: detailUpdates,
-    });
-  }
-}
+      if (Object.keys(detailUpdates).length > 0) {
+        await prisma.vpn.update({ where: { assetId: id }, data: detailUpdates });
+      }
+    }
 
     // ======================
     // BITÁCORA
@@ -353,20 +296,15 @@ if (asset.tipo === "VPN" && asset.vpn && data.vpn) {
     }
   ) {
     await this.getAssetById(assetId);
-
-    return prisma.bitacora.create({
-      data: {
-        assetId,
-        ...data,
-      },
-    });
+    return prisma.bitacora.create({ data: { assetId, ...data } });
   }
 
   async getStats() {
     const [total, porTipo] = await Promise.all([
-      prisma.asset.count(),
+      prisma.asset.count({ where: { deletedAt: null } }),
       prisma.asset.groupBy({
         by: ["tipo"],
+        where: { deletedAt: null },
         _count: true,
       }),
     ]);
@@ -376,9 +314,9 @@ if (asset.tipo === "VPN" && asset.vpn && data.vpn) {
       porTipo: porTipo.map((t) => ({ tipo: t.tipo, count: t._count })),
     };
   }
-  
-async getAssetsByTipoAndIds(opts: { tipo?: string; ids?: string[] }) {
-    const where: Prisma.AssetWhereInput = {};
+
+  async getAssetsByTipoAndIds(opts: { tipo?: string; ids?: string[] }) {
+    const where: Prisma.AssetWhereInput = { deletedAt: null };
 
     if (opts.tipo) where.tipo = opts.tipo as any;
     if (opts.ids && opts.ids.length > 0) where.id = { in: opts.ids };
@@ -387,12 +325,55 @@ async getAssetsByTipoAndIds(opts: { tipo?: string; ids?: string[] }) {
       where,
       include: { servidor: true, red: true, ups: true, baseDatos: true },
       orderBy: { actualizadoEn: "desc" },
-      take: 10_000, // suficiente para sincronizar todo
+      take: 10_000,
     });
 
     return assets;
   }
 
+  // ======================
+  // SOFT DELETE / PAPELERA
+  // ======================
+
+  async softDelete(id: string, autor: string = "Sistema") {
+    const asset = await prisma.asset.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+    await prisma.bitacora.create({
+      data: {
+        assetId:     id,
+        autor,
+        tipoEvento:  "NOTA",
+        descripcion: "Activo eliminado y movido a papelera.",
+      },
+    });
+    return asset;
+  }
+
+  async restoreAsset(id: string, autor: string = "Sistema") {
+    const asset = await prisma.asset.update({
+      where: { id },
+      data: { deletedAt: null },
+    });
+    await prisma.bitacora.create({
+      data: {
+        assetId:     id,
+        autor,
+        tipoEvento:  "NOTA",
+        descripcion: "Activo restaurado desde papelera.",
+      },
+    });
+    return asset;
+  }
+
+  async getDeleted() {
+    return prisma.asset.findMany({
+      where: { deletedAt: { not: null } },
+      orderBy: { deletedAt: "desc" },
+      include: { servidor: true, red: true, ups: true, baseDatos: true, vpn: true },
+    });
+  }
 }
 
 export const assetsService = new AssetsService();

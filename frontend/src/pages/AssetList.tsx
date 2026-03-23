@@ -176,10 +176,13 @@ function ServidorRow({ a, onClick }: { a: Asset; onClick: () => void }) {
   const s = a.servidor;
   return <Row onClick={onClick} cells={[
     <strong style={{ color: "#000000" }}>{a.nombre ?? "—"}</strong>,
-    a.codigoServicio ?? "—", <Badge text={s?.ambiente ?? null} />,
+    a.codigoServicio ?? "—",
+    <Badge text={s?.ambiente ?? null} />,
     <code style={{ fontSize: 14 }}>{s?.ipInterna ?? "—"}</code>,
-   s?.vramMb ? `${Math.round(s.vramMb / 1024)} GB` : "—",
-    s?.sistemaOperativo ?? "—", a.ubicacion ?? "—",
+    s?.vcpu ?? "—",  // ← AGREGAR ESTO
+    s?.vramMb ? `${Math.round(s.vramMb / 1024)} GB` : "—",
+    s?.sistemaOperativo ?? "—",
+    a.ubicacion ?? "—",
   ]} />;
 }
 function RedRow({ a, onClick }: { a: Asset; onClick: () => void }) {

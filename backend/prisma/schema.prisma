@@ -17,6 +17,7 @@ model Asset {
   custodio       String?
   creadoEn       DateTime    @default(now())
   actualizadoEn  DateTime    @updatedAt
+ deletedAt DateTime?
 
   servidor   Servidor?
   red        Red?

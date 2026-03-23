@@ -3,6 +3,7 @@ import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import AssetList from "./pages/AssetList";
 import AssetDetail from "./pages/AssetDetail";
+import Papelera from "./pages/Papelera";
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="inventario/:tipo" element={<AssetList />} />
           <Route path="activo/:id" element={<AssetDetail />} />
+          <Route path="/papelera" element={<Papelera />} />
           
           
         </Route>

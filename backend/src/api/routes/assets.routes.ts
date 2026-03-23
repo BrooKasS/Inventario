@@ -10,7 +10,8 @@ router.get("/", asyncHandler(assetsController.getAssets.bind(assetsController)))
 // GET /assets/stats - Estadísticas
 router.get("/stats", asyncHandler(assetsController.getStats.bind(assetsController)));
 
-
+router.get("/deleted", asyncHandler(assetsController.getDeleted.bind(assetsController)));
+ 
 // POST /assets - Crear nuevo asset
 router.post("/", asyncHandler(assetsController.createAsset.bind(assetsController)));
 
@@ -19,6 +20,13 @@ router.get("/:id", asyncHandler(assetsController.getAssetById.bind(assetsControl
 
 // PATCH /assets/:id - Actualizar asset
 router.patch("/:id", asyncHandler(assetsController.updateAsset.bind(assetsController)));
+
+// borrar asset
+router.delete("/:id", asyncHandler(assetsController.deleteAsset.bind(assetsController)));
+
+// restaurar asset
+router.post("/:id/restore", asyncHandler(assetsController.restoreAsset.bind(assetsController)));
+
 
 // GET /assets/:id/bitacora - Obtener bitácora de un asset
 router.get("/:id/bitacora", asyncHandler(assetsController.getBitacora.bind(assetsController)));

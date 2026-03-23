@@ -1,7 +1,8 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getAssetById, updateAsset, addObservacion } from "../api/client";
+import { getAssetById, updateAsset, addObservacion,deleteAsset } from "../api/client";
 import type { Asset, BitacoraEntry, TipoEvento } from "../types";
+ 
 
 /* ─── design tokens ─── */
 const C = {
@@ -527,19 +528,38 @@ export default function AssetDetail() {
               </button>
             </>
           ) : (
-            <button
-              onClick={() => setEditing(true)}
-              style={{
-                padding: "10px 22px", borderRadius: 8, border: "none",
-                background: C.grad, color: "#fff", fontWeight: 700,
-                cursor: "pointer", fontSize: 14, transition: "all .2s",
-                boxShadow: "0 4px 12px rgba(183,49,44,.15)",
-              }}
-              onMouseEnter={e => (e.currentTarget.style.transform = "translateY(-2px)")}
-              onMouseLeave={e => (e.currentTarget.style.transform = "translateY(0)")}
-            >
-              ✏️ Editar
-            </button>
+            <>
+              {/* AGREGAR AQUÍ */}
+              <button
+                onClick={async () => {
+                  if (!window.confirm(`¿Mover "${asset.nombre}" a la papelera?`)) return;
+                  await deleteAsset(asset.id, "Sistema");
+                  navigate(-1);
+                }}
+                style={{
+                  padding: "10px 22px", borderRadius: 8,
+                  border: "2px solid #f5c6c6",
+                  background: "#fff", color: "#c0392b",
+                  fontWeight: 700, cursor: "pointer", fontSize: 14,
+                }}
+              >
+                🗑 Eliminar
+              </button>
+
+              <button
+                onClick={() => setEditing(true)}
+                style={{
+                  padding: "10px 22px", borderRadius: 8, border: "none",
+                  background: C.grad, color: "#fff", fontWeight: 700,
+                  cursor: "pointer", fontSize: 14, transition: "all .2s",
+                  boxShadow: "0 4px 12px rgba(183,49,44,.15)",
+                }}
+                onMouseEnter={e => (e.currentTarget.style.transform = "translateY(-2px)")}
+                onMouseLeave={e => (e.currentTarget.style.transform = "translateY(0)")}
+              >
+                ✏️ Editar
+              </button>
+            </>
           )}
         </div>
       </div>

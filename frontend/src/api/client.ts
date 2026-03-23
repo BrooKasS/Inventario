@@ -37,4 +37,13 @@ export const importExcel = (file: File) => {
 
 };
 
+export const deleteAsset = (id: string, autor: string = "Sistema") =>
+  api.delete(`/assets/${id}`, { data: { autor } }).then(r => r.data);
+
+export const restoreAsset = (id: string, autor: string = "Sistema") =>
+  api.post(`/assets/${id}/restore`, { autor }).then(r => r.data);
+
+export const getDeleted = () =>
+  api.get("/assets/deleted").then(r => r.data.data);
+
 export default api;
