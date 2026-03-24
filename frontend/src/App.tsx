@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import AssetList from "./pages/AssetList";
-import AssetDetail from "./pages/AssetDetail";
+import AssetDetail from "./pages/AssetDetail/index";
 import Papelera from "./pages/Papelera";
 
 export default function App() {

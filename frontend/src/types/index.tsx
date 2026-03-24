@@ -1,4 +1,4 @@
-export type TipoActivo = "SERVIDOR" | "RED" | "UPS" | "BASE_DATOS"| "VPN";
+export type TipoActivo = "SERVIDOR" | "RED" | "UPS" | "BASE_DATOS" | "VPN" | "MOVIL";
 export type TipoEvento = "IMPORTACION" | "CAMBIO_CAMPO" | "MANTENIMIENTO" | "INCIDENTE" | "NOTA";
 
 export interface Servidor {
@@ -55,6 +55,39 @@ export interface BaseDatos {
   contratoQueSoporta: string | null;
 }
 
+export interface Vpn {
+  id: string;
+  assetId: string;
+  conexion: string | null;
+  fases: string | null;
+  origen: string | null;
+  destino: string | null;
+}
+
+export interface Movil {
+  id: string;
+  assetId: string;
+  numeroCaso: string | null;
+  region: string | null;
+  dependencia: string | null;
+  sede: string | null;
+  cedula: string | null;
+  usuarioRed: string | null;
+  correoResponsable: string | null;
+  uni: string | null;
+  marca: string | null;
+  modelo: string | null;
+  serial: string | null;
+  imei1: string | null;
+  imei2: string | null;
+  sim: string | null;
+  numeroLinea: string | null;
+  fechaEntrega: string | null;
+  observacionesEntrega: string | null;
+  fechaDevolucion: string | null;
+  observacionesDevolucion: string | null;
+}
+
 export interface BitacoraEntry {
   id: string;
   assetId: string;
@@ -81,8 +114,9 @@ export interface Asset {
   red: Red | null;
   ups: Ups | null;
   baseDatos: BaseDatos | null;
-  bitacora?: BitacoraEntry[];
   vpn: Vpn | null;
+  movil: Movil | null;
+  bitacora?: BitacoraEntry[];
 }
 
 export interface Pagination {
@@ -90,15 +124,6 @@ export interface Pagination {
   limit: number;
   total: number;
   totalPages: number;
-}
-
-export interface Vpn {
-  id: string;
-  assetId: string;
-  conexion: string | null;
-  fases: string | null;
-  origen: string | null;
-  destino: string | null;
 }
 
 export interface AssetsResponse {

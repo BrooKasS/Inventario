@@ -25,6 +25,8 @@ model Asset {
   baseDatos  BaseDatos?
   bitacora   Bitacora[]
   vpn        Vpn?
+  movil      Movil?
+  
   
 
   @@index([tipo])
@@ -103,7 +105,36 @@ model Vpn {
   origen    String?   // separado de la celda original
   destino   String?   // separado de la celda original
 }
+model Movil {
+  id                      String    @id @default(cuid())
+  assetId                 String    @unique
+  asset                   Asset     @relation(fields: [assetId], references: [id])
 
+  // Datos del usuario
+  numeroCaso              String?
+  region                  String?
+  dependencia             String?
+  sede                    String?
+  cedula                  String?
+  usuarioRed              String?
+  correoResponsable       String?
+
+  // Datos del equipo entregado
+  uni                     String?
+  marca                   String?
+  modelo                  String?
+  serial                  String?
+  imei1                   String?
+  imei2                   String?
+  sim                     String?
+  numeroLinea             String?
+  fechaEntrega            DateTime?
+  observacionesEntrega    String?
+
+  // Datos de devolución (se llena después)
+  fechaDevolucion         DateTime?
+  observacionesDevolucion String?
+}
 model Bitacora {
   id              String     @id @default(cuid())
   assetId         String
@@ -127,6 +158,7 @@ enum TipoActivo {
   UPS
   BASE_DATOS
   VPN
+  MOVIL  
 }
 
 enum TipoEvento {

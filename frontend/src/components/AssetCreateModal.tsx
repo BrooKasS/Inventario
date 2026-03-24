@@ -19,6 +19,7 @@ const TIPO_LABEL: Record<string, string> = {
   RED:        "Red",
   UPS:        "UPS",
   VPN:        "VPN S2S",
+  MOVIL:      "Móvil",
 };
 
 const TIPO_ICON: Record<string, string> = {
@@ -27,6 +28,7 @@ const TIPO_ICON: Record<string, string> = {
   RED:        "🌐",
   UPS:        "⚡",
   VPN:        "🔒",
+  MOVIL:      "📱",
 };
 
 /* ─── Estilos base ─── */
@@ -201,6 +203,49 @@ function FormVpn({ data, onChange }: { data: any; onChange: (f: string, v: strin
   );
 }
 
+function FormMovil({ data, onChange }: { data: any; onChange: (f: string, v: string) => void }) {
+  return (
+    <>
+      <FormSection title="Datos del Usuario" icon="👤">
+        <Field label="# Caso"               field="numeroCaso"         value={data.numeroCaso         ?? ""} onChange={onChange} placeholder="Ej: 12345" />
+        <Field label="Región/Departamento"  field="region"             value={data.region             ?? ""} onChange={onChange} placeholder="Ej: Cundinamarca" />
+        <Field label="Dependencia/Área"     field="dependencia"        value={data.dependencia        ?? ""} onChange={onChange} placeholder="Ej: Gerencia TI" />
+        <Field label="Sede"                 field="sede"               value={data.sede               ?? ""} onChange={onChange} placeholder="Ej: Bogotá" />
+        <Field label="C.C."                 field="cedula"             value={data.cedula             ?? ""} onChange={onChange} placeholder="Ej: 1000123456" />
+        <Field label="Usuario de Red"       field="usuarioRed"         value={data.usuarioRed         ?? ""} onChange={onChange} placeholder="Ej: jperez" />
+        <Field label="Correo Responsable"   field="correoResponsable"  value={data.correoResponsable  ?? ""} onChange={onChange} placeholder="Ej: jperez@empresa.com" type="email" />
+      </FormSection>
+      <FormSection title="Datos del Equipo" icon="📱">
+        <Field label="UNI"            field="uni"         value={data.uni         ?? ""} onChange={onChange} placeholder="Ej: UNI-001" />
+        <Field label="Marca"          field="marca"       value={data.marca       ?? ""} onChange={onChange} placeholder="Ej: Samsung" />
+        <Field label="Modelo"         field="modelo"      value={data.modelo      ?? ""} onChange={onChange} placeholder="Ej: Galaxy A54" />
+        <Field label="Serial"         field="serial"      value={data.serial      ?? ""} onChange={onChange} placeholder="Ej: R58N123ABC" />
+        <Field label="IMEI 1"         field="imei1"       value={data.imei1       ?? ""} onChange={onChange} placeholder="Ej: 357123456789012" />
+        <Field label="IMEI 2"         field="imei2"       value={data.imei2       ?? ""} onChange={onChange} placeholder="Ej: 357123456789013" />
+        <Field label="SIM"            field="sim"         value={data.sim         ?? ""} onChange={onChange} placeholder="Ej: 8957010001234567890" />
+        <Field label="Número de Línea" field="numeroLinea" value={data.numeroLinea ?? ""} onChange={onChange} placeholder="Ej: 3001234567" />
+        <Field label="Fecha de Entrega" field="fechaEntrega" value={data.fechaEntrega ?? ""} onChange={onChange} type="date" />
+      </FormSection>
+      <FormSection title="Observaciones de Entrega" icon="📝">
+        <div style={{ gridColumn: "1 / -1" }}>
+          <label style={labelStyle}>Observaciones</label>
+          <textarea
+            value={data.observacionesEntrega ?? ""}
+            onChange={e => onChange("observacionesEntrega", e.target.value)}
+            placeholder="Observaciones al momento de la entrega..."
+            rows={3}
+            style={{
+              ...inputStyle,
+              resize: "vertical",
+              minHeight: 72,
+            }}
+          />
+        </div>
+      </FormSection>
+    </>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════
    MODAL PRINCIPAL
 ═══════════════════════════════════════════════════════ */
@@ -266,6 +311,7 @@ export default function AssetCreateModal({
                     : tipo === "UPS"        ? "ups"
                     : tipo === "BASE_DATOS" ? "baseDatos"
                     : tipo === "VPN"        ? "vpn"
+                    : tipo === "MOVIL"      ? "movil"
                     : null;
 
       const payload: any = {
@@ -292,8 +338,10 @@ export default function AssetCreateModal({
   };
 
   /* ── Render ── */
-  const mostrarCodigo   = tipo !== "UPS" && tipo !== "BASE_DATOS" && tipo !== "VPN";
-  const mostrarUbicacion = tipo !== "BASE_DATOS" && tipo !== "VPN";
+  const mostrarCodigo    = tipo !== "UPS" && tipo !== "BASE_DATOS" && tipo !== "VPN" && tipo !== "MOVIL";
+  const mostrarUbicacion = tipo !== "BASE_DATOS" && tipo !== "VPN" && tipo !== "MOVIL";
+  const mostrarPropietario = tipo !== "MOVIL";
+  const mostrarCustodio    = tipo !== "MOVIL";
 
   return (
     <div
@@ -380,7 +428,13 @@ export default function AssetCreateModal({
             <Field
               label="Nombre" field="nombre"
               value={general.nombre} onChange={handleGeneral}
-              required placeholder={`Ej: ${tipo === "VPN" ? "ALFAGL_BACKUP" : tipo === "SERVIDOR" ? "SRV-PROD-01" : "EQUIPO-001"}`}
+              required
+              placeholder={
+                tipo === "VPN"   ? "Ej: ALFAGL_BACKUP"  :
+                tipo === "MOVIL" ? "Ej: Juan Pérez"      :
+                tipo === "SERVIDOR" ? "Ej: SRV-PROD-01"  :
+                "Ej: EQUIPO-001"
+              }
             />
             {mostrarCodigo && (
               <Field
@@ -396,24 +450,29 @@ export default function AssetCreateModal({
                 placeholder="Ej: Virtual/Triara"
               />
             )}
-            <Field
-              label="Propietario" field="propietario"
-              value={general.propietario} onChange={handleGeneral}
-              placeholder="Ej: Gerencia TI"
-            />
-            <Field
-              label="Custodio" field="custodio"
-              value={general.custodio} onChange={handleGeneral}
-              placeholder="Ej: Juan Pérez"
-            />
+            {mostrarPropietario && (
+              <Field
+                label="Propietario" field="propietario"
+                value={general.propietario} onChange={handleGeneral}
+                placeholder="Ej: Gerencia TI"
+              />
+            )}
+            {mostrarCustodio && (
+              <Field
+                label="Custodio" field="custodio"
+                value={general.custodio} onChange={handleGeneral}
+                placeholder="Ej: Juan Pérez"
+              />
+            )}
           </FormSection>
 
           {/* Formulario específico por tipo */}
-          {tipo === "SERVIDOR"   && <FormServidor   data={detalle} onChange={handleDetalle} />}
-          {tipo === "RED"        && <FormRed         data={detalle} onChange={handleDetalle} />}
-          {tipo === "UPS"        && <FormUps         data={detalle} onChange={handleDetalle} />}
-          {tipo === "BASE_DATOS" && <FormBaseDatos   data={detalle} onChange={handleDetalle} />}
-          {tipo === "VPN"        && <FormVpn         data={detalle} onChange={handleDetalle} />}
+          {tipo === "SERVIDOR"   && <FormServidor  data={detalle} onChange={handleDetalle} />}
+          {tipo === "RED"        && <FormRed        data={detalle} onChange={handleDetalle} />}
+          {tipo === "UPS"        && <FormUps        data={detalle} onChange={handleDetalle} />}
+          {tipo === "BASE_DATOS" && <FormBaseDatos  data={detalle} onChange={handleDetalle} />}
+          {tipo === "VPN"        && <FormVpn        data={detalle} onChange={handleDetalle} />}
+          {tipo === "MOVIL"      && <FormMovil      data={detalle} onChange={handleDetalle} />}
         </div>
 
         {/* ── Footer ── */}

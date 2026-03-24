@@ -31,6 +31,7 @@ export class AssetsService {
           ups: true,
           baseDatos: true,
           vpn: true,
+          movil: true,
         },
         orderBy: { actualizadoEn: "desc" },
       }),
@@ -57,6 +58,7 @@ export class AssetsService {
         ups: true,
         baseDatos: true,
         vpn: true,
+        movil: true,
         bitacora: {
           orderBy: { creadoEn: "desc" },
           take: 50,
@@ -69,8 +71,35 @@ export class AssetsService {
   }
 
   async createAsset(data: any, autor: string = "Sistema") {
-    const { tipo, nombre, ubicacion, propietario, custodio, codigoServicio,
-            servidor, red, ups, baseDatos, vpn } = data;
+    const {
+      tipo, nombre, ubicacion, propietario, custodio, codigoServicio,
+      servidor, red, ups, baseDatos, vpn,
+      // Campos MOVIL
+      numeroCaso, region, dependencia, sede, cedula, usuarioRed,
+      correoResponsable, uni, marca, modelo, serial, imei1, imei2,
+      sim, numeroLinea, fechaEntrega, observacionesEntrega,
+    } = data;
+
+    // Construir objeto movil si el tipo es MOVIL
+    const movilData = tipo === "MOVIL" ? {
+      numeroCaso:           numeroCaso           ?? null,
+      region:               region               ?? null,
+      dependencia:          dependencia          ?? null,
+      sede:                 sede                 ?? null,
+      cedula:               cedula               ?? null,
+      usuarioRed:           usuarioRed           ?? null,
+      correoResponsable:    correoResponsable    ?? null,
+      uni:                  uni                  ?? null,
+      marca:                marca                ?? null,
+      modelo:               modelo               ?? null,
+      serial:               serial               ?? null,
+      imei1:                imei1                ?? null,
+      imei2:                imei2                ?? null,
+      sim:                  sim                  ?? null,
+      numeroLinea:          numeroLinea          ?? null,
+      fechaEntrega:         fechaEntrega ? new Date(fechaEntrega) : null,
+      observacionesEntrega: observacionesEntrega ?? null,
+    } : null;
 
     const asset = await prisma.asset.create({
       data: {
@@ -80,13 +109,21 @@ export class AssetsService {
         propietario:    propietario    ?? null,
         custodio:       custodio       ?? null,
         codigoServicio: codigoServicio ?? null,
-        ...(servidor  && { servidor:  { create: servidor  } }),
-        ...(red       && { red:       { create: red       } }),
-        ...(ups       && { ups:       { create: ups       } }),
-        ...(baseDatos && { baseDatos: { create: baseDatos } }),
-        ...(vpn       && { vpn:       { create: vpn       } }),
+        ...(servidor   && { servidor:  { create: servidor  } }),
+        ...(red        && { red:       { create: red       } }),
+        ...(ups        && { ups:       { create: ups       } }),
+        ...(baseDatos  && { baseDatos: { create: baseDatos } }),
+        ...(vpn        && { vpn:       { create: vpn       } }),
+        ...(movilData  && { movil:     { create: movilData } }),
       },
-      include: { servidor: true, red: true, ups: true, baseDatos: true, vpn: true },
+      include: {
+        servidor: true,
+        red: true,
+        ups: true,
+        baseDatos: true,
+        vpn: true,
+        movil: true,
+      },
     });
 
     await prisma.bitacora.create({
@@ -110,6 +147,7 @@ export class AssetsService {
         ups: true,
         baseDatos: true,
         vpn: true,
+        movil: true,
       },
     });
 
@@ -261,6 +299,44 @@ export class AssetsService {
     }
 
     // ======================
+    // MOVIL
+    // ======================
+
+    if (asset.tipo === "MOVIL" && asset.movil && data.movil) {
+      const detailUpdates: any = {};
+      const movil = asset.movil;
+
+      Object.keys(data.movil).forEach((key) => {
+        const oldVal = (movil as any)[key];
+        const newVal = data.movil[key];
+        if (newVal !== undefined && newVal !== oldVal) {
+          detailUpdates[key] = newVal;
+          bitacoraEntries.push({
+            campoModificado: key,
+            valorAnterior: String(oldVal ?? ""),
+            valorNuevo: String(newVal ?? ""),
+          });
+        }
+      });
+
+      // Convertir fechas si vienen como string
+      if (detailUpdates.fechaEntrega !== undefined) {
+        detailUpdates.fechaEntrega = detailUpdates.fechaEntrega
+          ? new Date(detailUpdates.fechaEntrega)
+          : null;
+      }
+      if (detailUpdates.fechaDevolucion !== undefined) {
+        detailUpdates.fechaDevolucion = detailUpdates.fechaDevolucion
+          ? new Date(detailUpdates.fechaDevolucion)
+          : null;
+      }
+
+      if (Object.keys(detailUpdates).length > 0) {
+        await prisma.movil.update({ where: { assetId: id }, data: detailUpdates });
+      }
+    }
+
+    // ======================
     // BITÁCORA
     // ======================
 
@@ -323,7 +399,7 @@ export class AssetsService {
 
     const assets = await prisma.asset.findMany({
       where,
-      include: { servidor: true, red: true, ups: true, baseDatos: true },
+      include: { servidor: true, red: true, ups: true, baseDatos: true, movil: true },
       orderBy: { actualizadoEn: "desc" },
       take: 10_000,
     });
@@ -371,7 +447,14 @@ export class AssetsService {
     return prisma.asset.findMany({
       where: { deletedAt: { not: null } },
       orderBy: { deletedAt: "desc" },
-      include: { servidor: true, red: true, ups: true, baseDatos: true, vpn: true },
+      include: {
+        servidor: true,
+        red: true,
+        ups: true,
+        baseDatos: true,
+        vpn: true,
+        movil: true,
+      },
     });
   }
 }

@@ -12,7 +12,7 @@ export interface PaginationParams {
 }
 
 export interface AssetFilters extends PaginationParams {
-  tipo?: "SERVIDOR" | "RED" | "UPS" | "BASE_DATOS";
+  tipo?: "SERVIDOR" | "RED" | "UPS" | "BASE_DATOS" | "VPN" | "MOVIL";
   q?: string; // búsqueda por nombre o código
 }
 

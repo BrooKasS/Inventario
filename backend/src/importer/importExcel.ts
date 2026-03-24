@@ -52,14 +52,36 @@ function toDate(val: any): Date | null {
   return null;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// parseSheet — lee cualquier hoja del inventario
+//
+// ESTRUCTURA REAL DEL EXCEL (confirmada analizando el archivo):
+//   Fila 0: vacía
+//   Fila 1: título del formato
+//   Fila 2: código
+//   Fila 3: versión
+//   Fila 4: subtítulo (en algunas hojas)
+//   Fila 5: nombre/cargo del responsable
+//   Fila 6: vacía
+//   Fila 7: ENCABEZADOS REALES  ← HEADER_ROW = 7
+//   Fila 8+: datos
+//
+// La col[0] (columna A) siempre es None en el inventario → startCol = 1
+// Los datos reales empiezan en col[1] (columna B).
+// ─────────────────────────────────────────────────────────────────────────────
 function parseSheet(sheet: XLSX.WorkSheet): Record<string, any>[] {
   const rawRows = XLSX.utils.sheet_to_json(sheet, {
     header: 1,
     defval: null,
   }) as any[][];
 
-  const HEADER_ROW = 10;
+  // CORRECCIÓN: el header real está en el índice 7, no en el 10.
+  // El índice 10 apuntaba a una fila de datos, por lo que todos los campos
+  // resultaban null y se saltaban todos los registros.
+  const HEADER_ROW = 7;
   const headerRow = rawRows[HEADER_ROW] as any[];
+
+  // La columna A (índice 0) siempre está vacía en este formato → saltar
   const firstIsNull = headerRow[0] === null || headerRow[0] === undefined;
   const startCol = firstIsNull ? 1 : 0;
 
@@ -395,11 +417,18 @@ async function importarBD(workbook: XLSX.WorkBook, autor: string, resumen: Resum
 // ─────────────────────────────────────────────────────────────────────────────
 // VPN — llave: nombre (único en el Excel)
 //
-// Estructura hoja "Export" (datos desde fila 3, índice 2):
-//   Col B (idx 1) → Nombre de la VPN
-//   Col C (idx 2) → Conexión  (IP peer — puede ser número sin puntos)
-//   Col D (idx 3) → Fases     (siempre "Phase 2")
-//   Col E (idx 4) → Origen y Destino ("Origen: X, Destino: Y")
+// ESTRUCTURA HOJA "Export" (confirmada analizando ambos archivos reales):
+//   Fila 0 (índice 0): vacía
+//   Fila 1 (índice 1): encabezados — col[1]="Nombre de la VPN", col[2]="Conexión"...
+//   Fila 2+ (índice 2+): datos
+//
+// IMPORTANTE: la col[0] (columna A) es SIEMPRE None en ambos archivos.
+// Los datos reales están en col[1], col[2], col[3], col[4].
+//
+// CORRECCIÓN APLICADA: el código anterior usaba fila[0] como nombre (siempre None)
+// y fila[1..3] para el resto. Ahora se detecta automáticamente el offset:
+//   - Si col[0] es null → offset=1 (datos en col[1..4])
+//   - Si col[0] tiene datos → offset=0 (datos en col[0..3])
 //
 // Casos especiales manejados:
 //   - IPs numéricas (ej: 177253101154 → "177.253.101.154")
@@ -478,7 +507,7 @@ function parsearOrigenDestino(raw: unknown): { origen: string | null; destino: s
 async function importarVPN(workbook: XLSX.WorkBook, autor: string, resumen: Resumen) {
   const sheet = workbook.Sheets["Export"];
   if (!sheet) {
-    
+    // Silencioso: el archivo de inventario no tiene hoja Export, es esperado
     return;
   }
 
@@ -489,26 +518,30 @@ async function importarVPN(workbook: XLSX.WorkBook, autor: string, resumen: Resu
     raw:    true,
   }) as unknown[][];
 
-  // Fila 1 (índice 0): vacía
-  // Fila 2 (índice 1): encabezados
-  // Fila 3+ (índice 2+): datos
-  const FILA_INICIO = 1;
+  // Estructura confirmada analizando los archivos reales:
+  //   Índice 0: vacía
+  //   Índice 1: encabezados (col[1]="Nombre de la VPN", etc.)
+  //   Índice 2+: datos reales
+  // FILA_INICIO=2 salta la fila vacía y la de encabezados correctamente.
+  const FILA_INICIO = 2;
 
   let procesadas = 0;
 
   for (let i = FILA_INICIO; i < filas.length; i++) {
-    const fila   = filas[i];
+    const fila    = filas[i];
     const numFila = i + 1;
 
-    // Columnas B=1, C=2, D=3, E=
+    // CORRECCIÓN CLAVE: la col[0] (columna A) es siempre None en el Excel.
+    // Los datos reales están en col[1..4].
+    // Se detecta automáticamente para ser robusto ante cambios futuros del formato.
+    const offset = (fila[0] === null || fila[0] === undefined) ? 1 : 0;
 
-    const nombre = toStr(fila[0]);
- 
+    const nombre = toStr(fila[offset]);
     if (!nombre) continue;
 
-    const conexion = parsearConexion(fila[1]);
-    const fases    = toStr(fila[2]);
-    const { origen, destino } = parsearOrigenDestino(fila[3]);
+    const conexion = parsearConexion(fila[offset + 1]);
+    const fases    = toStr(fila[offset + 2]);
+    const { origen, destino } = parsearOrigenDestino(fila[offset + 3]);
 
     const datosVpn = { conexion, fases, origen, destino };
 
@@ -535,7 +568,6 @@ async function importarVPN(workbook: XLSX.WorkBook, autor: string, resumen: Resu
         });
         resumen.creados++;
       } else {
-        console.log(`ACTUALIZANDO: "${nombre}" id=${existing.id}`);
         await prisma.vpn.upsert({
           where:  { assetId: existing.id },
           update: datosVpn,
@@ -564,7 +596,7 @@ async function importarVPN(workbook: XLSX.WorkBook, autor: string, resumen: Resu
   }
 }
 
-//esta es la exportación principal 
+// Esta es la exportación principal
 export async function importExcel(
   path: string,
   autor: string = "Sistema"
