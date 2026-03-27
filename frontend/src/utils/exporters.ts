@@ -117,35 +117,33 @@ function nombreHojaSeguro(name: string) {
 }
 
 /** Exporta a Excel usando SheetJS — separado por hojas por tipo */
-export async function exportarActivosExcel(assets: Asset[], nombre: string) {
-  const XLSX = await import("xlsx");
-  const wb = XLSX.utils.book_new();
-
-  // (Opcional) Hoja consolidada con todos los activos
-  const filasTodos = prepararFilasActivos(assets);
-  if (filasTodos.length) {
-    const wsTodos = XLSX.utils.json_to_sheet(filasTodos);
-    aplicarAnchosSheetJS(wsTodos, filasTodos, 22);
-    XLSX.utils.book_append_sheet(wb, wsTodos, nombreHojaSeguro("Todos"));
+export async function exportarActivosExcel(assets: Asset[], nombre: string): Promise<void> {
+  if (assets.length === 0) return;
+ 
+  // Construir query params
+  const ids    = assets.map(a => a.id).join(",");
+  const tipos  = [...new Set(assets.map(a => a.tipo))].join(",");
+  const fecha  = new Date().toISOString().slice(0, 10);
+ 
+  const url = `http://localhost:3000/api/assets/export-excel?ids=${encodeURIComponent(ids)}&tipos=${encodeURIComponent(tipos)}`;
+ 
+  const res = await fetch(url);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Error generando el Excel");
   }
-
-  // Hojas por tipo
-  const TIPOS = ["SERVIDOR", "BASE_DATOS", "RED", "UPS"] as const;
-  for (const tipo of TIPOS) {
-    const delTipo = assets.filter(a => a.tipo === tipo);
-    if (!delTipo.length) continue;
-
-    const filas = prepararFilasActivos(delTipo);
-    const ws = XLSX.utils.json_to_sheet(filas);
-    aplicarAnchosSheetJS(ws, filas, 22);
-
-    const hoja = nombreHojaSeguro(TIPO_LABEL_PLURAL[tipo] ?? tipo);
-    XLSX.utils.book_append_sheet(wb, ws, hoja);
-  }
-
-  XLSX.writeFile(wb, `Activos_${nombre}_${fechaArchivo()}.xlsx`);
+ 
+  const blob = await res.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = blobUrl;
+  a.download = `Inventario_TI_${nombre}_${fecha}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(blobUrl);
 }
-
+ 
 /** Exporta a PDF usando jsPDF + autoTable (SIN cambios: una sola salida) */
 export async function exportarActivosPDF(assets: Asset[], nombre: string) {
   const { default: jsPDF } = await import("jspdf");

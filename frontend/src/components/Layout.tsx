@@ -1,25 +1,23 @@
-import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { Outlet, NavLink } from "react-router-dom";
 import { useState } from "react";
-import { Label } from "recharts";
 
 const nav = [
-  { label: "Dashboard",      path: "/dashboard",           icon: "⊞" },
-  { label: "Servidores",     path: "/inventario/SERVIDOR", icon: "🖥" },
+  { label: "Dashboard",      path: "/dashboard",            icon: "⊞" },
+  { label: "Servidores",     path: "/inventario/SERVIDOR",  icon: "🖥" },
   { label: "Bases de Datos", path: "/inventario/BASE_DATOS",icon: "🗄" },
-  { label: "UPS",            path: "/inventario/UPS",      icon: "⚡" },
-  { label: "Red",            path: "/inventario/RED",      icon: "🌐" },
-  {label: "VPN",              path: "/inventario/VPN",      icon: "🔒" },
-  {label: "Móviles",          path: "/inventario/MÓVILES",     icon: "📱" },
-  {label: "Papelera",          path: "/papelera",            icon: "🗑" },
+  { label: "UPS",            path: "/inventario/UPS",       icon: "⚡" },
+  { label: "Red",            path: "/inventario/RED",       icon: "🌐" },
+  { label: "VPN",            path: "/inventario/VPN",       icon: "🔒" },
+  { label: "Móviles",        path: "/inventario/MOVIL",     icon: "📱" },
+  { label: "Papelera",       path: "/papelera",             icon: "🗑" },
 ];
 
-const GRAD = "linear-gradient(135deg, #FA8200 0%, #861F41 35%, #B7312C 70%, #D86018 100%)";
+const GRAD    = "linear-gradient(135deg, #FA8200 0%, #861F41 35%, #B7312C 70%, #D86018 100%)";
 const PRIMARY = "#B7312C";
-const DARK  = "#861F41";
 
 export default function Layout() {
-  const [importing, setImporting]   = useState(false);
-  const [importMsg, setImportMsg]   = useState<string | null>(null);
+  const [importing,   setImporting]   = useState(false);
+  const [importMsg,   setImportMsg]   = useState<string | null>(null);
   const [hoveredPath, setHoveredPath] = useState<string | null>(null);
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,13 +57,10 @@ export default function Layout() {
       }}>
 
         {/* Logo / brand */}
-        <div style={{
-          background: GRAD,
-          padding: "24px 20px 20px",
-        }}>
+        <div style={{ background: GRAD, padding: "24px 20px 20px" }}>
           <div style={{
             fontSize: 10, fontWeight: 700, letterSpacing: "0.18em",
-            textTransform: "uppercase", color: "rgba(255, 255, 255, 0.72)",
+            textTransform: "uppercase", color: "rgba(255,255,255,.72)",
             marginBottom: 4,
           }}>
             Inventario
@@ -92,12 +87,8 @@ export default function Layout() {
                 textDecoration: "none", fontSize: 14, fontWeight: isActive ? 700 : 500,
                 transition: "all .18s",
                 color: isActive ? "#fff" : hoveredPath === n.path ? PRIMARY : "#000000",
-                background: isActive
-                  ? GRAD
-                  : hoveredPath === n.path
-                  ? "#fff0ee"
-                  : "transparent",
-                boxShadow: isActive ? "0 2px 8px rgb(183, 49, 44)" : "none",
+                background: isActive ? GRAD : hoveredPath === n.path ? "#fff0ee" : "transparent",
+                boxShadow: isActive ? "0 2px 8px rgb(183,49,44)" : "none",
                 borderLeft: isActive ? "none" : hoveredPath === n.path ? `3px solid ${PRIMARY}` : "3px solid transparent",
               })}
             >
@@ -156,11 +147,11 @@ export default function Layout() {
       {/* ── Main content ── */}
       <main style={{
         flex: 1, overflowY: "auto",
-        background: "linear-gradient(135deg, #FA8200 0%, #861F41 35%, #B7312C 70%, #D86018 100%)",
+        background: GRAD,
         padding: 2,
       }}>
         <div style={{
-          background: "linear-gradient(135deg, #FA8200 0%, #861F41 35%, #B7312C 70%, #D86018 100%)",
+          background: GRAD,
           minHeight: "100%",
           borderRadius: 0,
         }}>

@@ -6,7 +6,8 @@ import { sendToFlow } from "../utils/flow";
 import { mapAssetsToFlowPayload, toFlowTipo } from "../utils/flowMappers";
 import { sanitizePayloadForFlow } from "../utils/flowSanitizer";
 import { prisma } from "../../config/database";
-
+import { generarWordMovil } from "../utils/generarMovilDocx";
+import { generarExcelInventario } from "../utils/ExportInventario";
 const r = Router();
 
 export class AssetsController {
@@ -158,6 +159,62 @@ export class AssetsController {
     } as ApiResponse<typeof entry>);
   }
 
+
+
+  // ─── AGREGAR en assets.controller.ts ───────────────────────────────
+// Importar al inicio del archivo:
+// import { generarWordMovil } from "../../utils/generarWordMovil";
+
+  async generarWord(req: Request, res: Response) {
+    try {
+     const id = req.params.id as string;
+      const asset = await assetsService.getAssetById(id);
+
+      if (!asset || asset.tipo !== "MOVIL") {
+        return res.status(400).json({ success: false, error: "Activo no es de tipo MOVIL" });
+      }
+
+      const m = asset.movil;
+      const buffer = await generarWordMovil({
+        nombre:                  asset.nombre,
+        numeroCaso:              m?.numeroCaso              ?? null,
+        region:                  m?.region                 ?? null,
+        dependencia:             m?.dependencia            ?? null,
+        sede:                    m?.sede                   ?? null,
+        cedula:                  m?.cedula                 ?? null,
+        usuarioRed:              m?.usuarioRed             ?? null,
+        uni:                     m?.uni                    ?? null,
+        marca:                   m?.marca                  ?? null,
+        modelo:                  m?.modelo                 ?? null,
+        serial:                  m?.serial                 ?? null,
+        imei1:                   m?.imei1                  ?? null,
+        imei2:                   m?.imei2                  ?? null,
+        sim:                     m?.sim                    ?? null,
+        numeroLinea:             m?.numeroLinea            ?? null,
+        fechaEntrega:            m?.fechaEntrega           ?? null,
+        observacionesEntrega:    m?.observacionesEntrega   ?? null,
+        fechaDevolucion:         m?.fechaDevolucion        ?? null,
+        observacionesDevolucion: m?.observacionesDevolucion ?? null,
+      });
+
+      const nombre = `FR-GTE-02-044_${(asset.nombre ?? "movil").replace(/\s+/g, "_")}.docx`;
+
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+      res.setHeader("Content-Disposition", `attachment; filename="${nombre}"`);
+      res.setHeader("Content-Length", buffer.length);
+      return res.send(buffer);
+
+    } catch (error: any) {
+      console.error("❌ Error generando Word:", error);
+      return res.status(500).json({ success: false, error: "Error generando el documento" });
+    }
+  }
+
+
+// ─── AGREGAR en assets.routes.ts ───────────────────────────────────
+// ANTES de la ruta /:id para evitar conflictos:
+// router.get("/:id/word", assetsController.generarWord);
+
   // POST /assets/sync-excel
   async syncExcel(req: Request, res: Response) {
     try {
@@ -226,6 +283,54 @@ export class AssetsController {
       } as ApiResponse<never>);
     }
   }
+  async exportExcel(req: Request, res: Response) {
+    try {
+      // ids es opcional — si no viene, exporta todos los del tipo
+      const tipos = req.query.tipos
+        ? String(req.query.tipos).split(",").filter(Boolean)
+        : [];
+      const ids = req.query.ids
+        ? String(req.query.ids).split(",").filter(Boolean)
+        : [];
+ 
+      // Traer activos
+      let assets: any[] = [];
+      if (ids.length > 0) {
+        assets = await assetsService.getAssetsByTipoAndIds({ ids });
+      } else if (tipos.length > 0) {
+        for (const tipo of tipos) {
+          const r = await assetsService.getAssetsByTipoAndIds({ tipo });
+          assets = assets.concat(r);
+        }
+      } else {
+        // Todos (SERVIDOR, RED, UPS, BASE_DATOS)
+        for (const tipo of ["SERVIDOR", "RED", "UPS", "BASE_DATOS"]) {
+          const r = await assetsService.getAssetsByTipoAndIds({ tipo });
+          assets = assets.concat(r);
+        }
+      }
+ 
+      if (assets.length === 0) {
+        return res.status(404).json({ success: false, error: "No hay activos para exportar" });
+      }
+      console.log("🔍 Assets recibidos:", assets.length);
+console.log("🔍 Primer asset:", JSON.stringify(assets[0], null, 2));
+ 
+      const buffer = await generarExcelInventario(assets);
+      const fecha  = new Date().toISOString().slice(0, 10);
+ 
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader("Content-Disposition", `attachment; filename="Inventario_TI_${fecha}.xlsx"`);
+      res.setHeader("Content-Length", buffer.length);
+      return res.send(buffer);
+ 
+    } catch (error: any) {
+      console.error("❌ Error exportando Excel:", error);
+      return res.status(500).json({ success: false, error: "Error generando el Excel" });
+    }
+  }
+ 
+  
 }
 
 export const assetsController = new AssetsController();

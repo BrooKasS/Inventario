@@ -12,6 +12,7 @@ const TIPO_LABEL: Record<string, string> = {
   RED:        "Red",
   UPS:        "UPS",
   VPN:        "VPN S2S",
+  MOVIL:      "Móviles",
 };
 
 const TIPO_ICON: Record<string, string> = {
@@ -20,6 +21,7 @@ const TIPO_ICON: Record<string, string> = {
   RED:        "🌐",
   UPS:        "⚡",
   VPN:        "🔒",
+  MOVIL:      "📱",
 };
 
 const TIPO_GRAD: Record<string, string> = {
@@ -27,7 +29,8 @@ const TIPO_GRAD: Record<string, string> = {
   BASE_DATOS: "linear-gradient(135deg, #861F41, #B7312C)",
   RED:        "linear-gradient(135deg, #B7312C, #D86018)",
   UPS:        "linear-gradient(135deg, #FA8200, #861F41)",
-  VPN: "linear-gradient(135deg, #861F41, #FA8200)",
+  VPN:        "linear-gradient(135deg, #861F41, #FA8200)",
+  MOVIL:      "linear-gradient(135deg, #B7312C, #FA8200)",
 };
 
 const FILTER_FIELDS: Record<string, { key: string; label: string }[]> = {
@@ -37,13 +40,12 @@ const FILTER_FIELDS: Record<string, { key: string; label: string }[]> = {
     { key: "sistemaOperativo", label: "Sistema operativo" },
     { key: "monitoreo",        label: "Monitoreo" },
     { key: "backup",           label: "Backup" },
-    
-    
   ],
   RED:        [{ key: "estado", label: "Estado" }, { key: "modelo", label: "Modelo" }],
   UPS:        [{ key: "estado", label: "Estado" }, { key: "modelo", label: "Modelo" }],
   BASE_DATOS: [{ key: "ambiente", label: "Ambiente" }, { key: "versionBd", label: "Versión BD" }],
-  VPN: [{ key: "conexion", label: "conexión" },{ key: "origen", label: "Origen" },{ key: "destino", label: "Destino" },{key: "fases", label:"Fases"}],
+  VPN:        [{ key: "conexion", label: "Conexión" }, { key: "origen", label: "Origen" }, { key: "destino", label: "Destino" }, { key: "fases", label: "Fases" }],
+  MOVIL:      [{ key: "marca", label: "Marca" }, { key: "modelo", label: "Modelo" }, { key: "sede", label: "Sede" }, { key: "region", label: "Región" }],
 };
 
 function normalize(text: string) {
@@ -68,7 +70,6 @@ function AutoInput({
     ? options.filter(o => normalize(o).includes(normalize(value)) && normalize(o) !== normalize(value))
     : options;
 
-  // cerrar al click fuera
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -115,7 +116,6 @@ function AutoInput({
               onMouseEnter={e => (e.currentTarget.style.background = "#fff5f0")}
               onMouseLeave={e => (e.currentTarget.style.background = "#fff")}
             >
-              {/* resalta la parte que coincide */}
               {(() => {
                 const idx = normalize(opt).indexOf(normalize(value));
                 if (!value || idx === -1) return opt;
@@ -140,12 +140,12 @@ function Badge({ text }: { text: string | null }) {
   if (!text) return <span style={{ color: "#252525" }}>—</span>;
   return (
     <span style={{
-         display: "inline-block", padding: "3px 12px", borderRadius: 20,
-          fontSize: 12, fontWeight: 700, textTransform: "uppercase",
-          letterSpacing: "0.06em",
-          background: "rgba(250,130,0,.18)", color: "#FA8200",
-          border: "1px solid rgba(250,130,0,.3)",
-          fontFamily: "Calibri, sans-serif",
+      display: "inline-block", padding: "3px 12px", borderRadius: 20,
+      fontSize: 12, fontWeight: 700, textTransform: "uppercase",
+      letterSpacing: "0.06em",
+      background: "rgba(250,130,0,.18)", color: "#FA8200",
+      border: "1px solid rgba(250,130,0,.3)",
+      fontFamily: "Calibri, sans-serif",
     }}>
       {text}
     </span>
@@ -179,12 +179,13 @@ function ServidorRow({ a, onClick }: { a: Asset; onClick: () => void }) {
     a.codigoServicio ?? "—",
     <Badge text={s?.ambiente ?? null} />,
     <code style={{ fontSize: 14 }}>{s?.ipInterna ?? "—"}</code>,
-    s?.vcpu ?? "—",  // ← AGREGAR ESTO
+    s?.vcpu ?? "—",
     s?.vramMb ? `${Math.round(s.vramMb / 1024)} GB` : "—",
     s?.sistemaOperativo ?? "—",
     a.ubicacion ?? "—",
   ]} />;
 }
+
 function RedRow({ a, onClick }: { a: Asset; onClick: () => void }) {
   const r = a.red;
   return <Row onClick={onClick} cells={[
@@ -194,6 +195,7 @@ function RedRow({ a, onClick }: { a: Asset; onClick: () => void }) {
     <Badge text={r?.estado ?? null} />, a.ubicacion ?? "—", a.codigoServicio ?? "—",
   ]} />;
 }
+
 function UpsRow({ a, onClick }: { a: Asset; onClick: () => void }) {
   const u = a.ups;
   return <Row onClick={onClick} cells={[
@@ -203,6 +205,7 @@ function UpsRow({ a, onClick }: { a: Asset; onClick: () => void }) {
     <Badge text={u?.estado ?? null} />, a.ubicacion ?? "—",
   ]} />;
 }
+
 function BDRow({ a, onClick }: { a: Asset; onClick: () => void }) {
   const b = a.baseDatos;
   return <Row onClick={onClick} cells={[
@@ -211,6 +214,7 @@ function BDRow({ a, onClick }: { a: Asset; onClick: () => void }) {
     b?.versionBd ?? "—", b?.racScan ?? "—", a.propietario ?? "—",
   ]} />;
 }
+
 function VpnRow({ a, onClick }: { a: Asset; onClick: () => void }) {
   const v = a.vpn;
   return <Row onClick={onClick} cells={[
@@ -222,12 +226,27 @@ function VpnRow({ a, onClick }: { a: Asset; onClick: () => void }) {
   ]} />;
 }
 
+function MovilRow({ a, onClick }: { a: Asset; onClick: () => void }) {
+  const m = a.movil;
+  return <Row onClick={onClick} cells={[
+    <strong style={{ color: "#000000" }}>{a.nombre ?? "—"}</strong>,
+    m?.numeroCaso ?? "—",
+    m?.marca ?? "—",
+    m?.modelo ?? "—",
+    <code style={{ fontSize: 14 }}>{m?.imei1 ?? "—"}</code>,
+    m?.numeroLinea ?? "—",
+    m?.sede ?? "—",
+    m?.fechaEntrega ? new Date(m.fechaEntrega).toLocaleDateString("es-CO") : "—",
+  ]} />;
+}
+
 const HEADERS: Record<string, string[]> = {
   SERVIDOR:   ["Nombre", "Código", "Ambiente", "IP Interna", "vCPU", "vRAM", "Sistema Operativo", "Ubicación"],
   RED:        ["Nombre", "Serial", "Modelo", "IP Gestión", "Estado", "Ubicación", "Código"],
   UPS:        ["Nombre", "Serial", "Modelo", "Placa", "Estado", "Ubicación"],
   BASE_DATOS: ["Nombre", "Ambiente", "Aplicación", "Servidor 1", "Versión", "RAC/Scan", "Propietario"],
-  VPN: ["Nombre", "Conexión", "Fases", "Origen", "Destino"]
+  VPN:        ["Nombre", "Conexión", "Fases", "Origen", "Destino"],
+  MOVIL:      ["Nombre (Usuario)", "# Caso", "Marca", "Modelo", "IMEI 1", "N° Línea", "Sede", "Fecha Entrega"],
 };
 
 const labelStyle: React.CSSProperties = {
@@ -257,7 +276,7 @@ function uniqueVals(assets: Asset[], getter: (a: Asset) => string | null | undef
 }
 function uniqueSubVals(assets: Asset[], key: string): string[] {
   return Array.from(new Set(assets.map(a => {
-    const sub: any = a.servidor ?? a.red ?? a.ups ?? a.baseDatos ?? a.vpn ??{};
+    const sub: any = a.servidor ?? a.red ?? a.ups ?? a.baseDatos ?? a.vpn ?? a.movil ?? {};
     return sub[key] as string | undefined;
   }).filter(Boolean) as string[])).sort();
 }
@@ -283,8 +302,8 @@ export default function AssetList() {
   const [filtroExtra,     setFiltroExtra]     = useState<Record<string, string>>({});
   const [showCreate, setShowCreate] = useState(false);
 
-  const tipoKey    = tipo as TipoActivo;
-  const headers    = HEADERS[tipoKey] ?? [];
+  const tipoKey     = tipo as TipoActivo;
+  const headers     = HEADERS[tipoKey] ?? [];
   const extraFields = FILTER_FIELDS[tipoKey] ?? [];
 
   const hayFiltros = !!(filtroNombre || filtroCodigo || filtroUbicacion
@@ -313,11 +332,10 @@ export default function AssetList() {
     }
   }, [tipo, q, page]);
 
-  // Cargar TODOS los activos sin paginación para aplicar filtros
   const loadAllForFiltering = useCallback(async () => {
     setLoadingFilters(true);
     try {
-      const data = await getAssets({ tipo, limit: 10000 }); // Cargar todos (sin búsqueda 'q' ni paginación)
+      const data = await getAssets({ tipo, limit: 10000 });
       setAllAssetsForFiltering(data.assets || []);
     } catch (err) {
       console.error("Error cargando todos los activos para filtros:", err);
@@ -329,8 +347,7 @@ export default function AssetList() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { setPage(1); setQ(""); limpiarFiltros(); }, [tipo]);
   useEffect(() => { load(); }, [load]);
-  
-  // Cargar todos los activos cuando se abre el modal de filtros
+
   useEffect(() => {
     if (showFilters) {
       loadAllForFiltering();
@@ -345,7 +362,7 @@ export default function AssetList() {
       const matchExtra = extraFields.every(({ key }) => {
         const val = filtroExtra[key];
         if (!val) return true;
-        const sub: any = a.servidor ?? a.red ?? a.ups ?? a.baseDatos ?? a.vpn ?? {};
+        const sub: any = a.servidor ?? a.red ?? a.ups ?? a.baseDatos ?? a.vpn ?? a.movil ?? {};
         return normalize(String(sub[key] ?? "")).includes(normalize(val));
       });
       return matchNombre && matchCodigo && matchUbicacion && matchExtra;
@@ -359,6 +376,10 @@ export default function AssetList() {
     setAssets(allAssetsForFiltering); setShowFilters(false);
   }
 
+  /* ── ocultar campos según tipo ── */
+  const mostrarCodigo    = tipoKey !== "UPS" && tipoKey !== "BASE_DATOS" && tipoKey !== "VPN" && tipoKey !== "MOVIL";
+  const mostrarUbicacion = tipoKey !== "BASE_DATOS" && tipoKey !== "VPN" && tipoKey !== "MOVIL";
+
   return (
     <div style={{
       minHeight: "100%", padding: "32px 28px",
@@ -369,7 +390,6 @@ export default function AssetList() {
         @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
         @keyframes fadeIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
         .fi:focus{border-color:#B7312C !important; border-radius:8px 8px 0 0}
-        /* scrollbar modal */
         .modal-scroll::-webkit-scrollbar{width:5px}
         .modal-scroll::-webkit-scrollbar-track{background:#fdf8f8}
         .modal-scroll::-webkit-scrollbar-thumb{background:#e0c8c8;border-radius:4px}
@@ -418,7 +438,6 @@ export default function AssetList() {
               cursor: "pointer", fontSize: 14, fontFamily: "Calibri, sans-serif",
               boxShadow: "0 4px 12px rgba(0,0,0,.15)",
             }}>➕ Crear</button>
-
           </div>
         </div>
 
@@ -467,14 +486,14 @@ export default function AssetList() {
                     </tr>
                   </thead>
                   <tbody>
-                    
                     {assets.map(a => {
                       const onClick = () => navigate(`/activo/${a.id}`);
                       if (tipoKey === "SERVIDOR") return <ServidorRow key={a.id} a={a} onClick={onClick} />;
                       if (tipoKey === "RED")      return <RedRow      key={a.id} a={a} onClick={onClick} />;
                       if (tipoKey === "UPS")      return <UpsRow      key={a.id} a={a} onClick={onClick} />;
-                      if (tipoKey === "VPN") return <VpnRow key={a.id} a={a} onClick={onClick} />;
-                      return         <BDRow       key={a.id} a={a} onClick={onClick} />;
+                      if (tipoKey === "VPN")      return <VpnRow      key={a.id} a={a} onClick={onClick} />;
+                      if (tipoKey === "MOVIL")    return <MovilRow    key={a.id} a={a} onClick={onClick} />;
+                      return                             <BDRow       key={a.id} a={a} onClick={onClick} />;
                     })}
                   </tbody>
                 </table>
@@ -503,15 +522,15 @@ export default function AssetList() {
         )}
       </div>
 
-      {/* ══════════════ Modal de Filtros ══════════════ */}
-    
+      {/* ── Modal Crear ── */}
       <AssetCreateModal
-  open={showCreate}
-  onClose={() => setShowCreate(false)}
-  tipo={tipoKey}
-  onCreated={() => { setShowCreate(false); load(); }}
-/>
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        tipo={tipoKey}
+        onCreated={() => { setShowCreate(false); load(); }}
+      />
 
+      {/* ══════════════ Modal de Filtros ══════════════ */}
       {showFilters && (
         <div
           onClick={e => e.target === e.currentTarget && setShowFilters(false)}
@@ -536,7 +555,6 @@ export default function AssetList() {
                 Campos comunes
               </p>
 
-              {/* Nombre siempre visible. Código: oculto en UPS y BASE_DATOS. Ubicación: oculta en BASE_DATOS */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "18px 16px", marginBottom: 8 }}>
                 <div style={{ gridColumn: (tipoKey === "UPS" || tipoKey === "BASE_DATOS") ? "1 / -1" : undefined }}>
                   <label style={labelStyle}>Nombre</label>
@@ -547,7 +565,7 @@ export default function AssetList() {
                     placeholder="Ej: localhost, sgrlp..."
                   />
                 </div>
-                {tipoKey !== "UPS" && tipoKey !== "BASE_DATOS" && tipoKey !== "VPN"  && (
+                {mostrarCodigo && (
                   <div>
                     <label style={labelStyle}>Código de servicio</label>
                     <AutoInput
@@ -558,7 +576,7 @@ export default function AssetList() {
                     />
                   </div>
                 )}
-                {tipoKey !== "BASE_DATOS" && tipoKey !== "VPN"&&(
+                {mostrarUbicacion && (
                   <div style={{ gridColumn: "1 / -1" }}>
                     <label style={labelStyle}>Ubicación</label>
                     <AutoInput
@@ -602,7 +620,6 @@ export default function AssetList() {
               <button onClick={aplicarFiltros} style={{ padding: "10px 22px", borderRadius: 8, border: "none", background: TIPO_GRAD[tipoKey] ?? GRAD, color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 14, fontFamily: "Calibri, sans-serif", boxShadow: "0 4px 12px rgba(183,49,44,.3)" }}>
                 Aplicar filtros
               </button>
-          
             </div>
           </div>
         </div>

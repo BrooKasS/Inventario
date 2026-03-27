@@ -15,6 +15,14 @@ router.get("/deleted", asyncHandler(assetsController.getDeleted.bind(assetsContr
 // POST /assets - Crear nuevo asset
 router.post("/", asyncHandler(assetsController.createAsset.bind(assetsController)));
 
+
+router.get("/export-excel", assetsController.exportExcel);
+
+
+router.get("/:id/word", assetsController.generarWord);
+
+
+
 // GET /assets/:id - Detalle de un asset
 router.get("/:id", asyncHandler(assetsController.getAssetById.bind(assetsController)));
 
@@ -41,3 +49,19 @@ router.post("/sync-excel",asyncHandler(assetsController.syncExcel.bind(assetsCon
 
 
 export default router;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

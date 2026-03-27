@@ -52,22 +52,7 @@ function toDate(val: any): Date | null {
   return null;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// parseSheet — lee cualquier hoja del inventario
-//
-// ESTRUCTURA REAL DEL EXCEL (confirmada analizando el archivo):
-//   Fila 0: vacía
-//   Fila 1: título del formato
-//   Fila 2: código
-//   Fila 3: versión
-//   Fila 4: subtítulo (en algunas hojas)
-//   Fila 5: nombre/cargo del responsable
-//   Fila 6: vacía
-//   Fila 7: ENCABEZADOS REALES  ← HEADER_ROW = 7
-//   Fila 8+: datos
-//
-// La col[0] (columna A) siempre es None en el inventario → startCol = 1
-// Los datos reales empiezan en col[1] (columna B).
+
 // ─────────────────────────────────────────────────────────────────────────────
 function parseSheet(sheet: XLSX.WorkSheet): Record<string, any>[] {
   const rawRows = XLSX.utils.sheet_to_json(sheet, {
@@ -78,7 +63,7 @@ function parseSheet(sheet: XLSX.WorkSheet): Record<string, any>[] {
   // CORRECCIÓN: el header real está en el índice 7, no en el 10.
   // El índice 10 apuntaba a una fila de datos, por lo que todos los campos
   // resultaban null y se saltaban todos los registros.
-  const HEADER_ROW = 7;
+  const HEADER_ROW = 9;
   const headerRow = rawRows[HEADER_ROW] as any[];
 
   // La columna A (índice 0) siempre está vacía en este formato → saltar
@@ -110,83 +95,107 @@ interface Resumen {
 // ─────────────────────────────────────────────────────────────────────────────
 // SERVIDORES — llave compuesta: codigoServicio + nombre
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// SERVIDORES — Lógica de Identidad Dual (Nombre / IP)
+// ─────────────────────────────────────────────────────────────────────────────
+
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SERVIDORES — VALIDACIÓN MÁXIMA (Identidad: Nombre, IP o Contrato)
+// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// SERVIDORES — VALIDACIÓN TOTAL (Rescata N/A, IPs y Contratos)
+// ─────────────────────────────────────────────────────────────────────────────
 async function importarServidores(workbook: XLSX.WorkBook, autor: string, resumen: Resumen) {
   const sheet = workbook.Sheets["InventarioServidores"];
   if (!sheet) { console.warn("⚠️  InventarioServidores no encontrada"); return; }
 
   const rows = parseSheet(sheet);
 
-  for (const row of rows) {
-    const nombre         = toStr(row["Nombre del Servidor"]);
-    const codigoServicio = toStr(row["Código de Servicio"]);
-    if (!nombre && !codigoServicio) continue;
+  // ─────────────────────────────────────────────────────────────────────────────
+// SERVIDORES — VALIDACIÓN EXTREMA PARA LLEGAR A LOS 190
+// ─────────────────────────────────────────────────────────────────────────────
+for (const row of rows) {
+  const nombreRaw = toStr(row["Nombre del Servidor"]);
+  const ipInterna = toStr(row["Dirección IP"]);
+  const contrato  = toStr(row["Contrato Asociado"]);
 
-    const datosServidor = {
-      monitoreo:          toStr(row["Monitoreo"]),
-      backup:             toStr(row["Backup"]),
-      ipInterna:          toStr(row["Dirección IP"]),
-      ipGestion:          toStr(row["IP de Gestion"]),
-      ipServicio:         toStr(row["IP de Servicio"]),
-      ambiente:           toStr(row["Ambiente"]),
-      tipoServidor:       toStr(row["Tipo de Servidor"]),
-      appSoporta:         toStr(row["Aplicación que soporta"]),
-      vcpu:               toInt(row["vCPU"]),
-      vramMb:             toInt(row["vRAM"]),
-      sistemaOperativo:   toStr(row["Sistema Operativo"]),
-      fechaFinSoporte:    toDate(row["Fecha Fin Soporte"]),
-      rutasBackup:        toStr(row["Rutas de Backup"]),
-      contratoQueSoporta: toStr(row["Contrato que lo soporta"]),
-    };
+  // 1. FILTRO ESTRICTO: Si no hay Nombre Y no hay IP, la fila se ignora.
+  // Esto evita los registros basura y los nombres de contrato feos.
+  if (!nombreRaw && !ipInterna) continue;
 
-    try {
-      const existing = await prisma.asset.findFirst({
-        where: { tipo: "SERVIDOR", codigoServicio, nombre },
+  // 2. NOMBRE DEL ACTIVO: Usamos el nombre del Excel. 
+  // Si no tiene, usamos la IP. NADA MÁS.
+  const nombreFinal = nombreRaw || ipInterna;
+
+  const datosServidor = {
+    monitoreo:          toStr(row["Monitoreo"]),
+    backup:             toStr(row["Backup"]),
+    ipInterna:          ipInterna,
+    ipGestion:          toStr(row["IP de Gestion"]),
+    ipServicio:         toStr(row["IP de Servicio"]),
+    ambiente:           toStr(row["Ambiente"]),
+    tipoServidor:       toStr(row["Tipo de Servidor"]),
+    appSoporta:         toStr(row["Aplicación que soporta"]),
+    vcpu:               toInt(row["vCPU"]),
+    vramMb:             toInt(row["vRAM"]),
+    sistemaOperativo:   toStr(row["Sistema Operativo"]),
+    fechaFinSoporte:    toDate(row["Fecha Fin Soporte"]),
+    rutasBackup:        toStr(row["Rutas de Backup"]),
+    contratoQueSoporta: contrato,
+  };
+
+  try {
+    // 3. LLAVE COMPUESTA: Buscamos que coincida el Nombre Y la IP.
+    // Esto es lo que permite que si hay 2 servidores con el mismo nombre
+    // pero distinta IP, se creen como 2 registros separados (Llegando a los 190).
+    const existing = await prisma.asset.findFirst({
+      where: {
+        tipo: "SERVIDOR",
+        nombre: nombreFinal,
+        servidor: {
+          ipInterna: ipInterna // La IP es parte de la identidad
+        }
+      },
+      include: { servidor: true }
+    });
+
+    if (!existing) {
+      // 4. CREACIÓN
+      const asset = await prisma.asset.create({
+        data: {
+          tipo: "SERVIDOR",
+          nombre: nombreFinal,
+          codigoServicio: toStr(row["Código de Servicio"]),
+          ubicacion:      toStr(row["Ubicación"]),
+          propietario:    toStr(row["Propietario"]),
+          custodio:       toStr(row["Custodio"]),
+          servidor: { create: datosServidor },
+        },
       });
-
-      if (!existing) {
-        const asset = await prisma.asset.create({
-          data: {
-            tipo: "SERVIDOR", nombre, codigoServicio,
-            ubicacion:   toStr(row["Ubicación"]),
-            propietario: toStr(row["Propietario"]),
-            custodio:    toStr(row["Custodio"]),
-            servidor: { create: datosServidor },
-          },
-        });
-        const nota = toStr(row["Bitacora"]);
-        await prisma.bitacora.create({ data: {
-          assetId: asset.id, autor, tipoEvento: "IMPORTACION",
-          descripcion: nota ? `Importado desde Excel. Nota: ${nota}` : "Importado desde Excel.",
-        }});
-        resumen.creados++;
-      } else {
-        await prisma.servidor.upsert({
-          where:  { assetId: existing.id },
-          update: datosServidor,
-          create: { assetId: existing.id, ...datosServidor },
-        });
-        await prisma.asset.update({
-          where: { id: existing.id },
-          data: {
-            nombre:      nombre ?? existing.nombre,
-            ubicacion:   toStr(row["Ubicación"]),
-            propietario: toStr(row["Propietario"]),
-            custodio:    toStr(row["Custodio"]),
-          },
-        });
-        await prisma.bitacora.create({ data: {
-          assetId: existing.id, autor, tipoEvento: "IMPORTACION",
-          descripcion: "Registro actualizado desde Excel.",
-        }});
-        resumen.actualizados++;
-      }
-    } catch (e: any) {
-      console.error(`  ❌ Servidor "${nombre ?? codigoServicio}": ${e.message}`);
-      resumen.errores++;
+      resumen.creados++;
+    } else {
+      // 5. ACTUALIZACIÓN
+      await prisma.servidor.update({
+        where: { assetId: existing.id },
+        data: datosServidor,
+      });
+      await prisma.asset.update({
+        where: { id: existing.id },
+        data: {
+          ubicacion: toStr(row["Ubicación"]),
+          codigoServicio: toStr(row["Código de Servicio"]),
+        },
+      });
+      resumen.actualizados++;
     }
+  } catch (e: any) {
+    console.error(`❌ Error en: ${nombreFinal} -> ${e.message}`);
+    resumen.errores++;
   }
 }
-
+}
 // ─────────────────────────────────────────────────────────────────────────────
 // REDES — llave compuesta: nombre + serial
 // ─────────────────────────────────────────────────────────────────────────────
@@ -206,10 +215,10 @@ async function importarRedes(workbook: XLSX.WorkBook, autor: string, resumen: Re
       serial,
       mac:                toStr(row["Mac"]),
       modelo:             toStr(row["Modelo"]),
-      fechaFinSoporte:    toDate(row["Fecha Fin de soporte"]),
+     fechaFinSoporte: toDate(row["Fecha Fin Soporte"]),
       ipGestion:          fixIp(row["IP de Gestion"]),
       estado:             toStr(row["Estado"]),
-      contratoQueSoporta: toStr(row["Contrato que lo soporta"]),
+      contratoQueSoporta: toStr(row["Contrato Asociado"]),
     };
 
     try {
@@ -347,7 +356,7 @@ async function importarBD(workbook: XLSX.WorkBook, autor: string, resumen: Resum
   const rows = parseSheet(sheet);
 
   for (const row of rows) {
-    const nombre = toStr(row["Nombre del Base de Datos"]);
+   const nombre = toStr(row["Nombre"]);
     if (!nombre) continue;
 
     const servidor1 = toStr(row["Servidor 1"]);
@@ -357,7 +366,7 @@ async function importarBD(workbook: XLSX.WorkBook, autor: string, resumen: Resum
       servidor2:          toStr(row["Servidor 2"]),
       racScan:            toStr(row["Rac-Scan"]),
       ambiente:           toStr(row["Ambiente"]),
-      appSoporta:         toStr(row["Aplicación que soporta"]),
+      appSoporta: toStr(row["Aplicación que Soporta"]),
       versionBd:          toStr(row["Version de BD"]),
       fechaFinalSoporte:  toDate(row["Fecha Final de soporte"]),
       contenedorFisico:   toStr(row["Contenedor Fisico"]),

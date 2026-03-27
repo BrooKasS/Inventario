@@ -20,6 +20,16 @@ export const createAsset = (data: any) =>
 
 export const updateAsset = (id: string, data: any) =>
   api.patch(`/assets/${id}`, data).then(r => r.data.data)
+export async function descargarWordMovil(id: string) {
+  const res = await fetch(`http://localhost:3000/api/assets/${id}/word`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `FR-GTE-02-044_${id}.docx`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export const getBitacora = (id: string) =>
   api.get(`/assets/${id}/bitacora`).then(r => r.data.data);

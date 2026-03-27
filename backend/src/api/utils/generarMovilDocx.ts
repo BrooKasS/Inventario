@@ -1,442 +1,564 @@
 import {
-  Document,
-  Packer,
-  Paragraph,
-  TextRun,
-  Table,
-  TableRow,
-  TableCell,
-  BorderStyle,
-  WidthType,
-  ShadingType,
-  AlignmentType,
-  VerticalAlign,
-  HeightRule,
-  convertInchesToTwip,
+  Document, Packer, Table, TableRow, TableCell, Paragraph, TextRun,
+  BorderStyle, WidthType, ShadingType, VerticalAlign, AlignmentType,
+  Header, ImageRun, PageOrientation,
 } from "docx";
 
-interface MovilDocxData {
-  numeroCaso?: string | null;
-  region?: string | null;
-  dependencia?: string | null;
-  nombreUsuario?: string | null;
-  sede?: string | null;
-  cedula?: string | null;
-  fecha?: string | null;
-  usuarioRed?: string | null;
-  marca?: string | null;
-  modelo?: string | null;
-  serial?: string | null;
-  imei1?: string | null;
-  imei2?: string | null;
-  sim?: string | null;
-  numeroLinea?: string | null;
-  observacionesEntrega?: string | null;
-  observacionesDevolucion?: string | null;
+/* ─── Tipos ─── */
+interface DatosMovil {
+  // Asset base
+  nombre: string | null;
+  // Movil
+  numeroCaso: string | null;
+  region: string | null;
+  dependencia: string | null;
+  sede: string | null;
+  cedula: string | null;
+  usuarioRed: string | null;
+  uni: string | null;
+  marca: string | null;
+  modelo: string | null;
+  serial: string | null;
+  imei1: string | null;
+  imei2: string | null;
+  sim: string | null;
+  numeroLinea: string | null;
+  fechaEntrega: string | Date | null;
+  observacionesEntrega: string | null;
+  fechaDevolucion: string | Date | null;
+  observacionesDevolucion: string | null;
 }
 
-const BORDER_STYLE = {
-  style: BorderStyle.SINGLE,
-  size: 8,
-  color: "000000",
-};
+/* ─── Helpers ─── */
+const val = (v: string | null | undefined) => v ?? "";
 
-const GRAY_SHADING = {
-  type: ShadingType.CLEAR,
-  color: "D9D9D9",
-};
+function formatFecha(f: string | Date | null | undefined): string {
+  if (!f) return "";
+  const d = typeof f === "string" ? new Date(f) : f;
+  return d.toLocaleDateString("es-CO", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
 
-function createBorderedCell(text: string, isBold = false, isGray = false, colspan = 1): TableCell {
+/* ─── Estilos de borde ─── */
+const BORDER_SINGLE = { style: BorderStyle.SINGLE, size: 8, color: "000000" };
+const BORDER_NIL    = { style: BorderStyle.NIL,    size: 0, color: "000000" };
+const ALL_BORDERS   = { top: BORDER_SINGLE, bottom: BORDER_SINGLE, left: BORDER_SINGLE, right: BORDER_SINGLE };
+const SHADING_GRAY  = { fill: "D9D9D9", type: ShadingType.CLEAR, color: "000000" };
+const SHADING_CLEAR = { fill: "auto",   type: ShadingType.CLEAR, color: "auto" };
+const CELL_MARGINS  = { top: 80, bottom: 80, left: 100, right: 100 };
+
+/* ─── TextRun helpers ─── */
+function labelRun(text: string) {
+  return new TextRun({
+    text,
+    bold: true,
+    font: "Calibri",
+    size: 20,
+    color: "000000",
+  });
+}
+
+function valueRun(text: string) {
+  return new TextRun({
+    text,
+    font: "Calibri",
+    size: 20,
+    color: "000000",
+  });
+}
+
+function headerRun(text: string) {
+  return new TextRun({
+    text,
+    bold: true,
+    font: "Calibri",
+    size: 20,
+    color: "000000",
+  });
+}
+
+/* ─── Celda con label (izquierda) ─── */
+function labelCell(text: string, width: number, borders = ALL_BORDERS) {
   return new TableCell({
-    text: text || "",
-    borders: {
-      top: BORDER_STYLE,
-      bottom: BORDER_STYLE,
-      left: BORDER_STYLE,
-      right: BORDER_STYLE,
-    },
-    shading: isGray ? GRAY_SHADING : undefined,
+    width: { size: width, type: WidthType.DXA },
+    borders,
+    shading: SHADING_CLEAR,
+    verticalAlign: VerticalAlign.CENTER,
+    margins: CELL_MARGINS,
     children: [
       new Paragraph({
-        text,
-        run: new TextRun({
-          font: "Calibri",
-          size: isBold ? 40 : 24, // 20 half-points = 10pt (bold), 24 = 12pt
-          bold: isBold,
-        }),
+        spacing: { after: 0, line: 240 },
+        children: [labelRun(text)],
       }),
     ],
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    verticalAlign: VerticalAlign.CENTER,
-    margins: { top: 50, bottom: 50, left: 50, right: 50 },
   });
 }
 
-export async function generarMovilDocx(data: MovilDocxData): Promise<Buffer> {
-  const recomendaciones = [
-    "El equipo móvil debe utilizarse principalmente para actividades relacionadas con el trabajo.",
-    "No se deben almacenar, compartir o transmitir datos sensibles o confidenciales sin medidas de seguridad adecuadas, como cifrado o autenticación de dos factores.",
-    "Está prohibida la instalación de aplicaciones no autorizadas o sospechosas que puedan comprometer la seguridad del equipo o la privacidad de los datos.",
-    "Los dispositivos deben estar protegidos con contraseñas seguras, huella dactilar o reconocimiento facial. Las contraseñas deben cambiarse regularmente.",
-    "Los equipos móviles deben ser manipulados únicamente por personal autorizado en caso de reparaciones o mantenimiento, evitando el uso de servicios no certificados.",
-    "El usuario es responsable de cualquier daño causado por el uso inapropiado del dispositivo.",
-    "En caso de pérdida o robo debe ser reportado inmediatamente a la Vicepresidencia de Tecnología e Información.",
-  ];
-
-  const recomendacionesText = recomendaciones
-    .map((r, i) => `${i + 1}. ${r}`)
-    .join("\n\n");
-
-  // TABLA 1: DATOS PERSONALES + EQUIPO ENTREGADO
-  const tabla1 = new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    rows: [
-      // Fila 1: # Caso + Región
-      new TableRow({
-        cells: [
-          createBorderedCell(`# Caso: ${data.numeroCaso || ""}`),
-          createBorderedCell(`Región/Departamento: ${data.region || ""}`),
-        ],
-      }),
-      // Fila 2: Dependencia + Nombre
-      new TableRow({
-        cells: [
-          createBorderedCell(`Dependencia/Área: ${data.dependencia || ""}`),
-          createBorderedCell(`Nombre: ${data.nombreUsuario || ""}`),
-        ],
-      }),
-      // Fila 3: Sede + Cédula
-      new TableRow({
-        cells: [
-          createBorderedCell(`Sede: ${data.sede || ""}`),
-          createBorderedCell(`C.C.: ${data.cedula || ""}`),
-        ],
-      }),
-      // Fila 4: Fecha + Usuario Red
-      new TableRow({
-        cells: [
-          createBorderedCell(`Fecha: ${data.fecha || ""}`),
-          createBorderedCell(`Usuario de red: ${data.usuarioRed || ""}`),
-        ],
-      }),
-      // Fila 5: Separador vacío
-      new TableRow({
-        cells: [createBorderedCell(""), createBorderedCell("")],
-      }),
-      // Fila 6: DATOS DE EQUIPO ENTREGADO (GRIS)
-      new TableRow({
-        cells: [
-          new TableCell({
-            columnSpan: 2,
-            text: "DATOS DE EQUIPO ENTREGADO",
-            borders: {
-              top: BORDER_STYLE,
-              bottom: BORDER_STYLE,
-              left: BORDER_STYLE,
-              right: BORDER_STYLE,
-            },
-            shading: GRAY_SHADING,
-            children: [
-              new Paragraph({
-                text: "DATOS DE EQUIPO ENTREGADO",
-                run: new TextRun({
-                  font: "Calibri",
-                  size: 40,
-                  bold: true,
-                }),
-              }),
-            ],
-          }),
-        ],
-      }),
-      // Fila 7: CELULAR + UNI:
-      new TableRow({
-        cells: [createBorderedCell("CELULAR"), createBorderedCell("UNI:")],
-      }),
-      // Fila 8: MARCA
-      new TableRow({
-        cells: [createBorderedCell("MARCA"), createBorderedCell(data.marca || "")],
-      }),
-      // Fila 9: MODELO
-      new TableRow({
-        cells: [createBorderedCell("MODELO"), createBorderedCell(data.modelo || "")],
-      }),
-      // Fila 10: SERIAL
-      new TableRow({
-        cells: [createBorderedCell("SERIAL"), createBorderedCell(data.serial || "")],
-      }),
-      // Fila 11: IMEI 1
-      new TableRow({
-        cells: [
-          createBorderedCell("IMEI 1"),
-          createBorderedCell(data.imei1 || ""),
-        ],
-      }),
-      // Fila 12: IMEI 2
-      new TableRow({
-        cells: [
-          createBorderedCell("IMEI 2"),
-          createBorderedCell(data.imei2 || ""),
-        ],
-      }),
-      // Fila 13: SIM
-      new TableRow({
-        cells: [createBorderedCell("SIM"), createBorderedCell(data.sim || "")],
-      }),
-      // Fila 14: NÚMERO DE LÍNEA
-      new TableRow({
-        cells: [
-          createBorderedCell("NUMERO DE LINEA"),
-          createBorderedCell(data.numeroLinea || ""),
-        ],
-      }),
-      // Fila 15: Recomendaciones de Uso (GRIS)
-      new TableRow({
-        cells: [
-          new TableCell({
-            columnSpan: 2,
-            text: "Recomendaciones de Uso",
-            borders: {
-              top: BORDER_STYLE,
-              bottom: BORDER_STYLE,
-              left: BORDER_STYLE,
-              right: BORDER_STYLE,
-            },
-            shading: GRAY_SHADING,
-            children: [
-              new Paragraph({
-                text: "Recomendaciones de Uso",
-                run: new TextRun({
-                  font: "Calibri",
-                  size: 40,
-                  bold: true,
-                }),
-              }),
-            ],
-          }),
-        ],
-      }),
-      // Fila 16: Bullets de recomendaciones
-      new TableRow({
-        cells: [
-          new TableCell({
-            columnSpan: 2,
-            borders: {
-              top: BORDER_STYLE,
-              bottom: BORDER_STYLE,
-              left: BORDER_STYLE,
-              right: BORDER_STYLE,
-            },
-            children: recomendaciones.map(
-              (rec, i) =>
-                new Paragraph({
-                  text: `${i + 1}. ${rec}`,
-                  run: new TextRun({
-                    font: "Calibri",
-                    size: 24,
-                  }),
-                  spacing: { line: 240, lineRule: "auto" },
-                })
-            ),
-          }),
-        ],
-      }),
-      // Fila 17: OBSERVACIONES (GRIS)
-      new TableRow({
-        cells: [
-          new TableCell({
-            columnSpan: 2,
-            text: "OBSERVACIONES",
-            borders: {
-              top: BORDER_STYLE,
-              bottom: BORDER_STYLE,
-              left: BORDER_STYLE,
-              right: BORDER_STYLE,
-            },
-            shading: GRAY_SHADING,
-            children: [
-              new Paragraph({
-                text: "OBSERVACIONES",
-                run: new TextRun({
-                  font: "Calibri",
-                  size: 40,
-                  bold: true,
-                }),
-              }),
-            ],
-          }),
-        ],
-      }),
-      // Fila 18: Observaciones Entrega
-      new TableRow({
-        cells: [
-          new TableCell({
-            columnSpan: 2,
-            text: data.observacionesEntrega || "",
-            borders: {
-              top: BORDER_STYLE,
-              bottom: BORDER_STYLE,
-              left: BORDER_STYLE,
-              right: BORDER_STYLE,
-            },
-            children: [
-              new Paragraph({
-                text: data.observacionesEntrega || "",
-                run: new TextRun({
-                  font: "Calibri",
-                  size: 24,
-                }),
-              }),
-            ],
-          }),
-        ],
-      }),
-      // Fila 19: Firma
-      new TableRow({
-        cells: [
-          createBorderedCell("Firma:"),
-          createBorderedCell(""),
-        ],
+/* ─── Celda con valor (derecha) ─── */
+function valueCell(text: string, width: number, borders = ALL_BORDERS, span?: number) {
+  return new TableCell({
+    width: { size: width, type: WidthType.DXA },
+    columnSpan: span,
+    borders,
+    shading: SHADING_CLEAR,
+    verticalAlign: VerticalAlign.CENTER,
+    margins: CELL_MARGINS,
+    children: [
+      new Paragraph({
+        spacing: { after: 0, line: 240 },
+        children: [valueRun(text)],
       }),
     ],
   });
+}
 
-  // TABLA 2: DATOS DE EQUIPO DEVUELTO (vacía para llenar a mano)
-  const tabla2 = new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    rows: [
-      // Fila 20: DATOS DE EQUIPO DEVUELTO (GRIS)
-      new TableRow({
-        cells: [
-          new TableCell({
-            columnSpan: 2,
-            text: "DATOS DE EQUIPO DEVUELTO",
-            borders: {
-              top: BORDER_STYLE,
-              bottom: BORDER_STYLE,
-              left: BORDER_STYLE,
-              right: BORDER_STYLE,
-            },
-            shading: GRAY_SHADING,
-            children: [
-              new Paragraph({
-                text: "DATOS DE EQUIPO DEVUELTO",
-                run: new TextRun({
-                  font: "Calibri",
-                  size: 40,
-                  bold: true,
-                }),
-              }),
-            ],
-          }),
-        ],
-      }),
-      // Fila 21: CELULAR + UNI:
-      new TableRow({
-        cells: [createBorderedCell("CELULAR"), createBorderedCell("UNI:")],
-      }),
-      // Filas 22-28: Campos vacíos para llenar a mano
-      new TableRow({
-        cells: [createBorderedCell("MARCA"), createBorderedCell("")],
-      }),
-      new TableRow({
-        cells: [createBorderedCell("MODELO"), createBorderedCell("")],
-      }),
-      new TableRow({
-        cells: [createBorderedCell("SERIAL"), createBorderedCell("")],
-      }),
-      new TableRow({
-        cells: [createBorderedCell("IMEI 1"), createBorderedCell("")],
-      }),
-      new TableRow({
-        cells: [createBorderedCell("IMEI 2"), createBorderedCell("")],
-      }),
-      new TableRow({
-        cells: [createBorderedCell("SIM"), createBorderedCell("")],
-      }),
-      new TableRow({
-        cells: [createBorderedCell("NUMERO DE LINEA"), createBorderedCell("")],
-      }),
-      // Fila 29: OBSERVACIONES (GRIS)
-      new TableRow({
-        cells: [
-          new TableCell({
-            columnSpan: 2,
-            text: "OBSERVACIONES",
-            borders: {
-              top: BORDER_STYLE,
-              bottom: BORDER_STYLE,
-              left: BORDER_STYLE,
-              right: BORDER_STYLE,
-            },
-            shading: GRAY_SHADING,
-            children: [
-              new Paragraph({
-                text: "OBSERVACIONES",
-                run: new TextRun({
-                  font: "Calibri",
-                  size: 40,
-                  bold: true,
-                }),
-              }),
-            ],
-          }),
-        ],
-      }),
-      // Fila 30: Observaciones vacía para llenar a mano
-      new TableRow({
-        cells: [
-          new TableCell({
-            columnSpan: 2,
-            text: "",
-            borders: {
-              top: BORDER_STYLE,
-              bottom: BORDER_STYLE,
-              left: BORDER_STYLE,
-              right: BORDER_STYLE,
-            },
-            children: [new Paragraph("")],
-          }),
-        ],
-      }),
-      // Fila 31: Firma
-      new TableRow({
-        cells: [
-          createBorderedCell("Firma:"),
-          createBorderedCell(""),
-        ],
-      }),
+/* ─── Fila label | valor (2 columnas) ─── */
+function labelValueRow(label: string, value: string, labelW = 4272, valueW = 5763): TableRow {
+  return new TableRow({
+    height: { value: 280, rule: "atLeast" },
+    children: [
+      labelCell(label, labelW),
+      valueCell(value, valueW, ALL_BORDERS, 4),
     ],
   });
+}
 
-  const document = new Document({
-    sections: [
-      {
-        margins: {
-          top: 567,
-          right: 1274,
-          bottom: 1417,
-          left: 1701,
-        },
+/* ─── Fila header gris (full width) ─── */
+function grayHeaderRow(text: string, totalW = 10035): TableRow {
+  return new TableRow({
+    height: { value: 300, rule: "atLeast" },
+    children: [
+      new TableCell({
+        width: { size: totalW, type: WidthType.DXA },
+        columnSpan: 5,
+        borders: ALL_BORDERS,
+        shading: SHADING_GRAY,
+        verticalAlign: VerticalAlign.CENTER,
+        margins: CELL_MARGINS,
         children: [
-          // Header con título
           new Paragraph({
-            text: "FORMATO ENTREGA EQUIPOS MOVILES VTI",
-            run: new TextRun({
-              font: "Calibri",
-              size: 40,
-              bold: true,
-            }),
             alignment: AlignmentType.CENTER,
-            spacing: { after: 400 },
+            spacing: { after: 0, line: 240 },
+            children: [headerRun(text)],
           }),
-          tabla1,
-          new Paragraph({ text: "" }),
-          tabla2,
         ],
-      },
+      }),
+    ],
+  });
+}
+
+/* ─── Fila de datos equipo: LABEL | UNI: valor ─── */
+function equipoHeaderRow(labelText: string, uniLabel: string, uniVal: string, totalW = 10035): TableRow {
+  return new TableRow({
+    height: { value: 200, rule: "atLeast" },
+    children: [
+      new TableCell({
+        width: { size: 4272, type: WidthType.DXA },
+        borders: { top: BORDER_NIL, bottom: BORDER_SINGLE, left: BORDER_SINGLE, right: BORDER_SINGLE },
+        shading: SHADING_CLEAR,
+        verticalAlign: VerticalAlign.CENTER,
+        margins: CELL_MARGINS,
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 0, line: 240 },
+            children: [headerRun(labelText)],
+          }),
+        ],
+      }),
+      new TableCell({
+        width: { size: 1435, type: WidthType.DXA },
+        borders: { top: BORDER_SINGLE, bottom: BORDER_NIL, left: BORDER_NIL, right: BORDER_SINGLE },
+        shading: SHADING_CLEAR,
+        verticalAlign: VerticalAlign.CENTER,
+        margins: CELL_MARGINS,
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 0, line: 240 },
+            children: [headerRun(`${uniLabel} `)],
+          }),
+        ],
+      }),
+      new TableCell({
+        width: { size: 4305, type: WidthType.DXA },
+        columnSpan: 3,
+        borders: { top: BORDER_SINGLE, bottom: BORDER_SINGLE, left: BORDER_NIL, right: BORDER_SINGLE },
+        shading: SHADING_CLEAR,
+        verticalAlign: VerticalAlign.CENTER,
+        margins: CELL_MARGINS,
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 0, line: 240 },
+            children: [valueRun(uniVal)],
+          }),
+        ],
+      }),
+    ],
+  });
+}
+
+/* ─── Fila simple centrada label | valor ─── */
+function simpleRow(label: string, value: string): TableRow {
+  return new TableRow({
+    height: { value: 280, rule: "atLeast" },
+    children: [
+      new TableCell({
+        width: { size: 4272, type: WidthType.DXA },
+        borders: { top: BORDER_NIL, bottom: BORDER_SINGLE, left: BORDER_SINGLE, right: BORDER_SINGLE },
+        shading: SHADING_CLEAR,
+        verticalAlign: VerticalAlign.CENTER,
+        margins: CELL_MARGINS,
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 0, line: 240 },
+            children: [headerRun(label)],
+          }),
+        ],
+      }),
+      new TableCell({
+        width: { size: 5763, type: WidthType.DXA },
+        columnSpan: 4,
+        borders: { top: BORDER_SINGLE, bottom: BORDER_NIL, left: BORDER_NIL, right: BORDER_SINGLE },
+        shading: SHADING_CLEAR,
+        verticalAlign: VerticalAlign.CENTER,
+        margins: CELL_MARGINS,
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 0, line: 240 },
+            children: [valueRun(value)],
+          }),
+        ],
+      }),
+    ],
+  });
+}
+
+/* ─── Fila observaciones (full width, alta) ─── */
+function obsRow(text: string, height = 800, totalW = 10035): TableRow {
+  return new TableRow({
+    height: { value: height, rule: "atLeast" },
+    children: [
+      new TableCell({
+        width: { size: totalW, type: WidthType.DXA },
+        columnSpan: 5,
+        borders: ALL_BORDERS,
+        shading: SHADING_CLEAR,
+        verticalAlign: VerticalAlign.TOP,
+        margins: CELL_MARGINS,
+        children: [
+          new Paragraph({
+            spacing: { after: 0, line: 240 },
+            children: [valueRun(text)],
+          }),
+        ],
+      }),
+    ],
+  });
+}
+
+/* ─── Fila firma ─── */
+function firmaRow(totalW = 10035): TableRow {
+  return new TableRow({
+    height: { value: 700, rule: "atLeast" },
+    children: [
+      new TableCell({
+        width: { size: totalW, type: WidthType.DXA },
+        columnSpan: 5,
+        borders: ALL_BORDERS,
+        shading: SHADING_CLEAR,
+        verticalAlign: VerticalAlign.CENTER,
+        margins: CELL_MARGINS,
+        children: [
+          new Paragraph({
+            spacing: { after: 0, line: 240 },
+            children: [
+              new TextRun({ text: "        ", font: "Calibri", size: 20 }),
+              new TextRun({ text: "Firma: ", bold: true, font: "Calibri", size: 24, color: "000000" }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+}
+
+/* ══════════════════════════════════════════════
+   FUNCIÓN PRINCIPAL
+══════════════════════════════════════════════ */
+export async function generarWordMovil(datos: DatosMovil): Promise<Buffer> {
+  const fechaEntrega   = formatFecha(datos.fechaEntrega);
+  const fechaDevolucion = formatFecha(datos.fechaDevolucion);
+
+  /* ── TABLA 1: ENTREGA ── */
+  const tabla1 = new Table({
+    width: { size: 10035, type: WidthType.DXA },
+    columnWidths: [4272, 1435, 3132, 1173, 23],
+    rows: [
+      // Fila 1: # Caso | Región
+      labelValueRow(`# Caso: ${val(datos.numeroCaso)}`, `Región/Departamento: ${val(datos.region)}`),
+
+      // Fila 2: Dependencia | Nombre
+      labelValueRow(`Dependencia/Área: ${val(datos.dependencia)}`, `Nombre: ${val(datos.nombre)}`),
+
+      // Fila 3: Sede | C.C.
+      labelValueRow(`Sede: ${val(datos.sede)}`, `C.C.: ${val(datos.cedula)}`),
+
+      // Fila 4: Fecha | Usuario de red
+      labelValueRow(`Fecha: ${fechaEntrega}`, `Usuario de red: ${val(datos.usuarioRed)}`),
+
+      // Separador vacío
+      new TableRow({
+        height: { value: 60, rule: "exact" },
+        children: [
+          new TableCell({
+            width: { size: 10035, type: WidthType.DXA },
+            columnSpan: 5,
+            borders: { top: BORDER_NIL, bottom: BORDER_NIL, left: BORDER_NIL, right: BORDER_NIL },
+            shading: SHADING_CLEAR,
+            children: [new Paragraph({ spacing: { after: 0 }, children: [] })],
+          }),
+        ],
+      }),
+
+      // Header DATOS DE EQUIPO ENTREGADO
+      grayHeaderRow("DATOS DE EQUIPO ENTREGADO"),
+
+      // Sub-header CELULAR | UNI
+      equipoHeaderRow("CELULAR", "UNI:", val(datos.uni)),
+
+      // Filas de datos equipo
+      simpleRow("MARCA",          val(datos.marca)),
+      simpleRow("MODELO",         val(datos.modelo)),
+      simpleRow("SERIAL",         val(datos.serial)),
+      simpleRow("IMEI 1",         val(datos.imei1)),
+      simpleRow("IMEI 2",         val(datos.imei2)),
+      simpleRow("SIM",            val(datos.sim)),
+      simpleRow("NUMERO DE LINEA", val(datos.numeroLinea)),
+
+      // Recomendaciones de Uso (header gris)
+      grayHeaderRow("Recomendaciones de Uso"),
+
+      // Texto fijo recomendaciones
+      new TableRow({
+        height: { value: 400, rule: "atLeast" },
+        children: [
+          new TableCell({
+            width: { size: 10035, type: WidthType.DXA },
+            columnSpan: 5,
+            borders: ALL_BORDERS,
+            shading: SHADING_CLEAR,
+            verticalAlign: VerticalAlign.TOP,
+            margins: CELL_MARGINS,
+            children: [
+              new Paragraph({ spacing: { after: 0, line: 240 }, children: [new TextRun({ text: "1.  El equipo móvil debe utilizarse principalmente para actividades relacionadas con el trabajo.", font: "Calibri", size: 18, color: "000000" })] }),
+              new Paragraph({ spacing: { after: 0, line: 240 }, children: [new TextRun({ text: "2.  No se deben almacenar, compartir o transmitir datos sensibles o confidenciales sin medidas de seguridad adecuadas.", font: "Calibri", size: 18, color: "000000" })] }),
+              new Paragraph({ spacing: { after: 0, line: 240 }, children: [new TextRun({ text: "3.  Está prohibida la instalación de aplicaciones no autorizadas o sospechosas.", font: "Calibri", size: 18, color: "000000" })] }),
+              new Paragraph({ spacing: { after: 0, line: 240 }, children: [new TextRun({ text: "4.  Los dispositivos deben estar protegidos con contraseñas seguras, huella dactilar o reconocimiento facial.", font: "Calibri", size: 18, color: "000000" })] }),
+              new Paragraph({ spacing: { after: 0, line: 240 }, children: [new TextRun({ text: "5.  Los equipos móviles deben ser manipulados únicamente por personal autorizado en caso de reparaciones.", font: "Calibri", size: 18, color: "000000" })] }),
+              new Paragraph({ spacing: { after: 0, line: 240 }, children: [new TextRun({ text: "6.  El usuario es responsable de cualquier daño causado por el uso inapropiado del dispositivo.", font: "Calibri", size: 18, color: "000000" })] }),
+              new Paragraph({ spacing: { after: 0 },            children: [new TextRun({ text: "7.  En caso de pérdida o robo debe ser reportado inmediatamente a la Vicepresidencia de Tecnología e Información.", font: "Calibri", size: 18, color: "000000" })] }),
+            ],
+          }),
+        ],
+      }),
+
+      // OBSERVACIONES header
+      grayHeaderRow("OBSERVACIONES"),
+
+      // Observaciones entrega
+      obsRow(val(datos.observacionesEntrega)),
+
+      // Firma entrega
+      firmaRow(),
     ],
   });
 
-  return await Packer.toBuffer(document);
+  /* ── TABLA 2: DEVOLUCIÓN ── */
+  const tabla2 = new Table({
+    width: { size: 10093, type: WidthType.DXA },
+    columnWidths: [4248, 2835, 3010],
+    rows: [
+      // Header DATOS DE EQUIPO DEVUELTO
+      new TableRow({
+        height: { value: 300, rule: "atLeast" },
+        children: [
+          new TableCell({
+            width: { size: 10093, type: WidthType.DXA },
+            columnSpan: 3,
+            borders: ALL_BORDERS,
+            shading: SHADING_GRAY,
+            verticalAlign: VerticalAlign.CENTER,
+            margins: CELL_MARGINS,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 0, line: 240 },
+                children: [headerRun("DATOS DE EQUIPO DEVUELTO")],
+              }),
+            ],
+          }),
+        ],
+      }),
+
+      // Sub-header CELULAR | UNI (3 cols)
+      new TableRow({
+        height: { value: 200, rule: "atLeast" },
+        children: [
+          new TableCell({
+            width: { size: 4248, type: WidthType.DXA },
+            borders: ALL_BORDERS,
+            shading: SHADING_CLEAR,
+            verticalAlign: VerticalAlign.CENTER,
+            margins: CELL_MARGINS,
+            children: [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0, line: 240 }, children: [headerRun("CELULAR")] })],
+          }),
+          new TableCell({
+            width: { size: 2835, type: WidthType.DXA },
+            borders: ALL_BORDERS,
+            shading: SHADING_CLEAR,
+            verticalAlign: VerticalAlign.CENTER,
+            margins: CELL_MARGINS,
+            children: [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0, line: 240 }, children: [headerRun("UNI: ")] })],
+          }),
+          new TableCell({
+            width: { size: 3010, type: WidthType.DXA },
+            borders: ALL_BORDERS,
+            shading: SHADING_CLEAR,
+            verticalAlign: VerticalAlign.CENTER,
+            margins: CELL_MARGINS,
+            children: [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0, line: 240 }, children: [valueRun(val(datos.uni))] })],
+          }),
+        ],
+      }),
+
+      // Filas datos devolución (3 cols: label | span2)
+      ...["MARCA", "MODELO", "SERIAL", "IMEI 1", "IMEI 2", "SIM", "NUMERO DE LINEA"].map((label, i) => {
+        const values: Record<string, string> = {
+          "MARCA":          val(datos.marca),
+          "MODELO":         val(datos.modelo),
+          "SERIAL":         val(datos.serial),
+          "IMEI 1":         val(datos.imei1),
+          "IMEI 2":         val(datos.imei2),
+          "SIM":            val(datos.sim),
+          "NUMERO DE LINEA": val(datos.numeroLinea),
+        };
+        return new TableRow({
+          height: { value: 300, rule: "atLeast" },
+          children: [
+            new TableCell({
+              width: { size: 4248, type: WidthType.DXA },
+              borders: ALL_BORDERS,
+              shading: SHADING_CLEAR,
+              verticalAlign: VerticalAlign.CENTER,
+              margins: CELL_MARGINS,
+              children: [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0, line: 240 }, children: [headerRun(label)] })],
+            }),
+            new TableCell({
+              width: { size: 5845, type: WidthType.DXA },
+              columnSpan: 2,
+              borders: ALL_BORDERS,
+              shading: SHADING_CLEAR,
+              verticalAlign: VerticalAlign.CENTER,
+              margins: CELL_MARGINS,
+              children: [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0, line: 240 }, children: [valueRun(values[label] ?? "")] })],
+            }),
+          ],
+        });
+      }),
+
+      // OBSERVACIONES devolución header
+      new TableRow({
+        height: { value: 300, rule: "atLeast" },
+        children: [
+          new TableCell({
+            width: { size: 10093, type: WidthType.DXA },
+            columnSpan: 3,
+            borders: ALL_BORDERS,
+            shading: SHADING_GRAY,
+            verticalAlign: VerticalAlign.CENTER,
+            margins: CELL_MARGINS,
+            children: [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0, line: 240 }, children: [headerRun("OBSERVACIONES")] })],
+          }),
+        ],
+      }),
+
+      // Obs devolución
+      new TableRow({
+        height: { value: 800, rule: "atLeast" },
+        children: [
+          new TableCell({
+            width: { size: 10093, type: WidthType.DXA },
+            columnSpan: 3,
+            borders: ALL_BORDERS,
+            shading: SHADING_CLEAR,
+            verticalAlign: VerticalAlign.TOP,
+            margins: CELL_MARGINS,
+            children: [new Paragraph({ spacing: { after: 0, line: 240 }, children: [valueRun(val(datos.observacionesDevolucion))] })],
+          }),
+        ],
+      }),
+
+      // Fecha devolución
+      new TableRow({
+        height: { value: 300, rule: "atLeast" },
+        children: [
+          new TableCell({
+            width: { size: 10093, type: WidthType.DXA },
+            columnSpan: 3,
+            borders: ALL_BORDERS,
+            shading: SHADING_CLEAR,
+            verticalAlign: VerticalAlign.CENTER,
+            margins: CELL_MARGINS,
+            children: [new Paragraph({ spacing: { after: 0, line: 240 }, children: [labelRun(`Fecha de devolución: `), valueRun(fechaDevolucion)] })],
+          }),
+        ],
+      }),
+
+      // Firma devolución
+      new TableRow({
+        height: { value: 700, rule: "atLeast" },
+        children: [
+          new TableCell({
+            width: { size: 10093, type: WidthType.DXA },
+            columnSpan: 3,
+            borders: ALL_BORDERS,
+            shading: SHADING_CLEAR,
+            verticalAlign: VerticalAlign.CENTER,
+            margins: CELL_MARGINS,
+            children: [
+              new Paragraph({
+                spacing: { after: 0, line: 240 },
+                children: [
+                  new TextRun({ text: "        ", font: "Calibri", size: 20 }),
+                  new TextRun({ text: "Firma:", bold: true, font: "Calibri", size: 24, color: "000000" }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+
+  /* ── Documento ── */
+  const doc = new Document({
+    sections: [{
+      properties: {
+        page: {
+          size: { width: 11906, height: 16838 }, // A4
+          margin: { top: 567, right: 1274, bottom: 1417, left: 1701 },
+        },
+      },
+      children: [
+        tabla1,
+        new Paragraph({ spacing: { after: 200 }, children: [] }),
+        tabla2,
+      ],
+    }],
+  });
+
+  return await Packer.toBuffer(doc);
 }

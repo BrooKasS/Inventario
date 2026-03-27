@@ -6,6 +6,7 @@ import {
   UpsSection,
   BaseDatosSection,
   VpnSection,
+  MovilSection,
 } from "./TypeSections";
 import { BitacoraSection } from "./BitacoraSection";
 import { useAssetDetail } from "./useAssetDetail";
@@ -233,6 +234,19 @@ export default function AssetDetail() {
                 🗑 Eliminar
               </button>
 
+              {asset.tipo === "MOVIL" && (
+  <button onClick={async () => {
+    const { descargarWordMovil } = await import("../../api/client");
+    await descargarWordMovil(asset.id);
+  }} style={{
+    padding: "10px 22px", borderRadius: 8, border: "none",
+    background: C.grad, color: "#fff", fontWeight: 700,
+    cursor: "pointer", fontSize: 14,
+  }}>
+    📄 Descargar Formato
+  </button>
+)}
+
               <button
                 onClick={() => setEditing(true)}
                 style={{
@@ -322,6 +336,11 @@ export default function AssetDetail() {
         handleChange={handleChange}
       />
       <VpnSection
+        asset={asset}
+        editing={editing}
+        handleChange={handleChange}
+      />
+      <MovilSection
         asset={asset}
         editing={editing}
         handleChange={handleChange}
