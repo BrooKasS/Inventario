@@ -41,7 +41,7 @@ function prepararFilasActivos(assets: Asset[]) {
         "IP Gestión": s.ipGestion ?? "",
         "IP Servicio": s.ipServicio ?? "",
         vCPU: s.vcpu ?? "",
-        "vRAM (MB)": s.Mb ?? "",
+        "vRAM (MB)": s.vramMb ?? "",
         "Sistema Operativo": s.sistemaOperativo ?? s.sistemaOperativo ?? "", 
         Ambiente: s.ambiente ?? "",
         "Tipo Servidor": s.tipoServidor ?? "",
@@ -233,47 +233,35 @@ function setColsObservaciones(ws: any) {
   ];
 }
 
-/** Exporta Observaciones (Bitácora) a Excel — AHORA separando por hojas por Tipo */
-export async function exportarObservacionesExcel(rows: ObservacionRow[], nombre: string) {
+export async function exportarObservacionesExcel(
+  rows: ObservacionRow[],
+  nombre: string,
+  incluirTecnicos = false   // ← nuevo parámetro opcional
+): Promise<void> {
   if (!rows.length) return;
-  const XLSX = await import("xlsx");
-  const wb = XLSX.utils.book_new();
-
-  // (Opcional) Hoja consolidada
-  const wsTodas = XLSX.utils.json_to_sheet(rows);
-  setColsObservaciones(wsTodas);
-  XLSX.utils.book_append_sheet(wb, wsTodas, nombreHojaSeguro("Todas"));
-
-  // Agrupar por Tipo (usa los labels del propio row.Tipo: "Servidor", "Base de Datos", etc.)
-  const grupos = rows.reduce<Record<string, ObservacionRow[]>>((acc, r) => {
-    const key = (r.Tipo || "Otros").trim();
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(r);
-    return acc;
-  }, {});
-
-  // Crear una hoja por cada grupo
-  for (const [tipoSingular, lista] of Object.entries(grupos)) {
-    if (!lista.length) continue;
-    const ws = XLSX.utils.json_to_sheet(lista);
-    setColsObservaciones(ws);
-
-    // Convertir singular a plural para la hoja si coincide con nuestros mapeos
-    // "Servidor" -> "Servidores", "Base de Datos" -> "Bases de Datos", etc.
-    let nombreHoja = tipoSingular;
-    const singularToPlural: Record<string, string> = {
-      "Servidor": "Servidores",
-      "Base de Datos": "Bases de Datos",
-      "Red": "Red",
-      "UPS": "UPS",
-    };
-    if (singularToPlural[tipoSingular]) {
-      nombreHoja = singularToPlural[tipoSingular];
-    }
-    XLSX.utils.book_append_sheet(wb, ws, nombreHojaSeguro(nombreHoja));
+ 
+  const fecha = new Date().toISOString().slice(0, 10);
+ 
+  const res = await fetch("http://localhost:3000/api/assets/export-observaciones", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ rows, incluirTecnicos }),
+  });
+ 
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Error generando el Excel de observaciones");
   }
-
-  XLSX.writeFile(wb, `Observaciones_${nombre}_${fechaArchivo()}.xlsx`);
+ 
+  const blob    = await res.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const a       = document.createElement("a");
+  a.href        = blobUrl;
+  a.download    = `Observaciones_${nombre}_${fecha}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(blobUrl);
 }
 
 /** Exporta Observaciones (Bitácora) a PDF */

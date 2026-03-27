@@ -16,6 +16,9 @@ router.get("/deleted", asyncHandler(assetsController.getDeleted.bind(assetsContr
 router.post("/", asyncHandler(assetsController.createAsset.bind(assetsController)));
 
 
+router.post("/export-observaciones", assetsController.exportObservaciones);
+
+
 router.get("/export-excel", assetsController.exportExcel);
 
 

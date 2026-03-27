@@ -8,6 +8,7 @@ import { sanitizePayloadForFlow } from "../utils/flowSanitizer";
 import { prisma } from "../../config/database";
 import { generarWordMovil } from "../utils/generarMovilDocx";
 import { generarExcelInventario } from "../utils/ExportInventario";
+import { generarExcelObservaciones } from "../utils/exportObservaciones"
 const r = Router();
 
 export class AssetsController {
@@ -327,6 +328,32 @@ console.log("🔍 Primer asset:", JSON.stringify(assets[0], null, 2));
     } catch (error: any) {
       console.error("❌ Error exportando Excel:", error);
       return res.status(500).json({ success: false, error: "Error generando el Excel" });
+    }
+  }
+
+
+   async exportObservaciones(req: Request, res: Response) {
+    try {
+      const { rows, incluirTecnicos } = req.body;
+ 
+      if (!rows || !Array.isArray(rows) || rows.length === 0) {
+        return res.status(400).json({ success: false, error: "No hay observaciones para exportar" });
+      }
+ 
+      const buffer = await generarExcelObservaciones({
+        rows,
+        incluirTecnicos: incluirTecnicos ?? false,
+      });
+ 
+      const fecha = new Date().toISOString().slice(0, 10);
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader("Content-Disposition", `attachment; filename="Observaciones_${fecha}.xlsx"`);
+      res.setHeader("Content-Length", buffer.length);
+      return res.send(buffer);
+ 
+    } catch (error: any) {
+      console.error("❌ Error exportando observaciones:", error);
+      return res.status(500).json({ success: false, error: "Error generando el Excel de observaciones" });
     }
   }
  
