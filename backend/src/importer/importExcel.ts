@@ -1,5 +1,20 @@
 import * as XLSX from "xlsx";
-import { prisma } from "../config/database";
+import { AppDataSource } from "../config/database";
+import { Asset } from "../entities/Asset";
+import { Servidor } from "../entities/Servidor";
+import { Red } from "../entities/Red";
+import { Ups } from "../entities/Ups";
+import { BaseDatos } from "../entities/BaseDatos";
+import { Vpn } from "../entities/Vpn";
+import { Bitacora } from "../entities/Bitacora";
+
+const assetRepo = AppDataSource.getRepository(Asset);
+const servidorRepo = AppDataSource.getRepository(Servidor);
+const redRepo = AppDataSource.getRepository(Red);
+const upsRepo = AppDataSource.getRepository(Ups);
+const bdRepo = AppDataSource.getRepository(BaseDatos);
+const vpnRepo = AppDataSource.getRepository(Vpn);
+const bitacoraRepo = AppDataSource.getRepository(Bitacora);
 
 const NULL_STRINGS = new Set([
   "n/a", "na", "-", "--", "nan", "none",
@@ -150,44 +165,45 @@ for (const row of rows) {
     // 3. LLAVE COMPUESTA: Buscamos que coincida el Nombre Y la IP.
     // Esto es lo que permite que si hay 2 servidores con el mismo nombre
     // pero distinta IP, se creen como 2 registros separados (Llegando a los 190).
-    const existing = await prisma.asset.findFirst({
-      where: {
-        tipo: "SERVIDOR",
-        nombre: nombreFinal,
-        servidor: {
-          ipInterna: ipInterna // La IP es parte de la identidad
-        }
-      },
-      include: { servidor: true }
-    });
+    let existing: (Asset & { servidor: Servidor }) | null = null;
+    if (nombreFinal) {
+      existing = await assetRepo.findOne({
+        where: { tipo: "SERVIDOR", nombre: nombreFinal } as any,
+        relations: ["servidor"]
+      }) as any;
+      // Verificar que la IP interna coincida (para la llave compuesta)
+      if (existing && existing.servidor?.ipInterna !== ipInterna) {
+        existing = null; // No es el mismo, tratar como no encontrado
+      }
+    }
 
     if (!existing) {
       // 4. CREACIÓN
-      const asset = await prisma.asset.create({
-        data: {
-          tipo: "SERVIDOR",
-          nombre: nombreFinal,
-          codigoServicio: toStr(row["Código de Servicio"]),
-          ubicacion:      toStr(row["Ubicación"]),
-          propietario:    toStr(row["Propietario"]),
-          custodio:       toStr(row["Custodio"]),
-          servidor: { create: datosServidor },
-        },
+      const asset = assetRepo.create({
+        tipo: "SERVIDOR",
+        nombre: nombreFinal,
+        codigoServicio: toStr(row["Código de Servicio"]),
+        ubicacion:      toStr(row["Ubicación"]),
+        propietario:    toStr(row["Propietario"]),
+        custodio:       toStr(row["Custodio"]),
       });
+      const savedAsset = await assetRepo.save(asset);
+      
+      const servidor = servidorRepo.create({
+        ...datosServidor,
+        asset: { id: savedAsset.id } as any,
+      });
+      await servidorRepo.save(servidor);
       resumen.creados++;
     } else {
       // 5. ACTUALIZACIÓN
-      await prisma.servidor.update({
-        where: { assetId: existing.id },
-        data: datosServidor,
-      });
-      await prisma.asset.update({
-        where: { id: existing.id },
-        data: {
-          ubicacion: toStr(row["Ubicación"]),
-          codigoServicio: toStr(row["Código de Servicio"]),
-        },
-      });
+      await servidorRepo.update(
+        { asset: { id: existing.id } } as any,
+        datosServidor
+      );
+      existing.ubicacion = toStr(row["Ubicación"]);
+      existing.codigoServicio = toStr(row["Código de Servicio"]);
+      await assetRepo.save(existing);
       resumen.actualizados++;
     }
   } catch (e: any) {
@@ -222,50 +238,61 @@ async function importarRedes(workbook: XLSX.WorkBook, autor: string, resumen: Re
     };
 
     try {
-      const existing = await prisma.asset.findFirst({
-        where: {
-          tipo: "RED",
-          nombre,
-          red: { serial: serial ?? undefined },
-        },
-      });
+      let existing: (Asset & { red: Red }) | null = null;
+      if (nombre) {
+        existing = await assetRepo.findOne({
+          where: { tipo: "RED", nombre } as any,
+          relations: ["red"]
+        }) as any;
+        // Verificación adicional del serial
+        if (existing && serial && existing.red?.serial !== serial) {
+          existing = null;
+        }
+      }
 
       if (!existing) {
-        const asset = await prisma.asset.create({
-          data: {
-            tipo: "RED", nombre,
-            codigoServicio: toStr(row["Código de Servicio"]),
-            ubicacion:      toStr(row["Ubicación"]),
-            propietario:    toStr(row["Propietario"]),
-            custodio:       toStr(row["Custodio"]),
-            red: { create: datosRed },
-          },
+        const asset = assetRepo.create({
+          tipo: "RED", nombre,
+          codigoServicio: toStr(row["Código de Servicio"]),
+          ubicacion:      toStr(row["Ubicación"]),
+          propietario:    toStr(row["Propietario"]),
+          custodio:       toStr(row["Custodio"]),
         });
+        const savedAsset = await assetRepo.save(asset);
+        
+        const red = redRepo.create({
+          ...datosRed,
+          asset: { id: savedAsset.id } as any,
+        });
+        await redRepo.save(red);
+        
         const nota = toStr(row["Bitacora"]);
-        await prisma.bitacora.create({ data: {
-          assetId: asset.id, autor, tipoEvento: "IMPORTACION",
+        const bitacora = bitacoraRepo.create({
+          asset: { id: savedAsset.id } as any, autor, tipoEvento: "IMPORTACION",
           descripcion: nota ? `Importado desde Excel. Nota: ${nota}` : "Importado desde Excel.",
-        }});
+        });
+        await bitacoraRepo.save(bitacora);
         resumen.creados++;
       } else {
-        await prisma.red.upsert({
-          where:  { assetId: existing.id },
-          update: datosRed,
-          create: { assetId: existing.id, ...datosRed },
-        });
-        await prisma.asset.update({
-          where: { id: existing.id },
-          data: {
-            codigoServicio: toStr(row["Código de Servicio"]),
-            ubicacion:      toStr(row["Ubicación"]),
-            propietario:    toStr(row["Propietario"]),
-            custodio:       toStr(row["Custodio"]),
-          },
-        });
-        await prisma.bitacora.create({ data: {
-          assetId: existing.id, autor, tipoEvento: "IMPORTACION",
+        const red = await redRepo.findOne({ where: { asset: { id: existing.id } } as any });
+        if (red) {
+          await redRepo.update({ asset: { id: existing.id } } as any, datosRed);
+        } else {
+          const newRed = redRepo.create({ asset: { id: existing.id } as any, ...datosRed });
+          await redRepo.save(newRed);
+        }
+        
+        existing.codigoServicio = toStr(row["Código de Servicio"]);
+        existing.ubicacion = toStr(row["Ubicación"]);
+        existing.propietario = toStr(row["Propietario"]);
+        existing.custodio = toStr(row["Custodio"]);
+        await assetRepo.save(existing);
+        
+        const bitacora = bitacoraRepo.create({
+          asset: { id: existing.id } as any, autor, tipoEvento: "IMPORTACION",
           descripcion: "Registro actualizado desde Excel.",
-        }});
+        });
+        await bitacoraRepo.save(bitacora);
         resumen.actualizados++;
       }
     } catch (e: any) {
@@ -298,45 +325,58 @@ async function importarUps(workbook: XLSX.WorkBook, autor: string, resumen: Resu
     };
 
     try {
-      const existing = await prisma.asset.findFirst({
-        where: { tipo: "UPS", ups: { serial } },
-      });
+      let existing: (Asset & { ups: Ups }) | null = null;
+      if (serial) {
+        // Buscar por tipo UPS
+        const candidates = await assetRepo.find({
+          where: { tipo: "UPS" } as any,
+          relations: ["ups"]
+        });
+        existing = candidates.find(a => a.ups?.serial === serial) as any || null;
+      }
 
       if (!existing) {
-        const asset = await prisma.asset.create({
-          data: {
-            tipo: "UPS", nombre,
-            ubicacion:   toStr(row["Ubicación"]),
-            propietario: toStr(row["Propietario"]),
-            custodio:    toStr(row["Custodio"]),
-            ups: { create: datosUps },
-          },
+        const asset = assetRepo.create({
+          tipo: "UPS", nombre,
+          ubicacion:   toStr(row["Ubicación"]),
+          propietario: toStr(row["Propietario"]),
+          custodio:    toStr(row["Custodio"]),
         });
+        const savedAsset = await assetRepo.save(asset);
+        
+        const ups = upsRepo.create({
+          ...datosUps,
+          asset: { id: savedAsset.id } as any,
+        });
+        await upsRepo.save(ups);
+        
         const nota = toStr(row["Bitacora"]);
-        await prisma.bitacora.create({ data: {
-          assetId: asset.id, autor, tipoEvento: "IMPORTACION",
+        const bitacora = bitacoraRepo.create({
+          asset: { id: savedAsset.id } as any, autor, tipoEvento: "IMPORTACION",
           descripcion: nota ? `Importado desde Excel. Nota: ${nota}` : "Importado desde Excel.",
-        }});
+        });
+        await bitacoraRepo.save(bitacora);
         resumen.creados++;
       } else {
-        await prisma.ups.upsert({
-          where:  { assetId: existing.id },
-          update: datosUps,
-          create: { assetId: existing.id, ...datosUps },
-        });
-        await prisma.asset.update({
-          where: { id: existing.id },
-          data: {
-            nombre,
-            ubicacion:   toStr(row["Ubicación"]),
-            propietario: toStr(row["Propietario"]),
-            custodio:    toStr(row["Custodio"]),
-          },
-        });
-        await prisma.bitacora.create({ data: {
-          assetId: existing.id, autor, tipoEvento: "IMPORTACION",
+        const ups = await upsRepo.findOne({ where: { asset: { id: existing.id } } as any });
+        if (ups) {
+          await upsRepo.update({ asset: { id: existing.id } } as any, datosUps);
+        } else {
+          const newUps = upsRepo.create({ asset: { id: existing.id } as any, ...datosUps });
+          await upsRepo.save(newUps);
+        }
+        
+        existing.nombre = nombre;
+        existing.ubicacion = toStr(row["Ubicación"]);
+        existing.propietario = toStr(row["Propietario"]);
+        existing.custodio = toStr(row["Custodio"]);
+        await assetRepo.save(existing);
+        
+        const bitacora = bitacoraRepo.create({
+          asset: { id: existing.id } as any, autor, tipoEvento: "IMPORTACION",
           descripcion: "Registro actualizado desde Excel.",
-        }});
+        });
+        await bitacoraRepo.save(bitacora);
         resumen.actualizados++;
       }
     } catch (e: any) {
@@ -374,46 +414,57 @@ async function importarBD(workbook: XLSX.WorkBook, autor: string, resumen: Resum
     };
 
     try {
-      const existing = await prisma.asset.findFirst({
-        where: {
-          tipo: "BASE_DATOS",
-          nombre,
-          baseDatos: { servidor1: servidor1 ?? undefined },
-        },
-      });
+      let existing: (Asset & { baseDatos: BaseDatos }) | null = null;
+      if (nombre) {
+        existing = await assetRepo.findOne({
+          where: { tipo: "BASE_DATOS", nombre } as any,
+          relations: ["baseDatos"]
+        }) as any;
+        // Verificación adicional del servidor principal
+        if (existing && servidor1 && existing.baseDatos?.servidor1 !== servidor1) {
+          existing = null;
+        }
+      }
 
       if (!existing) {
-        const asset = await prisma.asset.create({
-          data: {
-            tipo:        "BASE_DATOS",
-            nombre,
-            propietario: toStr(row["Propietario"]),
-            custodio:    toStr(row["Custodio"]),
-            baseDatos: { create: datosBD },
-          },
+        const asset = assetRepo.create({
+          tipo:        "BASE_DATOS",
+          nombre,
+          propietario: toStr(row["Propietario"]),
+          custodio:    toStr(row["Custodio"]),
         });
-        await prisma.bitacora.create({ data: {
-          assetId: asset.id, autor, tipoEvento: "IMPORTACION",
+        const savedAsset = await assetRepo.save(asset);
+        
+        const baseDatos = bdRepo.create({
+          ...datosBD,
+          asset: { id: savedAsset.id } as any,
+        });
+        await bdRepo.save(baseDatos);
+        
+        const bitacora = bitacoraRepo.create({
+          asset: { id: savedAsset.id } as any, autor, tipoEvento: "IMPORTACION",
           descripcion: "Importado desde Excel.",
-        }});
+        });
+        await bitacoraRepo.save(bitacora);
         resumen.creados++;
       } else {
-        await prisma.baseDatos.upsert({
-          where:  { assetId: existing.id },
-          update: datosBD,
-          create: { assetId: existing.id, ...datosBD },
-        });
-        await prisma.asset.update({
-          where: { id: existing.id },
-          data: {
-            propietario: toStr(row["Propietario"]),
-            custodio:    toStr(row["Custodio"]),
-          },
-        });
-        await prisma.bitacora.create({ data: {
-          assetId: existing.id, autor, tipoEvento: "IMPORTACION",
+        const baseDatos = await bdRepo.findOne({ where: { asset: { id: existing.id } } as any });
+        if (baseDatos) {
+          await bdRepo.update({ asset: { id: existing.id } } as any, datosBD);
+        } else {
+          const newBD = bdRepo.create({ asset: { id: existing.id } as any, ...datosBD });
+          await bdRepo.save(newBD);
+        }
+        
+        existing.propietario = toStr(row["Propietario"]);
+        existing.custodio = toStr(row["Custodio"]);
+        await assetRepo.save(existing);
+        
+        const bitacora = bitacoraRepo.create({
+          asset: { id: existing.id } as any, autor, tipoEvento: "IMPORTACION",
           descripcion: "Registro actualizado desde Excel.",
-        }});
+        });
+        await bitacoraRepo.save(bitacora);
         resumen.actualizados++;
       }
     } catch (e: any) {
@@ -555,41 +606,47 @@ async function importarVPN(workbook: XLSX.WorkBook, autor: string, resumen: Resu
     const datosVpn = { conexion, fases, origen, destino };
 
     try {
-      const existing = await prisma.asset.findFirst({
-        where: { tipo: "VPN", nombre },
+      const existing = await assetRepo.findOne({
+        where: { tipo: "VPN", nombre } as any,
       });
 
       if (!existing) {
-        const asset = await prisma.asset.create({
-          data: {
-            tipo: "VPN",
-            nombre,
-            vpn: { create: datosVpn },
-          },
+        const asset = assetRepo.create({
+          tipo: "VPN",
+          nombre,
         });
-        await prisma.bitacora.create({
-          data: {
-            assetId:     asset.id,
-            autor,
-            tipoEvento:  "IMPORTACION",
-            descripcion: "VPN importada desde Excel.",
-          },
+        const savedAsset = await assetRepo.save(asset);
+        
+        const vpn = vpnRepo.create({
+          ...datosVpn,
+          asset: { id: savedAsset.id } as any,
         });
+        await vpnRepo.save(vpn);
+        
+        const bitacora = bitacoraRepo.create({
+          asset:     { id: savedAsset.id } as any,
+          autor,
+          tipoEvento:  "IMPORTACION",
+          descripcion: "VPN importada desde Excel.",
+        });
+        await bitacoraRepo.save(bitacora);
         resumen.creados++;
       } else {
-        await prisma.vpn.upsert({
-          where:  { assetId: existing.id },
-          update: datosVpn,
-          create: { assetId: existing.id, ...datosVpn },
+        const vpn = await vpnRepo.findOne({ where: { asset: { id: existing.id } } as any });
+        if (vpn) {
+          await vpnRepo.update({ asset: { id: existing.id } } as any, datosVpn);
+        } else {
+          const newVpn = vpnRepo.create({ asset: { id: existing.id } as any, ...datosVpn });
+          await vpnRepo.save(newVpn);
+        }
+        
+        const bitacora = bitacoraRepo.create({
+          asset:     { id: existing.id } as any,
+          autor,
+          tipoEvento:  "IMPORTACION",
+          descripcion: "VPN actualizada desde Excel.",
         });
-        await prisma.bitacora.create({
-          data: {
-            assetId:     existing.id,
-            autor,
-            tipoEvento:  "IMPORTACION",
-            descripcion: "VPN actualizada desde Excel.",
-          },
-        });
+        await bitacoraRepo.save(bitacora);
         resumen.actualizados++;
       }
 

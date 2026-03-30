@@ -5,7 +5,6 @@ import { ApiResponse } from "../../types/api.types";
 import { sendToFlow } from "../utils/flow";
 import { mapAssetsToFlowPayload, toFlowTipo } from "../utils/flowMappers";
 import { sanitizePayloadForFlow } from "../utils/flowSanitizer";
-import { prisma } from "../../config/database";
 import { generarWordMovil } from "../utils/generarMovilDocx";
 import { generarExcelInventario } from "../utils/ExportInventario";
 import { generarExcelObservaciones } from "../utils/exportObservaciones"

@@ -322,10 +322,14 @@ export default function AssetCreateModal({
         custodio:       general.custodio.trim()       || null,
         codigoServicio: general.codigoServicio.trim() || null,
       };
-
-      if (tipoKey && Object.keys(detalleConvertido).length > 0) {
-        payload[tipoKey] = detalleConvertido;
-      }
+if (tipoKey && Object.keys(detalleConvertido).length > 0) {
+  if (tipo === "MOVIL") {
+    // El backend espera los campos móvil en el root, no en payload.movil
+    Object.assign(payload, detalleConvertido);
+  } else {
+    payload[tipoKey] = detalleConvertido;
+  }
+}
 
       await createAsset(payload);
       onCreated();

@@ -1,41 +1,71 @@
-import { prisma } from "../../config/database";
+import { AppDataSource } from "../../config/database";
 import { AssetFilters } from "../../types/api.types";
-import { Prisma } from "@prisma/client";
+import { Asset } from "../../entities/Asset";
+import { Bitacora } from "../../entities/Bitacora";
+import { Servidor } from "../../entities/Servidor";
+import { Red } from "../../entities/Red";
+import { Ups } from "../../entities/Ups";
+import { BaseDatos } from "../../entities/BaseDatos";
+import { Vpn } from "../../entities/Vpn";
+import { Movil } from "../../entities/Movil";
+import { FindOptionsWhere, In, IsNull, Not } from "typeorm";
 
 export class AssetsService {
   async getAssets(filters: AssetFilters) {
     const { tipo, q, page = 1, limit = 50 } = filters;
     const skip = (page - 1) * limit;
 
-    const where: Prisma.AssetWhereInput = {};
-
-    if (tipo) where.tipo = tipo;
+    const assetRepository = AppDataSource.getRepository(Asset);
 
     if (q) {
-      where.OR = [
-        { nombre: { contains: q, mode: "insensitive" } },
-        { codigoServicio: { contains: q, mode: "insensitive" } },
-      ];
+      // Use query builder for OR conditions
+      const qb = assetRepository
+        .createQueryBuilder("asset")
+        .leftJoinAndSelect("asset.servidor", "servidor")
+        .leftJoinAndSelect("asset.red", "red")
+        .leftJoinAndSelect("asset.ups", "ups")
+        .leftJoinAndSelect("asset.baseDatos", "baseDatos")
+        .leftJoinAndSelect("asset.vpn", "vpn")
+        .leftJoinAndSelect("asset.movil", "movil")
+        .where("asset.deletedAt IS NULL")
+        .andWhere(
+          "(LOWER(asset.nombre) LIKE LOWER(:q) OR LOWER(asset.codigoServicio) LIKE LOWER(:q))",
+          { q: `%${q}%` }
+        );
+
+      if (tipo) {
+        qb.andWhere("asset.tipo = :tipo", { tipo });
+      }
+
+      const [assets, total] = await qb 
+        .orderBy("asset.actualizadoEn", "DESC")
+        .skip(skip)
+        .take(limit)
+        .getManyAndCount();
+
+      return {
+        assets,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
     }
 
-    const whereConFiltro = { ...where, deletedAt: null };
+    const where: FindOptionsWhere<Asset> = { deletedAt: IsNull() };
+    if (tipo) where.tipo = tipo as any;
 
     const [assets, total] = await Promise.all([
-      prisma.asset.findMany({
-        where: whereConFiltro,
+      assetRepository.find({
+        where,
+        relations: ["servidor", "red", "ups", "baseDatos", "vpn", "movil"],
+        order: { actualizadoEn: "DESC" },
         skip,
         take: limit,
-        include: {
-          servidor: true,
-          red: true,
-          ups: true,
-          baseDatos: true,
-          vpn: true,
-          movil: true,
-        },
-        orderBy: { actualizadoEn: "desc" },
       }),
-      prisma.asset.count({ where: whereConFiltro }),
+      assetRepository.count({ where }),
     ]);
 
     return {
@@ -50,23 +80,24 @@ export class AssetsService {
   }
 
   async getAssetById(id: string) {
-    const asset = await prisma.asset.findUnique({
+    const assetRepository = AppDataSource.getRepository(Asset);
+    const bitacoraRepository = AppDataSource.getRepository(Bitacora);
+
+    const asset = await assetRepository.findOne({
       where: { id },
-      include: {
-        servidor: true,
-        red: true,
-        ups: true,
-        baseDatos: true,
-        vpn: true,
-        movil: true,
-        bitacora: {
-          orderBy: { creadoEn: "desc" },
-          take: 50,
-        },
-      },
+      relations: ["servidor", "red", "ups", "baseDatos", "vpn", "movil"],
     });
 
     if (!asset) throw new Error("Asset no encontrado");
+    
+    // Get last 50 bitacora entries from DB (same as original Prisma logic)
+    const bitacora = await bitacoraRepository.find({
+      where: { asset: { id } },
+      order: { creadoEn: "DESC" },
+      take: 50,
+    });
+    
+    asset.bitacora = bitacora;
     return asset;
   }
 
@@ -80,81 +111,113 @@ export class AssetsService {
       sim, numeroLinea, fechaEntrega, observacionesEntrega,
     } = data;
 
-    // Construir objeto movil si el tipo es MOVIL
-    const movilData = tipo === "MOVIL" ? {
-      numeroCaso:           numeroCaso           ?? null,
-      region:               region               ?? null,
-      dependencia:          dependencia          ?? null,
-      sede:                 sede                 ?? null,
-      cedula:               cedula               ?? null,
-      usuarioRed:           usuarioRed           ?? null,
-      correoResponsable:    correoResponsable    ?? null,
-      uni:                  uni                  ?? null,
-      marca:                marca                ?? null,
-      modelo:               modelo               ?? null,
-      serial:               serial               ?? null,
-      imei1:                imei1                ?? null,
-      imei2:                imei2                ?? null,
-      sim:                  sim                  ?? null,
-      numeroLinea:          numeroLinea          ?? null,
-      fechaEntrega:         fechaEntrega ? new Date(fechaEntrega) : null,
-      observacionesEntrega: observacionesEntrega ?? null,
-    } : null;
+    const assetRepository = AppDataSource.getRepository(Asset);
+    const bitacoraRepository = AppDataSource.getRepository(Bitacora);
+    const servidorRepository = AppDataSource.getRepository(Servidor);
+    const redRepository = AppDataSource.getRepository(Red);
+    const upsRepository = AppDataSource.getRepository(Ups);
+    const baseDatosRepository = AppDataSource.getRepository(BaseDatos);
+    const vpnRepository = AppDataSource.getRepository(Vpn);
+    const movilRepository = AppDataSource.getRepository(Movil);
 
-    const asset = await prisma.asset.create({
-      data: {
-        tipo,
-        nombre,
-        ubicacion:      ubicacion      ?? null,
-        propietario:    propietario    ?? null,
-        custodio:       custodio       ?? null,
-        codigoServicio: codigoServicio ?? null,
-        ...(servidor   && { servidor:  { create: servidor  } }),
-        ...(red        && { red:       { create: red       } }),
-        ...(ups        && { ups:       { create: ups       } }),
-        ...(baseDatos  && { baseDatos: { create: baseDatos } }),
-        ...(vpn        && { vpn:       { create: vpn       } }),
-        ...(movilData  && { movil:     { create: movilData } }),
-      },
-      include: {
-        servidor: true,
-        red: true,
-        ups: true,
-        baseDatos: true,
-        vpn: true,
-        movil: true,
-      },
+    // Create asset
+    const asset = assetRepository.create({
+      tipo,
+      nombre,
+      ubicacion: ubicacion ?? null,
+      propietario: propietario ?? null,
+      custodio: custodio ?? null,
+      codigoServicio: codigoServicio ?? null,
     });
 
-    await prisma.bitacora.create({
-      data: {
-        assetId:     asset.id,
-        autor,
-        tipoEvento:  "IMPORTACION",
-        descripcion: "Activo creado manualmente.",
-      },
-    });
+    const savedAsset = await assetRepository.save(asset);
 
-    return asset;
+    
+    if (servidor) {
+      const servidorData = servidorRepository.create({ ...servidor, asset: savedAsset });
+      await servidorRepository.save(servidorData);
+    }
+
+    if (red) {
+      const redData = redRepository.create({ ...red, asset: savedAsset });
+      await redRepository.save(redData);
+    }
+
+    if (ups) {
+      const upsData = upsRepository.create({ ...ups, asset: savedAsset });
+      await upsRepository.save(upsData);
+    }
+
+    if (baseDatos) {
+      const baseDatosData = baseDatosRepository.create({ ...baseDatos, asset: savedAsset });
+      await baseDatosRepository.save(baseDatosData);
+    }
+
+    if (vpn) {
+      const vpnData = vpnRepository.create({ ...vpn, asset: savedAsset });
+      await vpnRepository.save(vpnData);
+    }
+
+    // Create movil if tipo is MOVIL
+    if (tipo === "MOVIL") {
+      const movilData = movilRepository.create({
+        numeroCaso: numeroCaso ?? null,
+        region: region ?? null,
+        dependencia: dependencia ?? null,
+        sede: sede ?? null,
+        cedula: cedula ?? null,
+        usuarioRed: usuarioRed ?? null,
+        correoResponsable: correoResponsable ?? null,
+        uni: uni ?? null,
+        marca: marca ?? null,
+        modelo: modelo ?? null,
+        serial: serial ?? null,
+        imei1: imei1 ?? null,
+        imei2: imei2 ?? null,
+        sim: sim ?? null,
+        numeroLinea: numeroLinea ?? null,
+        fechaEntrega: fechaEntrega ? new Date(fechaEntrega) : null,
+        observacionesEntrega: observacionesEntrega ?? null,
+        asset: savedAsset,
+      });
+      await movilRepository.save(movilData);
+    }
+
+    // Create bitacora entry
+    const bitacoraEntry = bitacoraRepository.create({
+      asset: savedAsset,
+      autor,
+      tipoEvento: "IMPORTACION",
+      descripcion: "Activo creado manualmente.",
+    });
+    await bitacoraRepository.save(bitacoraEntry);
+
+    // Return asset with relations
+    return assetRepository.findOne({
+      where: { id: savedAsset.id },
+      relations: ["servidor", "red", "ups", "baseDatos", "vpn", "movil"],
+    });
   }
 
   async updateAsset(id: string, data: any, autor: string) {
-    const asset = await prisma.asset.findUnique({
+    const assetRepository = AppDataSource.getRepository(Asset);
+    const servidorRepository = AppDataSource.getRepository(Servidor);
+    const redRepository = AppDataSource.getRepository(Red);
+    const upsRepository = AppDataSource.getRepository(Ups);
+    const baseDatosRepository = AppDataSource.getRepository(BaseDatos);
+    const vpnRepository = AppDataSource.getRepository(Vpn);
+    const movilRepository = AppDataSource.getRepository(Movil);
+    const bitacoraRepository = AppDataSource.getRepository(Bitacora);
+
+    const asset = await assetRepository.findOne({
       where: { id },
-      include: {
-        servidor: true,
-        red: true,
-        ups: true,
-        baseDatos: true,
-        vpn: true,
-        movil: true,
-      },
+      relations: ["servidor", "red", "ups", "baseDatos", "vpn", "movil"],
     });
 
     if (!data || typeof data !== "object") throw new Error("Body inválido");
     if (!asset) throw new Error("Asset no encontrado");
 
-    const updates: any = {};
+    const updates: Partial<Asset> = {};
     const bitacoraEntries: any[] = [];
 
     // ======================
@@ -182,7 +245,7 @@ export class AssetsService {
     }
 
     if (Object.keys(updates).length > 0) {
-      await prisma.asset.update({ where: { id }, data: updates });
+      await assetRepository.update(id, updates);
     }
 
     // ======================
@@ -206,7 +269,7 @@ export class AssetsService {
       if (detailUpdates.vramMb !== undefined) detailUpdates.vramMb = detailUpdates.vramMb ? parseInt(detailUpdates.vramMb) : null;
 
       if (Object.keys(detailUpdates).length > 0) {
-        await prisma.servidor.update({ where: { assetId: id }, data: detailUpdates });
+        await servidorRepository.update({ asset: { id } }, detailUpdates);
       }
     }
 
@@ -228,7 +291,7 @@ export class AssetsService {
       });
 
       if (Object.keys(detailUpdates).length > 0) {
-        await prisma.red.update({ where: { assetId: id }, data: detailUpdates });
+        await redRepository.update({ asset: { id } }, detailUpdates);
       }
     }
 
@@ -250,7 +313,7 @@ export class AssetsService {
       });
 
       if (Object.keys(detailUpdates).length > 0) {
-        await prisma.ups.update({ where: { assetId: id }, data: detailUpdates });
+        await upsRepository.update({ asset: { id } }, detailUpdates);
       }
     }
 
@@ -272,7 +335,7 @@ export class AssetsService {
       });
 
       if (Object.keys(detailUpdates).length > 0) {
-        await prisma.baseDatos.update({ where: { assetId: id }, data: detailUpdates });
+        await baseDatosRepository.update({ asset: { id } }, detailUpdates);
       }
     }
 
@@ -294,7 +357,7 @@ export class AssetsService {
       });
 
       if (Object.keys(detailUpdates).length > 0) {
-        await prisma.vpn.update({ where: { assetId: id }, data: detailUpdates });
+        await vpnRepository.update({ asset: { id } }, detailUpdates);
       }
     }
 
@@ -332,7 +395,7 @@ export class AssetsService {
       }
 
       if (Object.keys(detailUpdates).length > 0) {
-        await prisma.movil.update({ where: { assetId: id }, data: detailUpdates });
+        await movilRepository.update({ asset: { id } }, detailUpdates);
       }
     }
 
@@ -341,24 +404,25 @@ export class AssetsService {
     // ======================
 
     if (bitacoraEntries.length > 0) {
-      await prisma.bitacora.createMany({
-        data: bitacoraEntries.map((entry) => ({
-          assetId: id,
-          autor,
-          tipoEvento: "CAMBIO_CAMPO" as const,
-          descripcion: `Campo ${entry.campoModificado} modificado`,
-          ...entry,
-        })),
-      });
+      const bitacoraDataToSave = bitacoraEntries.map((entry) => ({
+        asset: { id },
+        autor,
+        tipoEvento: "CAMBIO_CAMPO" as const,
+        descripcion: `Campo ${entry.campoModificado} modificado`,
+        ...entry,
+      }));
+      const bitacoraRecords = bitacoraRepository.create(bitacoraDataToSave as any);
+      await bitacoraRepository.save(bitacoraRecords);
     }
 
     return this.getAssetById(id);
   }
 
   async getBitacora(assetId: string, limit = 100) {
-    return prisma.bitacora.findMany({
-      where: { assetId },
-      orderBy: { creadoEn: "desc" },
+    const bitacoraRepository = AppDataSource.getRepository(Bitacora);
+    return bitacoraRepository.find({
+      where: { asset: { id: assetId } },
+      order: { creadoEn: "DESC" },
       take: limit,
     });
   }
@@ -372,35 +436,45 @@ export class AssetsService {
     }
   ) {
     await this.getAssetById(assetId);
-    return prisma.bitacora.create({ data: { assetId, ...data } });
+    const bitacoraRepository = AppDataSource.getRepository(Bitacora);
+    const bitacoraEntry = bitacoraRepository.create({
+      asset: { id: assetId },
+      ...data,
+    });
+    return bitacoraRepository.save(bitacoraEntry);
   }
 
   async getStats() {
-    const [total, porTipo] = await Promise.all([
-      prisma.asset.count({ where: { deletedAt: null } }),
-      prisma.asset.groupBy({
-        by: ["tipo"],
-        where: { deletedAt: null },
-        _count: true,
-      }),
-    ]);
+    const assetRepository = AppDataSource.getRepository(Asset);
+
+    const total = await assetRepository.count({ where: { deletedAt: IsNull() } });
+
+    const porTipo = await assetRepository
+      .createQueryBuilder("asset")
+      .select("asset.tipo", "tipo")
+      .addSelect("COUNT(*)", "count")
+      .where("asset.deletedAt IS NULL")
+      .groupBy("asset.tipo")
+      .getRawMany();
 
     return {
       total,
-      porTipo: porTipo.map((t) => ({ tipo: t.tipo, count: t._count })),
+      porTipo: porTipo.map((t) => ({ tipo: t.tipo, count: parseInt(t.count, 10) })),
     };
   }
 
   async getAssetsByTipoAndIds(opts: { tipo?: string; ids?: string[] }) {
-    const where: Prisma.AssetWhereInput = { deletedAt: null };
+    const assetRepository = AppDataSource.getRepository(Asset);
+
+    const where: FindOptionsWhere<Asset> = { deletedAt: IsNull() };
 
     if (opts.tipo) where.tipo = opts.tipo as any;
-    if (opts.ids && opts.ids.length > 0) where.id = { in: opts.ids };
+    if (opts.ids && opts.ids.length > 0) where.id = In(opts.ids);
 
-    const assets = await prisma.asset.findMany({
+    const assets = await assetRepository.find({
       where,
-      include: { servidor: true, red: true, ups: true, baseDatos: true, movil: true },
-      orderBy: { actualizadoEn: "desc" },
+      relations: ["servidor", "red", "ups", "baseDatos", "vpn", "movil"],
+      order: { actualizadoEn: "DESC" },
       take: 10_000,
     });
 
@@ -412,49 +486,53 @@ export class AssetsService {
   // ======================
 
   async softDelete(id: string, autor: string = "Sistema") {
-    const asset = await prisma.asset.update({
-      where: { id },
-      data: { deletedAt: new Date() },
+    const assetRepository = AppDataSource.getRepository(Asset);
+    const bitacoraRepository = AppDataSource.getRepository(Bitacora);
+
+    const asset = await assetRepository.findOne({ where: { id } });
+    if (!asset) throw new Error("Asset no encontrado");
+
+    await assetRepository.update(id, { deletedAt: new Date() });
+
+    const bitacoraEntry = bitacoraRepository.create({
+      asset: { id },
+      autor,
+      tipoEvento: "NOTA",
+      descripcion: "Activo eliminado y movido a papelera.",
     });
-    await prisma.bitacora.create({
-      data: {
-        assetId:     id,
-        autor,
-        tipoEvento:  "NOTA",
-        descripcion: "Activo eliminado y movido a papelera.",
-      },
-    });
-    return asset;
+    await bitacoraRepository.save(bitacoraEntry);
+
+    const updatedAsset = await assetRepository.findOne({ where: { id } });
+    return updatedAsset;
   }
 
   async restoreAsset(id: string, autor: string = "Sistema") {
-    const asset = await prisma.asset.update({
-      where: { id },
-      data: { deletedAt: null },
+    const assetRepository = AppDataSource.getRepository(Asset);
+    const bitacoraRepository = AppDataSource.getRepository(Bitacora);
+
+    const asset = await assetRepository.findOne({ where: { id } });
+    if (!asset) throw new Error("Asset no encontrado");
+
+    await assetRepository.update(id, { deletedAt: null });
+
+    const bitacoraEntry = bitacoraRepository.create({
+      asset: { id },
+      autor,
+      tipoEvento: "NOTA",
+      descripcion: "Activo restaurado desde papelera.",
     });
-    await prisma.bitacora.create({
-      data: {
-        assetId:     id,
-        autor,
-        tipoEvento:  "NOTA",
-        descripcion: "Activo restaurado desde papelera.",
-      },
-    });
-    return asset;
+    await bitacoraRepository.save(bitacoraEntry);
+
+    const updatedAsset = await assetRepository.findOne({ where: { id } });
+    return updatedAsset;
   }
 
   async getDeleted() {
-    return prisma.asset.findMany({
-      where: { deletedAt: { not: null } },
-      orderBy: { deletedAt: "desc" },
-      include: {
-        servidor: true,
-        red: true,
-        ups: true,
-        baseDatos: true,
-        vpn: true,
-        movil: true,
-      },
+    const assetRepository = AppDataSource.getRepository(Asset);
+    return assetRepository.find({
+      where: { deletedAt: Not(IsNull()) },
+      relations: ["servidor", "red", "ups", "baseDatos", "vpn", "movil"],
+      order: { deletedAt: "DESC" },
     });
   }
 }
