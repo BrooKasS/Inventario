@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import routes from "./api/routes";
 import { errorHandler } from "./middlewares/errorHandler";
+import { authMiddleware } from "./middlewares/authMiddleware";
 
 export const app = express();
 
@@ -14,6 +15,10 @@ app.use(express.urlencoded({ extended: true }));
 app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
+
+app.use(authMiddleware); 
+app.use("/api", routes);
+app.use(errorHandler);
 
 // API Routes
 app.use("/api", routes);
