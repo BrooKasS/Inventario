@@ -19,7 +19,7 @@ router.post("/", asyncHandler(assetsController.createAsset.bind(assetsController
 router.post("/export-observaciones", assetsController.exportObservaciones);
 
 
-router.get("/export-excel", assetsController.exportExcel);
+router.post("/export-excel", assetsController.exportExcel);
 
 
 router.get("/:id/word", assetsController.generarWord);

@@ -119,20 +119,22 @@ function nombreHojaSeguro(name: string) {
 /** Exporta a Excel usando SheetJS — separado por hojas por tipo */
 export async function exportarActivosExcel(assets: Asset[], nombre: string): Promise<void> {
   if (assets.length === 0) return;
- 
-  // Construir query params
-  const ids    = assets.map(a => a.id).join(",");
-  const tipos  = [...new Set(assets.map(a => a.tipo))].join(",");
-  const fecha  = new Date().toISOString().slice(0, 10);
- 
-  const url = `http://localhost:3000/api/assets/export-excel?ids=${encodeURIComponent(ids)}&tipos=${encodeURIComponent(tipos)}`;
- 
-  const res = await fetch(url);
+
+  const ids   = assets.map(a => a.id);
+  const tipos = [...new Set(assets.map(a => a.tipo))];
+  const fecha = new Date().toISOString().slice(0, 10);
+
+  const res = await fetch("http://localhost:3000/api/assets/export-excel", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids, tipos }),
+  });
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error ?? "Error generando el Excel");
   }
- 
+
   const blob = await res.blob();
   const blobUrl = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -143,7 +145,6 @@ export async function exportarActivosExcel(assets: Asset[], nombre: string): Pro
   document.body.removeChild(a);
   URL.revokeObjectURL(blobUrl);
 }
- 
 /** Exporta a PDF usando jsPDF + autoTable (SIN cambios: una sola salida) */
 export async function exportarActivosPDF(assets: Asset[], nombre: string) {
   const { default: jsPDF } = await import("jspdf");

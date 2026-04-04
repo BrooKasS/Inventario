@@ -283,53 +283,43 @@ export class AssetsController {
       } as ApiResponse<never>);
     }
   }
-  async exportExcel(req: Request, res: Response) {
-    try {
-      // ids es opcional — si no viene, exporta todos los del tipo
-      const tipos = req.query.tipos
-        ? String(req.query.tipos).split(",").filter(Boolean)
-        : [];
-      const ids = req.query.ids
-        ? String(req.query.ids).split(",").filter(Boolean)
-        : [];
- 
-      // Traer activos
-      let assets: any[] = [];
-      if (ids.length > 0) {
-        assets = await assetsService.getAssetsByTipoAndIds({ ids });
-      } else if (tipos.length > 0) {
-        for (const tipo of tipos) {
-          const r = await assetsService.getAssetsByTipoAndIds({ tipo });
-          assets = assets.concat(r);
-        }
-      } else {
-        // Todos (SERVIDOR, RED, UPS, BASE_DATOS)
-        for (const tipo of ["SERVIDOR", "RED", "UPS", "BASE_DATOS"]) {
-          const r = await assetsService.getAssetsByTipoAndIds({ tipo });
-          assets = assets.concat(r);
-        }
-      }
- 
-      if (assets.length === 0) {
-        return res.status(404).json({ success: false, error: "No hay activos para exportar" });
-      }
-      console.log("🔍 Assets recibidos:", assets.length);
-console.log("🔍 Primer asset:", JSON.stringify(assets[0], null, 2));
- 
-      const buffer = await generarExcelInventario(assets);
-      const fecha  = new Date().toISOString().slice(0, 10);
- 
-      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-      res.setHeader("Content-Disposition", `attachment; filename="Inventario_TI_${fecha}.xlsx"`);
-      res.setHeader("Content-Length", buffer.length);
-      return res.send(buffer);
- 
-    } catch (error: any) {
-      console.error("❌ Error exportando Excel:", error);
-      return res.status(500).json({ success: false, error: "Error generando el Excel" });
-    }
-  }
+ async exportExcel(req: Request, res: Response) {
+  try {
+    const tipos: string[] = req.body.tipos ?? [];
+    const ids: string[]   = req.body.ids   ?? [];
 
+    let assets: any[] = [];
+    if (ids.length > 0) {
+      assets = await assetsService.getAssetsByTipoAndIds({ ids });
+    } else if (tipos.length > 0) {
+      for (const tipo of tipos) {
+        const r = await assetsService.getAssetsByTipoAndIds({ tipo });
+        assets = assets.concat(r);
+      }
+    } else {
+      for (const tipo of ["SERVIDOR", "RED", "UPS", "BASE_DATOS"]) {
+        const r = await assetsService.getAssetsByTipoAndIds({ tipo });
+        assets = assets.concat(r);
+      }
+    }
+
+    if (assets.length === 0) {
+      return res.status(404).json({ success: false, error: "No hay activos para exportar" });
+    }
+
+    const buffer = await generarExcelInventario(assets);
+    const fecha  = new Date().toISOString().slice(0, 10);
+
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="Inventario_TI_${fecha}.xlsx"`);
+    res.setHeader("Content-Length", buffer.length);
+    return res.send(buffer);
+
+  } catch (error: any) {
+    console.error("❌ Error exportando Excel:", error);
+    return res.status(500).json({ success: false, error: "Error generando el Excel" });
+  }
+}
 
    async exportObservaciones(req: Request, res: Response) {
     try {

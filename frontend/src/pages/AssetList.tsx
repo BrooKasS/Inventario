@@ -179,8 +179,8 @@ function ServidorRow({ a, onClick }: { a: Asset; onClick: () => void }) {
     a.codigoServicio ?? "—",
     <Badge text={s?.ambiente ?? null} />,
     <code style={{ fontSize: 14 }}>{s?.ipInterna ?? "—"}</code>,
-    s?.vcpu ?? "—",
-    s?.vramMb ? `${Math.round(s.vramMb / 1024)} GB` : "—",
+    s?.vcpu ? <span style={{ whiteSpace: "nowrap" }}>{s.vcpu} GB</span> : "—",
+    s?.vramMb ? `${s.vramMb} MB` : "—",
     s?.sistemaOperativo ?? "—",
     a.ubicacion ?? "—",
   ]} />;

@@ -68,7 +68,7 @@ export async function generarExcelInventario(assets: AssetData[]): Promise<Buffe
       appSoporta:      v(a.servidor?.appSoporta),
       ubicacion:       v(a.ubicacion),
       vcpu:            v(a.servidor?.vcpu),
-      vramMb:          mbToGb(a.servidor?.vramMb),
+      vramMb:          v(a.servidor?.vramMb),
       sistemaOperativo: v(a.servidor?.sistemaOperativo),
       fechaFinSoporte: v(a.servidor?.fechaFinSoporte),
       rutasBackup:     v(a.servidor?.rutasBackup),
@@ -122,7 +122,7 @@ export async function generarExcelInventario(assets: AssetData[]): Promise<Buffe
 
     const scriptPath = path.join(__dirname, "exportInventario.py");
     execSync(`python3 "${scriptPath}" "${payloadPath}" "${outputPath}"`, {
-      timeout: 30000,
+      timeout: 30999000,
       stdio: "pipe",
     });
 

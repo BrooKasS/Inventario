@@ -51,25 +51,13 @@ export function ServidorSections({
           field="vcpu"
           onChange={(f, v) => handleChange("servidor", f, v)}
         />
-        <Field
-          label={editing ? "vRAM (GB)" : "vRAM"}
-          value={
-            editing
-              ? String(s.vramMb ? Math.round(s.vramMb / 1024) : "")
-              : s.vramMb
-              ? `${(s.vramMb / 1024).toFixed(1)} GB`
-              : null
-          }
-          editing={editing}
-          field="vramMb"
-          onChange={(f, v) =>
-            handleChange(
-              "servidor",
-              f,
-              v ? String(parseInt(v) * 1024) : ""
-            )
-          }
-        />
+     <Field
+  label="vRAM (MB)"
+  value={s.vramMb ? String(s.vramMb) : null}
+  editing={editing}
+  field="vramMb"
+  onChange={(f, v) => handleChange("servidor", f, v)}
+/>
         <Field
           label="Sistema Operativo"
           value={s.sistemaOperativo}
