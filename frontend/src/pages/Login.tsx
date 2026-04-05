@@ -16,12 +16,13 @@ export default function Login() {
   const [loading,  setLoading]  = useState(false);
 
   const handleSubmit = async () => {
+     setError(null);
     if (!usuario || !password) {
       setError("Ingresa usuario y contraseña");
       return;
     }
     setLoading(true);
-    setError(null);
+     setError(null);
     try {
       await loginUser(usuario, password);
       navigate("/dashboard", { replace: true });

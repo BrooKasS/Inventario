@@ -1,5 +1,6 @@
 import { Outlet, NavLink } from "react-router-dom";
 import { useState } from "react";
+import { logoutUser, getUsuario } from "../api/auth";
 
 const nav = [
   { label: "Dashboard",      path: "/dashboard",            icon: "⊞" },
@@ -28,7 +29,13 @@ export default function Layout() {
     try {
       const form = new FormData();
       form.append("file", file);
-      const res  = await fetch("http://localhost:3000/api/import", { method: "POST", body: form });
+      const res  = await fetch("http://localhost:3000/api/import", {
+        method: "POST",
+        body: form,
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("inventario_token")}`,
+        },
+      });
       const json = await res.json();
       const d    = json.data;
       setImportMsg(`✅ ${d.creados} creados, ${d.actualizados} actualizados, ${d.errores} errores`);
@@ -102,7 +109,7 @@ export default function Layout() {
         <div style={{ height: 1, background: "#f0e8e8", margin: "0 16px" }} />
 
         {/* Import button */}
-        <div style={{ padding: "16px 12px" }}>
+        <div style={{ padding: "16px 12px 8px" }}>
           <label style={{
             display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
             width: "100%", padding: "10px 0", borderRadius: 8,
@@ -132,6 +139,41 @@ export default function Layout() {
               {importMsg}
             </div>
           )}
+        </div>
+
+        {/* Usuario + Cerrar sesión */}
+        <div style={{ padding: "8px 12px 12px" }}>
+          <div style={{
+            fontSize: 11, color: "#555", textAlign: "center",
+            marginBottom: 8, fontWeight: 600,
+          }}>
+            👤 {getUsuario() ?? "Usuario"}
+          </div>
+          <button
+            onClick={() => {
+              if (window.confirm("¿Cerrar sesión?")) logoutUser();
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = "#c0392b";
+              e.currentTarget.style.color = "#fff";
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.color = "#c0392b";
+            }}
+            style={{
+              display: "flex", alignItems: "center",
+              justifyContent: "center", gap: 8,
+              width: "100%", padding: "9px 0", borderRadius: 8,
+              background: "transparent",
+              border: "1.5px solid #c0392b",
+              color: "#c0392b", fontSize: 13, fontWeight: 700,
+              cursor: "pointer", transition: "all .2s",
+              letterSpacing: "0.02em",
+            }}
+          >
+            🚪 Cerrar sesión
+          </button>
         </div>
 
         {/* Bottom watermark */}

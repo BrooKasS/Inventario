@@ -1,11 +1,13 @@
 /**
  * auth.service.ts
- * Lógica de autenticación.
- * AHORA: usuario hardcodeado para desarrollo sin AD.
- * DESPUÉS (PC corporativa): reemplazar validarCredenciales por conexión LDAP.
+ * Autenticación contra Active Directory via LDAP.
+ * Cada login consulta el AD en tiempo real —
+ * si el usuario cambia su contraseña en AD, automáticamente
+ * aplica acá sin tocar nada.
  */
 
 import jwt from "jsonwebtoken";
+import ldap from "ldapjs";
 
 const JWT_SECRET  = process.env.JWT_SECRET  ?? "dev_secret_cambiar_en_produccion";
 const JWT_EXPIRES = process.env.JWT_EXPIRES ?? "8h";
@@ -17,43 +19,42 @@ export interface TokenPayload {
 
 export class AuthService {
 
-  /**
-   * Valida credenciales y retorna JWT si son correctas.
-   * ─────────────────────────────────────────────────
-   * FASE 1 (ahora): hardcodeado para desarrollo local.
-   * FASE 2 (PC corporativa): reemplazar el bloque marcado
-   *         con la conexión LDAP real.
-   */
   async login(usuario: string, password: string): Promise<string> {
 
-    // ── FASE 1: validación hardcodeada ──────────────────────────────
-    // Cuando tengas acceso al AD, BORRA este bloque y descomenta FASE 2
-    const USUARIOS_DEV: Record<string, { password: string; nombre: string }> = {
-      "admin":  { password: "1234", nombre: "Administrador" },
-      "sebas":  { password: "1234", nombre: "Sebastián"     },
+    const ldapUrl    = process.env.LDAP_URL    ?? "ldap://fiduprevisora.com.co:389";
+    const ldapDomain = process.env.LDAP_DOMAIN ?? "fiduprevisora.com.co";
+
+    // Conectar al AD y validar credenciales
+    await new Promise<void>((resolve, reject) => {
+      const client = ldap.createClient({
+        url:            ldapUrl,
+        timeout:        5000,
+        connectTimeout: 5000,
+      });
+
+      // Si hay error de conexión al AD
+      client.on("error", (err) => {
+        client.destroy();
+        reject(new Error("Error conectando al servidor de autenticación"));
+      });
+
+      // Intentar bind con usuario@dominio y contraseña
+      client.bind(`${usuario}@${ldapDomain}`, password, (err) => {
+        client.destroy();
+        if (err) {
+          reject(new Error("Credenciales incorrectas"));
+        } else {
+          resolve();
+        }
+      });
+    });
+
+    // Si llegó acá → credenciales correctas → generar token
+    const payload: TokenPayload = {
+      usuario,
+      nombre: usuario, // El AD no devuelve nombre en bind simple
     };
 
-    const user = USUARIOS_DEV[usuario.toLowerCase()];
-    if (!user || user.password !== password) {
-      throw new Error("Credenciales incorrectas");
-    }
-    const nombre = user.nombre;
-    // ── FIN FASE 1 ──────────────────────────────────────────────────
-
-    // ── FASE 2: conexión LDAP real (descomentar en PC corporativa) ──
-    // import ldap from "ldapjs";
-    // const client = ldap.createClient({ url: process.env.LDAP_URL! });
-    // await new Promise<void>((resolve, reject) => {
-    //   client.bind(`${usuario}@${process.env.LDAP_DOMAIN}`, password, (err) => {
-    //     client.destroy();
-    //     if (err) reject(new Error("Credenciales incorrectas"));
-    //     else resolve();
-    //   });
-    // });
-    // const nombre = usuario; // O buscar nombre real en AD
-    // ── FIN FASE 2 ──────────────────────────────────────────────────
-
-    const payload: TokenPayload = { usuario, nombre };
     return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES } as any);
   }
 
