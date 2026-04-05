@@ -485,20 +485,24 @@ export class AssetsService {
   // SOFT DELETE / PAPELERA
   // ======================
 
-  async softDelete(id: string, autor: string = "Sistema") {
+  async softDelete(id: string, autor: string = "Sistema", motivo: string = "Sin motivo") {
     const assetRepository = AppDataSource.getRepository(Asset);
     const bitacoraRepository = AppDataSource.getRepository(Bitacora);
 
     const asset = await assetRepository.findOne({ where: { id } });
     if (!asset) throw new Error("Asset no encontrado");
 
-    await assetRepository.update(id, { deletedAt: new Date() });
+    await assetRepository.update(id, {
+      deletedAt: new Date(),
+      motivoDeshabilitacion: motivo,
+      deshabilitadoPor: autor,
+    });
 
     const bitacoraEntry = bitacoraRepository.create({
       asset: { id },
       autor,
       tipoEvento: "NOTA",
-      descripcion: "Activo eliminado y movido a papelera.",
+      descripcion: "Activo deshabilitado y movido a histórico.",
     });
     await bitacoraRepository.save(bitacoraEntry);
 

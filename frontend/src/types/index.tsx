@@ -117,6 +117,8 @@ export interface Asset {
   vpn: Vpn | null;
   movil: Movil | null;
   bitacora?: BitacoraEntry[];
+motivoDeshabilitacion?: string | null;
+deshabilitadoPor?: string | null;
 }
 
 export interface Pagination {

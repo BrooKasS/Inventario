@@ -5,6 +5,7 @@ import {
   updateAsset,
   addObservacion,
 } from "../../api/client";
+import { getUsuario } from "../../api/auth";
 import type { Asset, BitacoraEntry, TipoEvento } from "../../types";
 import { exportarExcel, exportarPDF } from "./exportUtils";
 
@@ -16,8 +17,6 @@ export interface UseAssetDetailReturn {
   saving: boolean;
   showObs: boolean;
   setShowObs: (v: boolean) => void;
-  obsAutor: string;
-  setObsAutor: (v: string) => void;
   obsTipo: TipoEvento;
   setObsTipo: (v: TipoEvento) => void;
   obsDesc: string;
@@ -54,7 +53,6 @@ export function useAssetDetail(): UseAssetDetailReturn {
 
   /* ── nueva observación ── */
   const [showObs, setShowObs] = useState(false);
-  const [obsAutor, setObsAutor] = useState("");
   const [obsTipo, setObsTipo] = useState<TipoEvento>("NOTA");
   const [obsDesc, setObsDesc] = useState("");
   const [obsLoading, setObsLoading] = useState(false);
@@ -143,16 +141,16 @@ export function useAssetDetail(): UseAssetDetailReturn {
   };
 
   const handleAddObs = async () => {
-    if (!id || !obsAutor || !obsDesc) return;
+    if (!id || !obsDesc) return;
     setObsLoading(true);
+    const autor = getUsuario() ?? "Sistema";
     try {
       await addObservacion(id, {
-        autor: obsAutor,
+        autor,
         tipoEvento: obsTipo,
         descripcion: obsDesc,
       });
       setShowObs(false);
-      setObsAutor("");
       setObsDesc("");
       setObsTipo("NOTA");
       load();
@@ -196,8 +194,6 @@ export function useAssetDetail(): UseAssetDetailReturn {
     saving,
     showObs,
     setShowObs,
-    obsAutor,
-    setObsAutor,
     obsTipo,
     setObsTipo,
     obsDesc,

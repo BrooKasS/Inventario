@@ -210,14 +210,14 @@ export default function AssetDetail() {
             <>
               <button
                 onClick={async () => {
-                  if (
-                    !window.confirm(
-                      `¿Mover "${asset.nombre}" a la papelera?`
-                    )
-                  )
+                  const motivo = window.prompt(`¿Por qué deshabilitas "${asset.nombre}"?\n(Escribe el motivo)`);
+                  if (motivo === null) return;
+                  if (!motivo.trim()) {
+                    alert("El motivo es obligatorio");
                     return;
+                  }
                   const { deleteAsset } = await import("../../api/client");
-                  await deleteAsset(asset.id, "Sistema");
+                  await deleteAsset(asset.id, motivo);
                   navigate(-1);
                 }}
                 style={{
@@ -353,8 +353,6 @@ export default function AssetDetail() {
         hayFiltros={state.hayFiltros}
         showObs={state.showObs}
         setShowObs={state.setShowObs}
-        obsAutor={state.obsAutor}
-        setObsAutor={state.setObsAutor}
         obsTipo={state.obsTipo}
         setObsTipo={state.setObsTipo}
         obsDesc={state.obsDesc}

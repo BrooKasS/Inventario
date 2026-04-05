@@ -8,8 +8,6 @@ interface BitacoraSectionProps {
   hayFiltros: boolean;
   showObs: boolean;
   setShowObs: (v: boolean) => void;
-  obsAutor: string;
-  setObsAutor: (v: string) => void;
   obsTipo: TipoEvento;
   setObsTipo: (v: TipoEvento) => void;
   obsDesc: string;
@@ -39,8 +37,6 @@ export function BitacoraSection({
   hayFiltros,
   showObs,
   setShowObs,
-  obsAutor,
-  setObsAutor,
   obsTipo,
   setObsTipo,
   obsDesc,
@@ -373,26 +369,11 @@ export function BitacoraSection({
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 1fr",
+              gridTemplateColumns: "1fr",
               gap: 16,
               marginBottom: 14,
             }}
           >
-            <div>
-              <label style={labelStyle}>Tu nombre</label>
-              <input
-                style={inputStyle}
-                value={obsAutor}
-                onChange={(e) => setObsAutor(e.target.value)}
-                placeholder="Ej: Juan Pérez"
-                onFocus={(e) =>
-                  (e.currentTarget.style.borderColor = C.primary)
-                }
-                onBlur={(e) =>
-                  (e.currentTarget.style.borderColor = "#e0e0e0")
-                }
-              />
-            </div>
             <div>
               <label style={labelStyle}>Tipo de evento</label>
               <select
@@ -451,7 +432,7 @@ export function BitacoraSection({
             </button>
             <button
               onClick={handleAddObs}
-              disabled={obsLoading || !obsAutor || !obsDesc}
+              disabled={obsLoading || !obsDesc}
               style={{
                 padding: "9px 20px",
                 borderRadius: 8,
@@ -460,11 +441,11 @@ export function BitacoraSection({
                 color: "#fff",
                 fontWeight: 700,
                 cursor:
-                  obsLoading || !obsAutor || !obsDesc
+                  obsLoading || !obsDesc
                     ? "not-allowed"
                     : "pointer",
                 fontSize: 13,
-                opacity: obsLoading || !obsAutor || !obsDesc ? 0.6 : 1,
+                opacity: obsLoading || !obsDesc ? 0.6 : 1,
               }}
             >
               {obsLoading ? "Guardando..." : "Guardar"}

@@ -124,11 +124,14 @@ export async function exportarActivosExcel(assets: Asset[], nombre: string): Pro
   const tipos = [...new Set(assets.map(a => a.tipo))];
   const fecha = new Date().toISOString().slice(0, 10);
 
-  const res = await fetch("http://localhost:3000/api/assets/export-excel", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ids, tipos }),
-  });
+ const res = await fetch("http://localhost:3000/api/assets/export-excel", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${localStorage.getItem("inventario_token")}`,
+  },
+  body: JSON.stringify({ ids, tipos }),
+});
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -243,11 +246,14 @@ export async function exportarObservacionesExcel(
  
   const fecha = new Date().toISOString().slice(0, 10);
  
-  const res = await fetch("http://localhost:3000/api/assets/export-observaciones", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ rows, incluirTecnicos }),
-  });
+ const res = await fetch("http://localhost:3000/api/assets/export-observaciones", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${localStorage.getItem("inventario_token")}`,
+  },
+  body: JSON.stringify({ rows, incluirTecnicos }),
+});
  
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

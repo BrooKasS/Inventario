@@ -121,9 +121,19 @@ export async function generarExcelInventario(assets: AssetData[]): Promise<Buffe
     fs.writeFileSync(payloadPath, JSON.stringify(payload));
 
     const scriptPath = path.join(__dirname, "exportInventario.py");
-    execSync(`python3 "${scriptPath}" "${payloadPath}" "${outputPath}"`, {
-      timeout: 30999000,
+    
+    console.log("🐍 Script path:", scriptPath);
+    console.log("🐍 Script existe:", fs.existsSync(scriptPath));
+    console.log("🐍 Template existe:", fs.existsSync(TEMPLATE_PATH));
+    console.log("🐍 Payload path:", payloadPath);
+    
+    const pythonCmd = process.platform === "win32" ? "python" : "python3";
+    console.log("🐍 Python cmd:", pythonCmd);
+    
+    execSync(`"${pythonCmd}" "${scriptPath}" "${payloadPath}" "${outputPath}"`, {
+      timeout: 120000,
       stdio: "pipe",
+      windowsHide: true,
     });
 
     const buffer = fs.readFileSync(outputPath);

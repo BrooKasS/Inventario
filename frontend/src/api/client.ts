@@ -77,8 +77,8 @@ export const importExcel = (file: File) => {
   }).then(r => r.data);
 };
 
-export const deleteAsset = (id: string, autor: string = "Sistema") =>
-  api.delete(`/assets/${id}`, { data: { autor } }).then(r => r.data);
+export const deleteAsset = (id: string, motivo: string = "Sin motivo") =>
+  api.delete(`/assets/${id}`, { data: { motivo } }).then(r => r.data);
 
 export const restoreAsset = (id: string, autor: string = "Sistema") =>
   api.post(`/assets/${id}/restore`, { autor }).then(r => r.data);

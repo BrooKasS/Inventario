@@ -34,14 +34,15 @@ export async function generarExcelObservaciones(opts: ExportObsOptions): Promise
   const payloadPath = path.join(__dirname, `obs_payload_${Date.now()}.json`);
   const outputPath  = path.join(__dirname, `obs_out_${Date.now()}.xlsx`);
 
-  try {
-    fs.writeFileSync(payloadPath, JSON.stringify({ rows, incluirTecnicos }));
-
-    const scriptPath = path.join(__dirname, "exportObservaciones.py");
-    execSync(`python3 "${scriptPath}" "${payloadPath}" "${outputPath}"`, {
-      timeout: 30000,
-      stdio: "pipe",
-    });
+try {
+  fs.writeFileSync(payloadPath, JSON.stringify({ rows, incluirTecnicos }));
+  const scriptPath = path.join(__dirname, "exportObservaciones.py");
+  const pythonCmd = process.platform === "win32" ? "python" : "python3";
+  execSync(`"${pythonCmd}" "${scriptPath}" "${payloadPath}" "${outputPath}"`, {
+    timeout: 120000,
+    stdio: "pipe",
+    windowsHide: true,
+  });
 
     const buffer = fs.readFileSync(outputPath);
     return buffer;

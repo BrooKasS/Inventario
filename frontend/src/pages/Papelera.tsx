@@ -105,7 +105,7 @@ export default function Papelera() {
 
   /* ── Restaurar ── */
   const handleRestore = async (asset: Asset) => {
-    if (!window.confirm(`¿Restaurar "${asset.nombre}" del inventario?`)) return;
+    if (!window.confirm(`¿Habilitar "${asset.nombre}" y devolverlo al  inventario?`)) return;
     setRestoring(asset.id);
     try {
       await restoreAsset(asset.id, "Sistema");
@@ -150,11 +150,11 @@ export default function Papelera() {
                 fontSize: 28, fontWeight: 700, margin: 0, color: "#fff",
                 textShadow: "0 2px 8px rgba(0,0,0,.2)",
               }}>
-                Papelera
+               Histórico de activos
               </h1>
             </div>
             <p style={{ fontSize: 13, color: "rgba(255,255,255,.75)", margin: "4px 0 0 56px" }}>
-              {loading ? "Cargando..." : `${assets.length} activo${assets.length !== 1 ? "s" : ""} eliminado${assets.length !== 1 ? "s" : ""}`}
+              {loading ? "Cargando..." : `${assets.length} activo${assets.length !== 1 ? "s" : ""} deshabilitado${assets.length !== 1 ? "s" : ""}`}
               {hayFiltros && ` · mostrando ${filtrados.length}`}
             </p>
           </div>
@@ -313,7 +313,7 @@ export default function Papelera() {
                 <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
                   <thead>
                     <tr style={{ background: "rgb(90,56,112)" }}>
-                      {["Nombre", "Tipo", "Código", "Ubicación", "Eliminado el", "Acción"].map((h, i, arr) => (
+                      {["Nombre", "Tipo", "Código", "Ubicación", "Deshabilitado el", "Motivo", "Por", "Acción"].map((h, i, arr) => (
                         <th key={h} style={{
                           padding: "11px 18px", textAlign: "left",
                           fontSize: 10, fontWeight: 700,
@@ -352,6 +352,13 @@ export default function Papelera() {
                         <td style={{ padding: "13px 18px", fontSize: 12, color: C.muted, fontFamily: "Calibri, sans-serif", whiteSpace: "nowrap" }}>
                           {formatFecha((a as any).deletedAt)}
                         </td>
+                        
+<td style={{ padding: "13px 18px", fontSize: 13, color: C.muted, fontFamily: "Calibri, sans-serif" }}>
+  {(a as any).motivoDeshabilitacion ?? "—"}
+</td>
+<td style={{ padding: "13px 18px", fontSize: 13, color: C.muted, fontFamily: "Calibri, sans-serif" }}>
+  {(a as any).deshabilitadoPor ?? "—"}
+</td>
                         <td style={{ padding: "13px 18px" }}>
                           <button
                             onClick={() => handleRestore(a)}
@@ -380,7 +387,7 @@ export default function Papelera() {
                                 Restaurando...
                               </>
                             ) : (
-                              <>♻️ Restaurar</>
+                              <>♻️ Habilitar</>
                             )}
                           </button>
                         </td>

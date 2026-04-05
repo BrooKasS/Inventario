@@ -10,7 +10,7 @@ const nav = [
   { label: "Red",            path: "/inventario/RED",       icon: "🌐" },
   { label: "VPN",            path: "/inventario/VPN",       icon: "🔒" },
   { label: "Móviles",        path: "/inventario/MOVIL",     icon: "📱" },
-  { label: "Papelera",       path: "/papelera",             icon: "🗑" },
+  { label: "Histórico",      path: "/papelera",             icon: "🗑" },
 ];
 
 const GRAD    = "linear-gradient(135deg, #FA8200 0%, #861F41 35%, #B7312C 70%, #D86018 100%)";

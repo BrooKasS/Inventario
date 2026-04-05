@@ -71,7 +71,8 @@ export class AssetsController {
       });
     }
 
-    const asset = await assetsService.createAsset(data, "Sistema");
+    const autor = (req as any).usuario ?? "Sistema";
+    const asset = await assetsService.createAsset(data, autor);
 
     res.status(201).json({
       success: true,
@@ -85,7 +86,8 @@ export class AssetsController {
     const id = req.params.id as string;
     const data = req.body;
 
-    const asset = await assetsService.updateAsset(id, data, "Sistema");
+    const autor = (req as any).usuario ?? "Sistema";
+    const asset = await assetsService.updateAsset(id, data, autor);
 
     res.json({
       success: true,
@@ -97,9 +99,10 @@ export class AssetsController {
   // DELETE /assets/:id
   async deleteAsset(req: Request, res: Response) {
     const  id  = req.params.id as string;
-   const autor = req.body.autor as string | undefined;
+   const autor = (req as any).usuario ?? "Sistema";
+    const motivo = req.body.motivo ?? "Sin motivo";
 
-    const asset = await assetsService.softDelete(id, autor ?? "Sistema");
+    const asset = await assetsService.softDelete(id, autor, motivo);
 
     res.json({
       success: true,
@@ -111,9 +114,9 @@ export class AssetsController {
   // POST /assets/:id/restore
   async restoreAsset(req: Request, res: Response) {
     const  id  = req.params.id as string;
-     const autor = req.body.autor as string | undefined;
+     const autor = (req as any).usuario ?? "Sistema";
 
-    const asset = await assetsService.restoreAsset(id, autor ?? "Sistema");
+    const asset = await assetsService.restoreAsset(id, autor);
 
     res.json({
       success: true,
@@ -137,12 +140,13 @@ export class AssetsController {
   // POST /assets/:id/bitacora
   async addBitacoraEntry(req: Request, res: Response) {
     const id = req.params.id as string;
-    const { autor, tipoEvento, descripcion } = req.body;
+    const { tipoEvento, descripcion } = req.body;
+    const autor = (req as any).usuario ?? "Sistema";
 
-    if (!autor || !tipoEvento || !descripcion) {
+    if (!tipoEvento || !descripcion) {
       return res.status(400).json({
         success: false,
-        error: "Los campos autor, tipoEvento y descripcion son requeridos",
+        error: "Los campos tipoEvento y descripcion son requeridos",
       } as ApiResponse<never>);
     }
 

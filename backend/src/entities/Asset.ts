@@ -53,6 +53,12 @@ export class Asset {
   @Column({ type: "timestamp", nullable: true })
   deletedAt!: Date | null;
 
+  @Column({ type: "varchar2", length: 500, nullable: true })
+  motivoDeshabilitacion!: string | null;
+
+  @Column({ type: "varchar2", length: 200, nullable: true })
+  deshabilitadoPor!: string | null;
+
   @OneToOne(() => Servidor, (s) => s.asset, { cascade: true })
   servidor!: Servidor | null;
 
