@@ -25,8 +25,11 @@ export function useDashboardExport({ pasaFiltroObservacion }: UseDashboardExport
     let page = 1;
     let out: Asset[] = [];
 
+    // Si no hay tipos seleccionados, incluir todos explícitamente
+    const tiposAlFetch = tipos.length === 0 ? ["SERVIDOR", "RED", "UPS", "BASE_DATOS", "VPN", "MOVIL"] : tipos;
+
     for (let i = 0; i < 20; i++) {
-      const resp = await getAssets({ limit, page, tipos, search });
+      const resp = await getAssets({ limit, page, tipos: tiposAlFetch, search });
       const items = resp.assets || [];
       out = out.concat(items);
       const total = resp.total || out.length;

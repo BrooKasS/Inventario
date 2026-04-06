@@ -301,7 +301,7 @@ export class AssetsController {
         assets = assets.concat(r);
       }
     } else {
-      for (const tipo of ["SERVIDOR", "RED", "UPS", "BASE_DATOS"]) {
+      for (const tipo of ["SERVIDOR", "RED", "UPS", "BASE_DATOS", "VPN", "MOVIL"]) {
         const r = await assetsService.getAssetsByTipoAndIds({ tipo });
         assets = assets.concat(r);
       }

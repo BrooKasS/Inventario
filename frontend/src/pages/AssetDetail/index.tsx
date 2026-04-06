@@ -305,15 +305,16 @@ export default function AssetDetail() {
           field="custodio"
           onChange={(f, v) => handleChange(null, f, v)}
         />
-        <Field
-          label="Código de Servicio"
-          value={asset.codigoServicio}
-          editing={editing}
-          field="codigoServicio"
-          onChange={(f, v) => handleChange(null, f, v)}
-        />
-      </Section>
-
+      {["SERVIDOR", "RED"].includes(asset.tipo) && (
+  <Field
+    label="Código de Servicio"
+    value={asset.codigoServicio}
+    editing={editing}
+    field="codigoServicio"
+    onChange={(f, v) => handleChange(null, f, v)}
+  />
+)}
+</Section>
       {/* ── Secciones por tipo de activo ── */}
       <ServidorSections
         asset={asset}

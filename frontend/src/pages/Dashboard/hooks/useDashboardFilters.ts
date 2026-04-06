@@ -1,43 +1,62 @@
+/**
+ * useDashboardFilters.ts
+ * CORREGIDO:
+ * - CAMBIO_CAMPO se excluye por defecto a menos que esté en eventosSel
+ * - Deshabilitar/Habilitar (tipoEvento NOTA con autor = usuario logueado) SÍ aparece
+ * - incluirSistema controla si se muestran entradas con autor "Sistema"
+ */
+import { useCallback } from "react";
+
 export function useDashboardFilters() {
-  const esSistema = (autor?: string) => {
-    return (autor ?? "").trim().toLowerCase() === "sistema";
-  };
 
-  const tieneCampoModificado = (e: any): boolean => {
-    const campo = (e?.campoModificado ?? "").toString().trim();
-    return campo.length > 0;
-  };
-
-  const pasaFiltroObservacion = (
+  /**
+   * Determina si una entrada de bitácora pasa los filtros activos.
+   *
+   * Reglas:
+   * 1. Si incluirSistema=false → excluir entradas con autor "Sistema"
+   * 2. Si eventosSel tiene elementos → solo incluir esos tipos de evento
+   *    EXCEPCIÓN: CAMBIO_CAMPO nunca se incluye a menos que esté
+   *    explícitamente en eventosSel
+   * 3. Filtros de autor, desde, hasta — aplican siempre
+   */
+  const pasaFiltroObservacion = useCallback((
     e: any,
     autor: string,
     desde: string,
     hasta: string,
-    eventos: string[],
-    incluirSis: boolean
+    eventosSel: string[],
+    incluirSistema: boolean
   ): boolean => {
-    if (esSistema(e.autor)) {
-      if (!incluirSis) return false;
-      if (!tieneCampoModificado(e)) return false;
+
+    // 1. Excluir autor "Sistema" si no se quiere incluir
+    if (!incluirSistema && e.autor === "Sistema") return false;
+
+    // 2. CAMBIO_CAMPO: excluir SIEMPRE a menos que esté explícitamente seleccionado
+    if (e.tipoEvento === "CAMBIO_CAMPO") {
+      if (!eventosSel.includes("CAMBIO_CAMPO")) return false;
     }
 
-    if (eventos.length > 0 && !eventos.includes(e.tipoEvento)) return false;
-    if (autor && !e.autor?.toLowerCase().includes(autor.toLowerCase())) return false;
+    // 3. Si hay eventos seleccionados, filtrar por ellos
+    if (eventosSel.length > 0 && !eventosSel.includes(e.tipoEvento)) return false;
 
-    const f = new Date(e.creadoEn);
+    // 4. Filtro por autor (parcial, case-insensitive)
+    if (autor && !e.autor.toLowerCase().includes(autor.toLowerCase())) return false;
+
+    // 5. Filtro por rango de fechas
+    const fecha = new Date(e.creadoEn);
     if (desde) {
       const d = new Date(desde);
       d.setHours(0, 0, 0, 0);
-      if (f < d) return false;
+      if (fecha < d) return false;
     }
     if (hasta) {
       const h = new Date(hasta);
       h.setHours(23, 59, 59, 999);
-      if (f > h) return false;
+      if (fecha > h) return false;
     }
 
     return true;
-  };
+  }, []);
 
-  return { esSistema, tieneCampoModificado, pasaFiltroObservacion };
+  return { pasaFiltroObservacion };
 }

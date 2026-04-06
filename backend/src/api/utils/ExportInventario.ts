@@ -1,29 +1,27 @@
 /**
- * exportInventario.ts
- * Genera el Excel de inventario con el formato exacto del template FR-GTE-02-049
- * Estrategia: copia el template y escribe los datos desde fila 11
- *
- * Ubicación: backend/src/utils/exportInventario.ts
+ * ExportInventario.ts — v4
+ * + Hojas InventarioVPN e InventarioMovil
+ * Ubicación: backend/src/api/utils/ExportInventario.ts
  */
-console.log("EXPORT INVENTARIO EJECUTANDO");
-import * as fs from "fs";
+import * as fs   from "fs";
 import * as path from "path";
 import { execSync } from "child_process";
 
-// Ruta al template — copiado en backend/src/utils/template_inventario.xlsx
 const TEMPLATE_PATH = path.join(__dirname, "template_inventario.xlsx");
-console.log("EXPORT INVENTARIO EJECUTANDO");
+
 interface AssetData {
-  tipo: string;
-  nombre: string | null;
-  propietario: string | null;
-  custodio: string | null;
+  tipo:           string;
+  nombre:         string | null;
+  propietario:    string | null;
+  custodio:       string | null;
   codigoServicio: string | null;
-  ubicacion: string | null;
-  servidor?: any;
-  red?: any;
-  ups?: any;
-  baseDatos?: any;
+  ubicacion:      string | null;
+  servidor?:      any;
+  red?:           any;
+  ups?:           any;
+  baseDatos?:     any;
+  vpn?:           any;
+  movil?:         any;
 }
 
 function v(val: any): string {
@@ -31,49 +29,42 @@ function v(val: any): string {
   return String(val);
 }
 
-function mbToGb(mb: number | null): string {
-  if (!mb) return "";
-  return `${Math.round(mb / 1024)} GB`;
-}
-
-/**
- * Genera el Excel de inventario usando Python + openpyxl
- * Retorna el buffer del archivo generado
- */
 export async function generarExcelInventario(assets: AssetData[]): Promise<Buffer> {
   if (!fs.existsSync(TEMPLATE_PATH)) {
-    throw new Error(`Template no encontrado en: ${TEMPLATE_PATH}. Copia el archivo FR-GTE-02-049 ahí.`);
+    throw new Error(`Template no encontrado en: ${TEMPLATE_PATH}`);
   }
 
-  // Separar por tipo
   const servidores = assets.filter(a => a.tipo === "SERVIDOR");
   const redes      = assets.filter(a => a.tipo === "RED");
   const ups        = assets.filter(a => a.tipo === "UPS");
   const bds        = assets.filter(a => a.tipo === "BASE_DATOS");
+  const vpns       = assets.filter(a => a.tipo === "VPN");
+  const moviles    = assets.filter(a => a.tipo === "MOVIL");
 
-  // Construir payload JSON para el script Python
   const payload = {
     template: TEMPLATE_PATH,
+
     servidores: servidores.map(a => ({
-      nombre:          v(a.nombre),
-      propietario:     v(a.propietario),
-      custodio:        v(a.custodio),
-      monitoreo:       v(a.servidor?.monitoreo),
-      backup:          v(a.servidor?.backup),
-      ipInterna:       v(a.servidor?.ipInterna),
-      ipGestion:       v(a.servidor?.ipGestion),
-      ipServicio:      v(a.servidor?.ipServicio),
-      ambiente:        v(a.servidor?.ambiente),
-      tipoServidor:    v(a.servidor?.tipoServidor),
-      appSoporta:      v(a.servidor?.appSoporta),
-      ubicacion:       v(a.ubicacion),
-      vcpu:            v(a.servidor?.vcpu),
-      vramMb:          v(a.servidor?.vramMb),
-      sistemaOperativo: v(a.servidor?.sistemaOperativo),
-      fechaFinSoporte: v(a.servidor?.fechaFinSoporte),
-      rutasBackup:     v(a.servidor?.rutasBackup),
+      nombre:             v(a.nombre),
+      propietario:        v(a.propietario),
+      custodio:           v(a.custodio),
+      monitoreo:          v(a.servidor?.monitoreo),
+      backup:             v(a.servidor?.backup),
+      ipInterna:          v(a.servidor?.ipInterna),
+      ipGestion:          v(a.servidor?.ipGestion),
+      ipServicio:         v(a.servidor?.ipServicio),
+      ambiente:           v(a.servidor?.ambiente),
+      tipoServidor:       v(a.servidor?.tipoServidor),
+      appSoporta:         v(a.servidor?.appSoporta),
+      ubicacion:          v(a.ubicacion),
+      vcpu:               v(a.servidor?.vcpu),
+      vramMb:             v(a.servidor?.vramMb),
+      sistemaOperativo:   v(a.servidor?.sistemaOperativo),
+      fechaFinSoporte:    v(a.servidor?.fechaFinSoporte),
+      rutasBackup:        v(a.servidor?.rutasBackup),
       contratoQueSoporta: v(a.servidor?.contratoQueSoporta),
     })),
+
     redes: redes.map(a => ({
       nombre:             v(a.nombre),
       propietario:        v(a.propietario),
@@ -88,6 +79,7 @@ export async function generarExcelInventario(assets: AssetData[]): Promise<Buffe
       ubicacion:          v(a.ubicacion),
       contratoQueSoporta: v(a.red?.contratoQueSoporta),
     })),
+
     ups: ups.map(a => ({
       nombre:      v(a.nombre),
       propietario: v(a.propietario),
@@ -98,6 +90,7 @@ export async function generarExcelInventario(assets: AssetData[]): Promise<Buffe
       estado:      v(a.ups?.estado),
       ubicacion:   v(a.ubicacion),
     })),
+
     bds: bds.map(a => ({
       nombre:             v(a.nombre),
       propietario:        v(a.propietario),
@@ -112,6 +105,37 @@ export async function generarExcelInventario(assets: AssetData[]): Promise<Buffe
       contenedorFisico:   v(a.baseDatos?.contenedorFisico),
       contratoQueSoporta: v(a.baseDatos?.contratoQueSoporta),
     })),
+
+    vpns: vpns.map(a => ({
+      nombre:   v(a.nombre),
+      conexion: v(a.vpn?.conexion),
+      fases:    v(a.vpn?.fases),
+      origen:   v(a.vpn?.origen),
+      destino:  v(a.vpn?.destino),
+    })),
+
+    moviles: moviles.map(a => ({
+      nombre:                  v(a.nombre),
+      numeroCaso:              v(a.movil?.numeroCaso),
+      region:                  v(a.movil?.region),
+      dependencia:             v(a.movil?.dependencia),
+      sede:                    v(a.movil?.sede),
+      cedula:                  v(a.movil?.cedula),
+      usuarioRed:              v(a.movil?.usuarioRed),
+      correoResponsable:       v(a.movil?.correoResponsable),
+      uni:                     v(a.movil?.uni),
+      marca:                   v(a.movil?.marca),
+      modelo:                  v(a.movil?.modelo),
+      serial:                  v(a.movil?.serial),
+      imei1:                   v(a.movil?.imei1),
+      imei2:                   v(a.movil?.imei2),
+      sim:                     v(a.movil?.sim),
+      numeroLinea:             v(a.movil?.numeroLinea),
+      fechaEntrega:            v(a.movil?.fechaEntrega),
+      observacionesEntrega:    v(a.movil?.observacionesEntrega),
+      fechaDevolucion:         v(a.movil?.fechaDevolucion),
+      observacionesDevolucion: v(a.movil?.observacionesDevolucion),
+    })),
   };
 
   const payloadPath = path.join(__dirname, `export_payload_${Date.now()}.json`);
@@ -119,25 +143,14 @@ export async function generarExcelInventario(assets: AssetData[]): Promise<Buffe
 
   try {
     fs.writeFileSync(payloadPath, JSON.stringify(payload));
-
     const scriptPath = path.join(__dirname, "exportInventario.py");
-    
-    console.log("🐍 Script path:", scriptPath);
-    console.log("🐍 Script existe:", fs.existsSync(scriptPath));
-    console.log("🐍 Template existe:", fs.existsSync(TEMPLATE_PATH));
-    console.log("🐍 Payload path:", payloadPath);
-    
-    const pythonCmd = process.platform === "win32" ? "python" : "python3";
-    console.log("🐍 Python cmd:", pythonCmd);
-    
+    const pythonCmd  = process.platform === "win32" ? "python" : "python3";
     execSync(`"${pythonCmd}" "${scriptPath}" "${payloadPath}" "${outputPath}"`, {
       timeout: 120000,
       stdio: "pipe",
       windowsHide: true,
     });
-
-    const buffer = fs.readFileSync(outputPath);
-    return buffer;
+    return fs.readFileSync(outputPath);
   } finally {
     if (fs.existsSync(payloadPath)) fs.unlinkSync(payloadPath);
     if (fs.existsSync(outputPath))  fs.unlinkSync(outputPath);
