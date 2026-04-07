@@ -9,6 +9,10 @@ import { BaseDatos } from "../../entities/BaseDatos";
 import { Vpn } from "../../entities/Vpn";
 import { Movil } from "../../entities/Movil";
 import { FindOptionsWhere, In, IsNull, Not } from "typeorm";
+import { generarWordMovil } from "../utils/generarMovilDocx";
+import { sendMovilEmail } from "../utils/sendMovilEmail";
+
+import path from "path";
 
 export class AssetsService {
   async getAssets(filters: AssetFilters) {
@@ -101,11 +105,14 @@ export class AssetsService {
     return asset;
   }
 
+  
+
   async createAsset(data: any, autor: string = "Sistema") {
     const {
       tipo, nombre, ubicacion, propietario, custodio, codigoServicio,
       servidor, red, ups, baseDatos, vpn,
-      // Campos MOVIL
+
+      // MOVIL
       numeroCaso, region, dependencia, sede, cedula, usuarioRed,
       correoResponsable, uni, marca, modelo, serial, imei1, imei2,
       sim, numeroLinea, fechaEntrega, observacionesEntrega,
@@ -120,7 +127,9 @@ export class AssetsService {
     const vpnRepository = AppDataSource.getRepository(Vpn);
     const movilRepository = AppDataSource.getRepository(Movil);
 
-    // Create asset
+    // ======================
+    // CREAR ASSET
+    // ======================
     const asset = assetRepository.create({
       tipo,
       nombre,
@@ -132,33 +141,18 @@ export class AssetsService {
 
     const savedAsset = await assetRepository.save(asset);
 
-    
-    if (servidor) {
-      const servidorData = servidorRepository.create({ ...servidor, asset: savedAsset });
-      await servidorRepository.save(servidorData);
-    }
+    // ======================
+    // RELACIONES
+    // ======================
+    if (servidor)  await servidorRepository.save({ ...servidor, asset: savedAsset });
+    if (red)       await redRepository.save({ ...red, asset: savedAsset });
+    if (ups)       await upsRepository.save({ ...ups, asset: savedAsset });
+    if (baseDatos) await baseDatosRepository.save({ ...baseDatos, asset: savedAsset });
+    if (vpn)       await vpnRepository.save({ ...vpn, asset: savedAsset });
 
-    if (red) {
-      const redData = redRepository.create({ ...red, asset: savedAsset });
-      await redRepository.save(redData);
-    }
-
-    if (ups) {
-      const upsData = upsRepository.create({ ...ups, asset: savedAsset });
-      await upsRepository.save(upsData);
-    }
-
-    if (baseDatos) {
-      const baseDatosData = baseDatosRepository.create({ ...baseDatos, asset: savedAsset });
-      await baseDatosRepository.save(baseDatosData);
-    }
-
-    if (vpn) {
-      const vpnData = vpnRepository.create({ ...vpn, asset: savedAsset });
-      await vpnRepository.save(vpnData);
-    }
-
-    // Create movil if tipo is MOVIL
+    // ======================
+    // MOVIL + WORD (+ CORREO OPCIONAL) ✅
+    // ======================
     if (tipo === "MOVIL") {
       const movilData = movilRepository.create({
         numeroCaso: numeroCaso ?? null,
@@ -180,19 +174,71 @@ export class AssetsService {
         observacionesEntrega: observacionesEntrega ?? null,
         asset: savedAsset,
       });
+
       await movilRepository.save(movilData);
+
+      // ✅ Generar Word SIEMPRE (reutilizable)
+      const buffer = await generarWordMovil({
+        nombre: savedAsset.nombre,
+        numeroCaso,
+        region,
+        dependencia,
+        sede,
+        cedula,
+        usuarioRed,
+        uni,
+        marca,
+        modelo,
+        serial,
+        imei1,
+        imei2,
+        sim,
+        numeroLinea,
+        fechaEntrega,
+        observacionesEntrega,
+        fechaDevolucion: null,
+        observacionesDevolucion: null,
+      });
+
+      // ✅ Enviar correo SOLO si hay responsable
+      if (correoResponsable) {
+        try {
+          const archivoBase64 = buffer.toString("base64");
+
+          await sendMovilEmail({
+            correo: correoResponsable,
+            nombreActivo: savedAsset.nombre!,
+            assetId: savedAsset.id,
+            nombreArchivo: `Acta_Entrega_${savedAsset.nombre}.docx`,
+            archivoBase64,
+          });
+
+          await bitacoraRepository.save(
+            bitacoraRepository.create({
+              asset: savedAsset,
+              autor: "Sistema",
+              tipoEvento: "NOTA",
+              descripcion: `Acta de entrega enviada a ${correoResponsable}`,
+            })
+          );
+        } catch (error) {
+          console.error("⚠️ Error enviando acta MOVIL:", error);
+        }
+      }
     }
 
-    // Create bitacora entry
-    const bitacoraEntry = bitacoraRepository.create({
-      asset: savedAsset,
-      autor,
-      tipoEvento: "IMPORTACION",
-      descripcion: "Activo creado manualmente.",
-    });
-    await bitacoraRepository.save(bitacoraEntry);
+    // ======================
+    // BITÁCORA CREACIÓN
+    // ======================
+    await bitacoraRepository.save(
+      bitacoraRepository.create({
+        asset: savedAsset,
+        autor,
+        tipoEvento: "IMPORTACION",
+        descripcion: "Activo creado manualmente.",
+      })
+    );
 
-    // Return asset with relations
     return assetRepository.findOne({
       where: { id: savedAsset.id },
       relations: ["servidor", "red", "ups", "baseDatos", "vpn", "movil"],
@@ -539,6 +585,7 @@ export class AssetsService {
       order: { deletedAt: "DESC" },
     });
   }
+  
 }
 
 export const assetsService = new AssetsService();

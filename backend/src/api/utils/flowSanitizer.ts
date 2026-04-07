@@ -2,12 +2,22 @@
 type AnyObj = Record<string, any>;
 
 /**
- * Convierte null/undefined -> "" y números/fechas -> string.
- * NOTA: no hace deep para objetos anidados (no lo necesitas porque tus registros son planos).
+ * Convierte null/undefined -> ""
+ * Convierte Date -> YYYY-MM-DD
+ * Convierte number -> string
+ * ✅ PRESERVA boolean (especialmente Eliminado)
  */
 export function sanitizeRecordForFlow<T extends AnyObj>(rec: T): T {
   const out: AnyObj = {};
+
   for (const [k, v] of Object.entries(rec)) {
+
+    // ✅ PRESERVAR Eliminado COMO BOOLEAN
+    if (k === "Eliminado") {
+      out[k] = v === true;
+      continue;
+    }
+
     if (v === null || v === undefined) {
       out[k] = "";
     } else if (v instanceof Date) {
@@ -18,10 +28,14 @@ export function sanitizeRecordForFlow<T extends AnyObj>(rec: T): T {
       out[k] = v;
     }
   }
+
   return out as T;
 }
 
-export function sanitizePayloadForFlow(payload: { tipo: string; assets: AnyObj[] }) {
+export function sanitizePayloadForFlow(payload: {
+  tipo: string;
+  assets: AnyObj[];
+}) {
   return {
     tipo: payload.tipo,
     assets: payload.assets.map(sanitizeRecordForFlow),
