@@ -74,4 +74,14 @@ export class Movil {
 
   @Column({ type: "varchar2", length: 2000, nullable: true })
   observacionesDevolucion!: string | null;
+
+
+  // Ruta del archivo de firma (PNG)
+  @Column({ type: "varchar2", length: 500, nullable: true })
+  firmaPath!: string | null;
+
+  // Fecha exacta en que se firmó
+  @Column({ type: "timestamp", nullable: true })
+  fechaFirma!: Date | null;
+
 }

@@ -21,6 +21,12 @@ router.post("/export-observaciones", assetsController.exportObservaciones);
 
 router.post("/export-excel", assetsController.exportExcel);
 
+// FIRMAR ACTA (DEBE IR ANTES DE /:id)
+router.post(
+  "/:id/firmar",
+  asyncHandler(assetsController.firmarMovil.bind(assetsController))
+);
+
 
 router.get("/:id/word", assetsController.generarWord);
 

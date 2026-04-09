@@ -3,6 +3,7 @@ import {
   BorderStyle, WidthType, ShadingType, VerticalAlign, AlignmentType,
   Header, ImageRun, PageOrientation,
 } from "docx";
+import fs from "fs";
 
 /* ─── Tipos ─── */
 interface DatosMovil {
@@ -27,6 +28,8 @@ interface DatosMovil {
   observacionesEntrega: string | null;
   fechaDevolucion: string | Date | null;
   observacionesDevolucion: string | null;
+  firmaPath: string | null;
+  fechaFirma: string | Date | null;
 }
 
 /* ─── Helpers ─── */
@@ -260,7 +263,11 @@ function obsRow(text: string, height = 800, totalW = 10035): TableRow {
 }
 
 /* ─── Fila firma ─── */
-function firmaRow(totalW = 10035): TableRow {
+function firmaRow(
+  firmaPath: string | null,
+  fechaFirma: string,
+  totalW = 10035
+): TableRow {
   return new TableRow({
     height: { value: 700, rule: "atLeast" },
     children: [
@@ -272,11 +279,46 @@ function firmaRow(totalW = 10035): TableRow {
         verticalAlign: VerticalAlign.CENTER,
         margins: CELL_MARGINS,
         children: [
+          // Título
           new Paragraph({
-            spacing: { after: 0, line: 240 },
             children: [
-              new TextRun({ text: "        ", font: "Calibri", size: 20 }),
-              new TextRun({ text: "Firma: ", bold: true, font: "Calibri", size: 24, color: "000000" }),
+              new TextRun({
+                text: "Firma del responsable:",
+                bold: true,
+                font: "Calibri",
+                size: 24,
+              }),
+            ],
+          }),
+
+          // Imagen de la firma (si existe)
+          ...(firmaPath && fs.existsSync(firmaPath)
+            ? [
+                new Paragraph({
+                  spacing: { before: 200 },
+                  children: [
+                    new ImageRun({
+                      data: fs.readFileSync(firmaPath),
+                      transformation: {
+                        width: 200,
+                        height: 80,
+                      },
+                      type: "png", // ✅ FIX DEFINITIVO PARA TYPESCRIPT
+                    }),
+                  ],
+                }),
+              ]
+            : []),
+
+          // Fecha de firma
+          new Paragraph({
+            spacing: { before: 100 },
+            children: [
+              new TextRun({
+                text: `Fecha de firma: ${fechaFirma}`,
+                font: "Calibri",
+                size: 20,
+              }),
             ],
           }),
         ],
@@ -284,6 +326,7 @@ function firmaRow(totalW = 10035): TableRow {
     ],
   });
 }
+``
 
 /* ══════════════════════════════════════════════
    FUNCIÓN PRINCIPAL
@@ -371,8 +414,13 @@ export async function generarWordMovil(datos: DatosMovil): Promise<Buffer> {
       // Observaciones entrega
       obsRow(val(datos.observacionesEntrega)),
 
-      // Firma entrega
-      firmaRow(),
+      // Firma entrega  
+      firmaRow(
+        datos.firmaPath,
+      formatFecha(datos.fechaFirma)
+    ),
+
+
     ],
   });
 

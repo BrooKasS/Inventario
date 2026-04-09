@@ -11,6 +11,7 @@ import { Movil } from "../../entities/Movil";
 import { FindOptionsWhere, In, IsNull, Not } from "typeorm";
 import { generarWordMovil } from "../utils/generarMovilDocx";
 import { sendMovilEmail } from "../utils/sendMovilEmail";
+import fs from "fs";
 
 import path from "path";
 
@@ -198,19 +199,20 @@ export class AssetsService {
         observacionesEntrega,
         fechaDevolucion: null,
         observacionesDevolucion: null,
+        firmaPath: null,
+        fechaFirma: null,
       });
 
       // ✅ Enviar correo SOLO si hay responsable
       if (correoResponsable) {
         try {
-          const archivoBase64 = buffer.toString("base64");
+
 
           await sendMovilEmail({
             correo: correoResponsable,
             nombreActivo: savedAsset.nombre!,
             assetId: savedAsset.id,
-            nombreArchivo: `Acta_Entrega_${savedAsset.nombre}.docx`,
-            archivoBase64,
+            linkFirma: `${process.env.FRONTEND_URL}/firmar/${savedAsset.id}`,
           });
 
           await bitacoraRepository.save(
@@ -244,6 +246,107 @@ export class AssetsService {
       relations: ["servidor", "red", "ups", "baseDatos", "vpn", "movil"],
     });
   }
+
+  
+  async firmarMovil(assetId: string, firmaBase64: string) {
+    const assetRepo    = AppDataSource.getRepository(Asset);
+    const movilRepo    = AppDataSource.getRepository(Movil);
+    const bitacoraRepo = AppDataSource.getRepository(Bitacora);
+
+    const asset = await assetRepo.findOne({
+      where: { id: assetId },
+      relations: ["movil"],
+    });
+
+  if (!asset || asset.tipo !== "MOVIL" || !asset.movil) {
+    throw new Error("Activo no encontrado o no es MOVIL");
+  }
+  
+  if (asset.movil.firmaPath) {
+    throw new Error("Este activo ya fue firmado");
+  }
+  ``
+
+
+    // 1️⃣ Guardar firma en disco
+    const firmaBuffer = Buffer.from(
+      firmaBase64.replace(/^data:image\/png;base64,/, ""),
+      "base64"
+    );
+
+    const firmaDir = path.join(process.cwd(), "storage/firmas");
+    if (!fs.existsSync(firmaDir)) {
+      fs.mkdirSync(firmaDir, { recursive: true });
+    }
+
+    const firmaPath = path.join(firmaDir, `${assetId}.png`);
+    fs.writeFileSync(firmaPath, firmaBuffer);
+
+    const fechaFirma = new Date();
+
+    // 2️⃣ Guardar referencia en BD
+    await movilRepo.update(
+      { asset: { id: assetId } },
+      { firmaPath, fechaFirma }
+    );
+
+    // 3️⃣ Regenerar Word CON firma
+    const m = asset.movil;
+
+    const buffer = await generarWordMovil({
+      nombre: asset.nombre,
+      numeroCaso: m.numeroCaso,
+      region: m.region,
+      dependencia: m.dependencia,
+      sede: m.sede,
+      cedula: m.cedula,
+      usuarioRed: m.usuarioRed,
+      uni: m.uni,
+      marca: m.marca,
+      modelo: m.modelo,
+      serial: m.serial,
+      imei1: m.imei1,
+      imei2: m.imei2,
+      sim: m.sim,
+      numeroLinea: m.numeroLinea,
+      fechaEntrega: m.fechaEntrega,
+      observacionesEntrega: m.observacionesEntrega,
+      fechaDevolucion: m.fechaDevolucion,
+      observacionesDevolucion: m.observacionesDevolucion,
+      firmaPath,
+      fechaFirma,
+    });
+
+    // 4️⃣ Guardar Word firmado
+    const actasDir = path.join(process.cwd(), "storage/actas");
+    if (!fs.existsSync(actasDir)) {
+      fs.mkdirSync(actasDir, { recursive: true });
+    }
+
+    const nombreArchivo = `Acta_Entrega_${asset.nombre?.replace(/\s+/g, "_")}.docx`;
+    const rutaWord = path.join(actasDir, nombreArchivo);
+
+    fs.writeFileSync(rutaWord, buffer);
+
+    // 5️⃣ Bitácora
+    await bitacoraRepo.save(
+      bitacoraRepo.create({
+        asset: { id: assetId },
+        autor: "Usuario",
+        tipoEvento: "NOTA",
+        descripcion: "Acta firmada digitalmente. Equipo listo para entrega.",
+      })
+    );
+
+    return {
+      ok: true,
+      rutaWord,
+      firmaPath,
+      fechaFirma,
+    };
+  }
+
+
 
   async updateAsset(id: string, data: any, autor: string) {
     const assetRepository = AppDataSource.getRepository(Asset);

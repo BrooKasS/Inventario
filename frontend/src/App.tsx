@@ -4,13 +4,10 @@ import Dashboard from "./pages/Dashboard";
 import AssetList from "./pages/AssetList";
 import AssetDetail from "./pages/AssetDetail/index";
 import Papelera from "./pages/Papelera";
-import Login from "./pages/login";
+import Login from "./pages/Login";
 import { isAuthenticated } from "./api/auth";
+import FirmaMovil from "./pages/FirmaMovil";
 
-/**
- * ProtectedRoute — si no hay token redirige a /login.
- * Si hay token deja pasar.
- */
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated()) {
     return <Navigate to="/login" replace />;
@@ -23,10 +20,11 @@ export default function App() {
     <BrowserRouter>
       <Routes>
 
-        {/* Ruta pública — fuera del Layout */}
+        {/* ✅ RUTAS PÚBLICAS */}
         <Route path="/login" element={<Login />} />
+        <Route path="/firmar/:assetId" element={<FirmaMovil />} />
 
-        {/* Rutas protegidas — dentro del Layout */}
+        {/* ✅ RUTAS PROTEGIDAS */}
         <Route
           path="/"
           element={
@@ -36,13 +34,13 @@ export default function App() {
           }
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard"          element={<Dashboard />} />
-          <Route path="inventario/:tipo"   element={<AssetList />} />
-          <Route path="activo/:id"         element={<AssetDetail />} />
-          <Route path="/papelera"          element={<Papelera />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="inventario/:tipo" element={<AssetList />} />
+          <Route path="activo/:id" element={<AssetDetail />} />
+          <Route path="papelera" element={<Papelera />} />
         </Route>
 
-        {/* Cualquier ruta desconocida → dashboard */}
+        {/* Fallback */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
 
       </Routes>

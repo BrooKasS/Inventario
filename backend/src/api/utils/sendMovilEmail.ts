@@ -1,11 +1,17 @@
 import axios from "axios";
 
-interface SendMovilEmailParams {
+
+export interface SendMovilEmailParams {
   correo: string;
   nombreActivo: string;
   assetId: string;
-  nombreArchivo: string;
-  archivoBase64: string;
+
+  // Opción 1: enviar archivo
+  nombreArchivo?: string;
+  archivoBase64?: string;
+
+  // Opción 2: enviar link de firma ✅
+  linkFirma?: string;
 }
 
 export async function sendMovilEmail(params: SendMovilEmailParams) {
@@ -21,4 +27,4 @@ export async function sendMovilEmail(params: SendMovilEmailParams) {
     timeout: 20000,
   });
 }
-``  
+``
