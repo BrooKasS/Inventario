@@ -231,7 +231,7 @@ export default function AssetDetail() {
                   fontSize: 14,
                 }}
               >
-                🗑 Eliminar
+                🗑️ Deshabilitar
               </button>
 
               {asset.tipo === "MOVIL" && (

@@ -261,7 +261,7 @@ export default function Papelera() {
               fontSize: 11, fontWeight: 700, letterSpacing: "0.14em",
               textTransform: "uppercase", color: "#fff",
             }}>
-              Activos en papelera
+              Activos deshabilitados
             </span>
             {filtrados.length > 0 && (
               <span style={{
@@ -292,7 +292,7 @@ export default function Papelera() {
               <div style={{ padding: "64px 40px", textAlign: "center" }}>
                 <div style={{ fontSize: 52, marginBottom: 12, opacity: 0.2 }}>🗑</div>
                 <p style={{ color: C.muted, fontSize: 15, margin: 0 }}>
-                  {hayFiltros ? "No hay resultados con los filtros aplicados" : "La papelera está vacía"}
+                  {hayFiltros ? "No hay resultados con los filtros aplicados" : "El histórico está vacío"}
                 </p>
                 {hayFiltros && (
                   <button
