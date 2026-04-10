@@ -53,13 +53,17 @@ function formatFecha(fecha: string | null | undefined) {
 function TipoBadge({ tipo }: { tipo: string }) {
   return (
     <span style={{
-      display: "inline-flex", alignItems: "center", gap: 4,
-      fontSize: 11, fontWeight: 700, padding: "3px 10px",
-      borderRadius: 12, textTransform: "uppercase", letterSpacing: ".06em",
-      background: `${TIPO_COLOR[tipo]}18`,
+      display: "inline-flex", alignItems: "center", gap: 5,
+      fontSize: 11, fontWeight: 800, padding: "5px 13px",
+      borderRadius: 14, textTransform: "uppercase", letterSpacing: ".08em",
+      background: `${TIPO_COLOR[tipo]}15`,
       color: TIPO_COLOR[tipo] ?? C.primary,
-      border: `1px solid ${TIPO_COLOR[tipo]}33`,
-    }}>
+      border: `1.5px solid ${TIPO_COLOR[tipo]}35`,
+      transition: "all .2s",
+    }}
+    onMouseEnter={e => { e.currentTarget.style.background = `${TIPO_COLOR[tipo]}22`; e.currentTarget.style.borderColor = `${TIPO_COLOR[tipo]}55`; e.currentTarget.style.transform = "scale(1.05)"; }}
+    onMouseLeave={e => { e.currentTarget.style.background = `${TIPO_COLOR[tipo]}15`; e.currentTarget.style.borderColor = `${TIPO_COLOR[tipo]}35`; e.currentTarget.style.transform = "scale(1)"; }}
+    >
       {TIPO_ICON[tipo]} {TIPO_LABEL[tipo] ?? tipo}
     </span>
   );
@@ -162,12 +166,15 @@ export default function Papelera() {
           <button
             onClick={() => navigate(-1)}
             style={{
-              padding: "10px 18px", borderRadius: 8,
+              padding: "11px 20px", borderRadius: 12,
               border: "1.5px solid rgba(255,255,255,.3)",
-              background: "rgba(255,255,255,.12)", color: "#fff",
-              fontWeight: 600, fontSize: 13, cursor: "pointer",
+              background: "rgba(255,255,255,.1)", color: "#fff",
+              fontWeight: 700, fontSize: 13, cursor: "pointer",
               fontFamily: "Calibri, sans-serif",
+              transition: "all .25s cubic-bezier(0.4, 0, 0.2, 1)",
             }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,.15)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,.1)"; e.currentTarget.style.transform = "translateY(0)"; }}
           >
             ← Volver
           </button>
@@ -193,14 +200,15 @@ export default function Papelera() {
               onChange={e => setBuscar(e.target.value)}
               placeholder="Buscar por nombre o código..."
               style={{
-                width: "100%", padding: "8px 12px 8px 32px",
-                border: `1.5px solid ${C.border}`, borderRadius: 8,
+                width: "100%", padding: "10px 14px 10px 36px",
+                border: `1.5px solid ${C.border}`, borderRadius: 12,
                 fontSize: 13, fontFamily: "Calibri, sans-serif",
                 outline: "none", background: "#fff", color: C.text,
                 boxSizing: "border-box",
+                transition: "all .25s cubic-bezier(0.4, 0, 0.2, 1)",
               }}
-              onFocus={e => (e.currentTarget.style.borderColor = C.primary)}
-              onBlur={e => (e.currentTarget.style.borderColor = C.border)}
+              onFocus={e => { e.currentTarget.style.borderColor = C.primary; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(183,49,44,.08)"; }}
+              onBlur={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.boxShadow = "none"; }}
             />
           </div>
 
@@ -209,13 +217,14 @@ export default function Papelera() {
             value={tipoFiltro}
             onChange={e => setTipoFiltro(e.target.value)}
             style={{
-              padding: "8px 12px", border: `1.5px solid ${C.border}`,
-              borderRadius: 8, fontSize: 13, fontFamily: "Calibri, sans-serif",
+              padding: "10px 14px", border: `1.5px solid ${C.border}`,
+              borderRadius: 12, fontSize: 13, fontFamily: "Calibri, sans-serif",
               background: "#fff", color: tipoFiltro ? C.text : C.muted,
-              outline: "none", cursor: "pointer", minWidth: 160,
+              outline: "none", cursor: "pointer", minWidth: 170,
+              transition: "all .25s cubic-bezier(0.4, 0, 0.2, 1)",
             }}
-            onFocus={e => (e.currentTarget.style.borderColor = C.primary)}
-            onBlur={e => (e.currentTarget.style.borderColor = C.border)}
+            onFocus={e => { e.currentTarget.style.borderColor = C.primary; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(183,49,44,.08)"; }}
+            onBlur={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.boxShadow = "none"; }}
           >
             <option value="">Todos los tipos</option>
             {tiposDisponibles.map(t => (
@@ -228,12 +237,15 @@ export default function Papelera() {
             <button
               onClick={() => { setBuscar(""); setTipoFiltro(""); }}
               style={{
-                padding: "8px 14px", borderRadius: 8,
-                border: `1.5px solid ${C.border}`,
+                padding: "10px 16px", borderRadius: 12,
+                border: `1.5px solid ${C.primary}`,
                 background: "#fff", color: C.primary,
                 fontWeight: 700, fontSize: 12, cursor: "pointer",
                 fontFamily: "Calibri, sans-serif",
+                transition: "all .25s cubic-bezier(0.4, 0, 0.2, 1)",
               }}
+              onMouseEnter={e => { e.currentTarget.style.background = C.primary; e.currentTarget.style.color = "#fff"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.color = C.primary; }}
             >
               ✕ Limpiar
             </button>
@@ -242,32 +254,33 @@ export default function Papelera() {
 
         {/* ── Tabla ── */}
         <div style={{
-          borderRadius: 14, overflow: "hidden",
-          border: "1px solid rgba(255,255,255,.08)",
-          boxShadow: "0 8px 32px rgba(0,0,0,.35)",
-          animation: "fadeIn .3s ease",
+          borderRadius: 16, overflow: "hidden",
+          border: "1.5px solid rgba(255,255,255,.1)",
+          boxShadow: "0 12px 48px rgba(0,0,0,.35)",
+          animation: "fadeIn .4s cubic-bezier(0.34, 1.56, 0.64, 1)",
         }}>
           {/* Header tabla */}
           <div style={{
-            background: C.grad, padding: "14px 20px",
-            display: "flex", alignItems: "center", gap: 10,
+            background: C.grad, padding: "16px 24px",
+            display: "flex", alignItems: "center", gap: 12,
           }}>
             <span style={{
-              fontSize: 14, width: 28, height: 28, borderRadius: 8,
+              fontSize: 14, width: 32, height: 32, borderRadius: 10,
               display: "flex", alignItems: "center", justifyContent: "center",
               background: "rgba(255,255,255,.18)",
+              fontWeight: 600,
             }}>🗑</span>
             <span style={{
-              fontSize: 11, fontWeight: 700, letterSpacing: "0.14em",
+              fontSize: 12, fontWeight: 800, letterSpacing: "0.15em",
               textTransform: "uppercase", color: "#fff",
             }}>
               Activos deshabilitados
             </span>
             {filtrados.length > 0 && (
               <span style={{
-                marginLeft: "auto", fontSize: 11, fontWeight: 700,
+                marginLeft: "auto", fontSize: 12, fontWeight: 800,
                 background: "rgba(255,255,255,.2)", color: "#fff",
-                padding: "2px 10px", borderRadius: 20,
+                padding: "4px 12px", borderRadius: 20, letterSpacing: "0.05em",
               }}>
                 {filtrados.length} registro{filtrados.length !== 1 ? "s" : ""}
               </span>

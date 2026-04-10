@@ -83,11 +83,11 @@ function AutoInput({
       <input
         className="fi"
         style={{
-          width: "100%", padding: "10px 14px",
-          border: "2px solid #e0e0e0", borderRadius: open && filtered.length > 0 ? "8px 8px 0 0" : 8,
+          width: "100%", padding: "12px 16px",
+          border: "1.5px solid #ddd", borderRadius: open && filtered.length > 0 ? "12px 12px 0 0" : 12,
           fontSize: 14, fontFamily: "Calibri, sans-serif",
-          outline: "none", transition: "border-color .2s",
-          boxSizing: "border-box" as const, background: "#fff",
+          outline: "none", transition: "all .25s cubic-bezier(0.4, 0, 0.2, 1)",
+          boxSizing: "border-box" as const, background: "#fafbfc",
         }}
         value={value}
         placeholder={placeholder}
@@ -98,23 +98,24 @@ function AutoInput({
       {open && filtered.length > 0 && (
         <div style={{
           position: "absolute", top: "100%", left: 0, right: 0,
-          background: "#fff", border: "2px solid #B7312C",
-          borderTop: "none", borderRadius: "0 0 8px 8px",
-          maxHeight: 180, overflowY: "auto", zIndex: 100,
-          boxShadow: "0 8px 20px rgba(0,0,0,.12)",
+          background: "#fff", border: "1.5px solid #B7312C",
+          borderTop: "none", borderRadius: "0 0 12px 12px",
+          maxHeight: 200, overflowY: "auto", zIndex: 100,
+          boxShadow: "0 12px 28px rgba(0,0,0,.15)",
+          animation: "slideDown .2s cubic-bezier(0.34, 1.56, 0.64, 1)",
         }}>
           {filtered.map(opt => (
             <div
               key={opt}
               onMouseDown={e => { e.preventDefault(); onChange(opt); setOpen(false); }}
               style={{
-                padding: "9px 14px", fontSize: 12,
+                padding: "11px 16px", fontSize: 13,
                 fontFamily: "Calibri, sans-serif", cursor: "pointer",
                 borderBottom: "1px solid #f5f0f0",
-                color: "#333", transition: "background .1s",
+                color: "#333", transition: "all .15s", fontWeight: 500,
               }}
-              onMouseEnter={e => (e.currentTarget.style.background = "#fff5f0")}
-              onMouseLeave={e => (e.currentTarget.style.background = "#fff")}
+              onMouseEnter={e => { e.currentTarget.style.background = "#fff5f0"; e.currentTarget.style.paddingLeft = "18px"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.paddingLeft = "16px"; }}
             >
               {(() => {
                 const idx = normalize(opt).indexOf(normalize(value));
@@ -122,7 +123,7 @@ function AutoInput({
                 return (
                   <>
                     {opt.slice(0, idx)}
-                    <strong style={{ color: "#B7312C" }}>{opt.slice(idx, idx + value.length)}</strong>
+                    <strong style={{ color: "#B7312C", fontWeight: 800 }}>{opt.slice(idx, idx + value.length)}</strong>
                     {opt.slice(idx + value.length)}
                   </>
                 );
@@ -137,16 +138,20 @@ function AutoInput({
 
 /* ── Badge ── */
 function Badge({ text }: { text: string | null }) {
-  if (!text) return <span style={{ color: "#252525" }}>—</span>;
+  if (!text) return <span style={{ color: "#333" }}>—</span>;
   return (
     <span style={{
-      display: "inline-block", padding: "3px 12px", borderRadius: 20,
+      display: "inline-block", padding: "4px 14px", borderRadius: 16,
       fontSize: 12, fontWeight: 700, textTransform: "uppercase",
-      letterSpacing: "0.06em",
-      background: "rgba(250,130,0,.18)", color: "#FA8200",
-      border: "1px solid rgba(250,130,0,.3)",
+      letterSpacing: "0.07em",
+      background: "rgba(250,130,0,.12)", color: "#d67c00",
+      border: "1.5px solid rgba(250,130,0,.25)",
       fontFamily: "Calibri, sans-serif",
-    }}>
+      transition: "all .2s",
+    }}
+    onMouseEnter={e => { e.currentTarget.style.background = "rgba(250,130,0,.2)"; e.currentTarget.style.borderColor = "rgba(250,130,0,.4)"; }}
+    onMouseLeave={e => { e.currentTarget.style.background = "rgba(250,130,0,.12)"; e.currentTarget.style.borderColor = "rgba(250,130,0,.25)"; }}
+    >
       {text}
     </span>
   );
@@ -157,13 +162,14 @@ function Row({ cells, onClick }: { cells: React.ReactNode[]; onClick: () => void
   const [hovered, setHovered] = useState(false);
   return (
     <tr onClick={onClick} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
-      style={{ cursor: "pointer", background: hovered ? "rgba(250, 129, 0, 0.21)" : "transparent", transition: "background .15s", borderBottom: "1px solid rgba(255,255,255,.06)" }}
+      style={{ cursor: "pointer", background: hovered ? "rgba(250, 129, 0, 0.15)" : "transparent", transition: "all .2s cubic-bezier(0.4, 0, 0.2, 1)", borderBottom: "1px solid rgba(255,255,255,.08)" }}
     >
       {cells.map((cell, i) => (
         <td key={i} style={{
-          padding: "13px 18px", fontSize: 15, color: "#000000", verticalAlign: "middle",
-          fontFamily: "Calibri, 'Segoe UI', sans-serif",
-          borderLeft: i === 0 && hovered ? `3px solid ${PRIMARY}` : i === 0 ? "3px solid transparent" : "none",
+          padding: "15px 20px", fontSize: 15, color: "#000", verticalAlign: "middle",
+          fontFamily: "Calibri, 'Segoe UI', sans-serif", fontWeight: i === 0 ? 600 : 400,
+          borderLeft: i === 0 && hovered ? `4px solid ${PRIMARY}` : i === 0 ? "4px solid transparent" : "none",
+          transition: "all .2s",
         }}>
           {cell}
         </td>
@@ -250,9 +256,9 @@ const HEADERS: Record<string, string[]> = {
 };
 
 const labelStyle: React.CSSProperties = {
-  display: "block", fontSize: 11, fontWeight: 700,
-  color: "#B7312C", letterSpacing: "0.1em",
-  textTransform: "uppercase", marginBottom: 7,
+  display: "block", fontSize: 11, fontWeight: 800,
+  color: "#333", letterSpacing: "0.12em",
+  textTransform: "uppercase", marginBottom: 8, opacity: 0.85,
 };
 
 function PagBtn({ label, disabled, onClick }: { label: string; disabled: boolean; onClick: () => void }) {
@@ -260,11 +266,14 @@ function PagBtn({ label, disabled, onClick }: { label: string; disabled: boolean
   return (
     <button onClick={onClick} disabled={disabled} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
       style={{
-        padding: "8px 16px", borderRadius: 8, border: "1px solid rgba(255,255,255,.1)",
-        background: hov && !disabled ? "linear-gradient(135deg,#FA8200,#861F41 35%,#B7312C 70%,#D86018)" : "rgba(255, 0, 0, 0.04)",
-        color: disabled ? "rgba(255,255,255,.2)" : hov ? "#fff" : "rgba(255,255,255,.6)",
-        fontWeight: 600, fontSize: 13, cursor: disabled ? "not-allowed" : "pointer",
-        fontFamily: "Calibri, sans-serif", transition: "all .15s", opacity: disabled ? 0.5 : 1,
+        padding: "10px 18px", borderRadius: 10, border: "1.5px solid rgba(255,255,255,.2)",
+        background: hov && !disabled ? "linear-gradient(135deg,#FA8200,#861F41 35%,#B7312C 70%,#D86018)" : "rgba(255, 255, 255, 0.08)",
+        color: disabled ? "rgba(255,255,255,.25)" : hov ? "#fff" : "rgba(255,255,255,.75)",
+        fontWeight: 700, fontSize: 13, cursor: disabled ? "not-allowed" : "pointer",
+        fontFamily: "Calibri, sans-serif", transition: "all .25s cubic-bezier(0.4, 0, 0.2, 1)", 
+        opacity: disabled ? 0.5 : 1,
+        transform: hov && !disabled ? "translateY(-2px)" : "translateY(0)",
+        boxShadow: hov && !disabled ? "0 8px 16px rgba(0,0,0,.2)" : "none",
       }}
     >{label}</button>
   );

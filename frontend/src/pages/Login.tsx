@@ -72,21 +72,23 @@ export default function Login() {
         {/* Error */}
         {error && (
           <div style={{
-            background: "#fff0f0", border: "1.5px solid #f5c6c6",
-            borderRadius: 8, padding: "10px 14px", marginBottom: 16,
-            fontSize: 13, color: "#c0392b",
+            background: "#ffebee", border: "1.5px solid #ffcdd2",
+            borderRadius: 12, padding: "12px 16px", marginBottom: 18,
+            fontSize: 13, color: "#d32f2f",
             display: "flex", alignItems: "center", gap: 8,
+            fontWeight: 600,
+            animation: "slideUp .3s cubic-bezier(0.34, 1.56, 0.64, 1)",
           }}>
             ⚠️ {error}
           </div>
         )}
 
         {/* Usuario */}
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 18 }}>
           <label style={{
-            display: "block", fontSize: 10, fontWeight: 700,
-            letterSpacing: "0.1em", textTransform: "uppercase",
-            color: C.primary, marginBottom: 6,
+            display: "block", fontSize: 11, fontWeight: 800,
+            letterSpacing: "0.12em", textTransform: "uppercase",
+            color: "#333", marginBottom: 8, opacity: 0.85,
           }}>
             Usuario
           </label>
@@ -97,22 +99,24 @@ export default function Login() {
             onKeyDown={e => e.key === "Enter" && handleSubmit()}
             placeholder="Tu usuario de red"
             style={{
-              width: "100%", padding: "10px 12px",
-              border: "1.5px solid #e0e0e0", borderRadius: 8,
+              width: "100%", padding: "12px 14px",
+              border: "1.5px solid #ddd", borderRadius: 12,
               fontSize: 14, fontFamily: "Calibri, sans-serif",
               outline: "none", boxSizing: "border-box",
+              background: "#fafbfc",
+              transition: "all .25s cubic-bezier(0.4, 0, 0.2, 1)",
             }}
-            onFocus={e => e.currentTarget.style.borderColor = C.primary}
-            onBlur={e => e.currentTarget.style.borderColor = "#e0e0e0"}
+            onFocus={e => { e.currentTarget.style.borderColor = C.primary; e.currentTarget.style.background = "#fff"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(183,49,44,.08)"; }}
+            onBlur={e => { e.currentTarget.style.borderColor = "#ddd"; e.currentTarget.style.background = "#fafbfc"; e.currentTarget.style.boxShadow = "none"; }}
           />
         </div>
 
         {/* Contraseña */}
-        <div style={{ marginBottom: 24 }}>
+        <div style={{ marginBottom: 28 }}>
           <label style={{
-            display: "block", fontSize: 10, fontWeight: 700,
-            letterSpacing: "0.1em", textTransform: "uppercase",
-            color: C.primary, marginBottom: 6,
+            display: "block", fontSize: 11, fontWeight: 800,
+            letterSpacing: "0.12em", textTransform: "uppercase",
+            color: "#333", marginBottom: 8, opacity: 0.85,
           }}>
             Contraseña
           </label>
@@ -123,13 +127,15 @@ export default function Login() {
             onKeyDown={e => e.key === "Enter" && handleSubmit()}
             placeholder="Tu contraseña de Windows"
             style={{
-              width: "100%", padding: "10px 12px",
-              border: "1.5px solid #e0e0e0", borderRadius: 8,
+              width: "100%", padding: "12px 14px",
+              border: "1.5px solid #ddd", borderRadius: 12,
               fontSize: 14, fontFamily: "Calibri, sans-serif",
               outline: "none", boxSizing: "border-box",
+              background: "#fafbfc",
+              transition: "all .25s cubic-bezier(0.4, 0, 0.2, 1)",
             }}
-            onFocus={e => e.currentTarget.style.borderColor = C.primary}
-            onBlur={e => e.currentTarget.style.borderColor = "#e0e0e0"}
+            onFocus={e => { e.currentTarget.style.borderColor = C.primary; e.currentTarget.style.background = "#fff"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(183,49,44,.08)"; }}
+            onBlur={e => { e.currentTarget.style.borderColor = "#ddd"; e.currentTarget.style.background = "#fafbfc"; e.currentTarget.style.boxShadow = "none"; }}
           />
         </div>
 
@@ -138,15 +144,21 @@ export default function Login() {
           onClick={handleSubmit}
           disabled={loading}
           style={{
-            width: "100%", padding: "12px",
-            border: "none", borderRadius: 8,
+            width: "100%", padding: "13px 16px",
+            border: "none", borderRadius: 12,
             background: loading ? "#ccc" : C.grad,
-            color: "#fff", fontWeight: 700, fontSize: 15,
+            color: "#fff", fontWeight: 800, fontSize: 15,
             cursor: loading ? "not-allowed" : "pointer",
             fontFamily: "Calibri, sans-serif",
             display: "flex", alignItems: "center",
             justifyContent: "center", gap: 8,
+            transition: "all .3s cubic-bezier(0.4, 0, 0.2, 1)",
+            boxShadow: loading ? "0 2px 6px rgba(0,0,0,.1)" : "0 8px 20px rgba(183,49,44,.25)",
+            transform: "translateY(0)",
+            letterSpacing: "0.03em",
           }}
+          onMouseEnter={e => { if (!loading) { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 12px 28px rgba(183,49,44,.35)"; } }}
+          onMouseLeave={e => { if (!loading) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 20px rgba(183,49,44,.25)"; } }}
         >
           {loading ? "Verificando..." : "Ingresar"}
         </button>

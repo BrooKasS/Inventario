@@ -34,27 +34,28 @@ const TIPO_ICON: Record<string, string> = {
 /* ─── Estilos base ─── */
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  padding: "9px 12px",
+  padding: "11px 14px",
   border: `1.5px solid ${C.border}`,
-  borderRadius: 8,
+  borderRadius: 12,
   fontSize: 13,
   fontFamily: "Calibri, sans-serif",
   color: C.text,
-  background: "#fff",
+  background: "#fafbfc",
   outline: "none",
-  transition: "border-color .18s",
+  transition: "all .25s cubic-bezier(0.4, 0, 0.2, 1)",
   boxSizing: "border-box",
 };
 
 const labelStyle: React.CSSProperties = {
   display: "block",
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: "0.1em",
+  fontSize: 11,
+  fontWeight: 800,
+  letterSpacing: "0.12em",
   textTransform: "uppercase",
-  color: C.primary,
-  marginBottom: 5,
+  color: "#333",
+  marginBottom: 7,
   fontFamily: "Calibri, sans-serif",
+  opacity: 0.85,
 };
 
 /* ─── Componente Field ─── */

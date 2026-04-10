@@ -27,22 +27,23 @@ export const EVENTO_COLOR: Record<string, { bg: string; color: string }> = {
 export const labelStyle: React.CSSProperties = {
   display: "block",
   fontSize: 11,
-  fontWeight: 700,
-  color: C.primary,
-  letterSpacing: "0.1em",
+  fontWeight: 800,
+  color: "#333",
+  letterSpacing: "0.12em",
   textTransform: "uppercase",
-  marginBottom: 6,
+  marginBottom: 8,
+  opacity: 0.85,
 };
 
 export const inputStyle: React.CSSProperties = {
   width: "100%",
-  padding: "10px 14px",
-  border: "2px solid #e0e0e0",
-  borderRadius: 8,
+  padding: "11px 14px",
+  border: "1.5px solid #ddd",
+  borderRadius: 12,
   fontSize: 14,
   fontFamily: "Calibri, sans-serif",
-  transition: "border-color .2s",
+  transition: "all .25s cubic-bezier(0.4, 0, 0.2, 1)",
   outline: "none",
-  background: "#fff",
+  background: "#fafbfc",
   color: "#333",
 };

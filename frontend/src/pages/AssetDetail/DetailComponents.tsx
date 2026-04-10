@@ -25,18 +25,18 @@ export function Field({
           defaultValue={value?.toString() ?? ""}
           onChange={(e) => onChange(field, e.target.value)}
           style={{
-            background: "#fff",
-            border: "2px solid #e0e0e0",
-            borderRadius: 6,
-            padding: "7px 10px",
+            background: "#fafbfc",
+            border: "1.5px solid #ddd",
+            borderRadius: 10,
+            padding: "9px 12px",
             fontSize: 13,
             color: "#333",
             fontFamily: "Calibri, sans-serif",
             outline: "none",
-            transition: "border-color .2s",
+            transition: "all .25s cubic-bezier(0.4, 0, 0.2, 1)",
           }}
-          onFocus={(e) => (e.currentTarget.style.borderColor = "#B7312C")}
-          onBlur={(e) => (e.currentTarget.style.borderColor = "#e0e0e0")}
+          onFocus={(e) => { e.currentTarget.style.borderColor = "#B7312C"; e.currentTarget.style.background = "#fff"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(183,49,44,.08)"; }}
+          onBlur={(e) => { e.currentTarget.style.borderColor = "#ddd"; e.currentTarget.style.background = "#fafbfc"; e.currentTarget.style.boxShadow = "none"; }}
         />
       ) : (
         <span
@@ -69,28 +69,28 @@ export function Section({
   return (
     <div
       style={{
-        borderRadius: 14,
+        borderRadius: 16,
         overflow: "hidden",
-        border: "1px solid #f0e8e8",
-        boxShadow: "0 2px 12px rgba(183,49,44,.08)",
-        marginBottom: 16,
+        border: "1.5px solid #f0e8e8",
+        boxShadow: "0 4px 16px rgba(183,49,44,.06)",
+        marginBottom: 18,
       }}
     >
       <div
         style={{
           background: C.grad,
-          padding: "14px 20px",
+          padding: "16px 24px",
           display: "flex",
           alignItems: "center",
-          gap: 10,
+          gap: 12,
         }}
       >
-        {icon && <span style={{ fontSize: 16 }}>{icon}</span>}
+        {icon && <span style={{ fontSize: 18 }}>{icon}</span>}
         <span
           style={{
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: "0.14em",
+            fontSize: 12,
+            fontWeight: 800,
+            letterSpacing: "0.16em",
             textTransform: "uppercase",
             color: "#fff",
           }}
