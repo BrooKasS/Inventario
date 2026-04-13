@@ -87,6 +87,8 @@ export const restoreAsset = (id: string, autor: string = "Sistema") =>
 export const getDeleted = () =>
   api.get("/assets/deleted").then(r => r.data.data);
 
+
+
 export const firmarMovil = (
   assetId: string,
   payload: {
@@ -100,5 +102,9 @@ export const firmarMovil = (
     { headers: { "Content-Type": "application/json" } }
   ).then(r => r.data);
 };
+
+
+
+
 
 export default api;
