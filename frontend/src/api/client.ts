@@ -87,10 +87,16 @@ export const restoreAsset = (id: string, autor: string = "Sistema") =>
 export const getDeleted = () =>
   api.get("/assets/deleted").then(r => r.data.data);
 
-export const firmarMovil = (assetId: string, firmaBase64: string) => {
+export const firmarMovil = (
+  assetId: string,
+  payload: {
+    firmaBase64: string;
+    observacionesEntrega?: string;
+  }
+) => {
   return axios.post(
     `http://localhost:3000/api/assets/${assetId}/firmar`,
-    { firmaBase64 },
+    payload,
     { headers: { "Content-Type": "application/json" } }
   ).then(r => r.data);
 };

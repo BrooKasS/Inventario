@@ -12,8 +12,9 @@ import { FindOptionsWhere, In, IsNull, Not } from "typeorm";
 import { generarWordMovil } from "../utils/generarMovilDocx";
 import { sendMovilEmail } from "../utils/sendMovilEmail";
 import fs from "fs";
-
+import { sendToFlowRaw } from "../utils/flowRaw"
 import path from "path";
+import {sendToFlowFirmada} from "../utils/flowRaw";
 
 export class AssetsService {
   async getAssets(filters: AssetFilters) {
@@ -156,6 +157,9 @@ export class AssetsService {
     // ======================
     if (tipo === "MOVIL") {
       const movilData = movilRepository.create({
+        id: savedAsset.id,          // ✅ CLAVE: MISMO ID DEL ASSET
+        asset: savedAsset,          // ✅ relación correcta
+      
         numeroCaso: numeroCaso ?? null,
         region: region ?? null,
         dependencia: dependencia ?? null,
@@ -173,11 +177,10 @@ export class AssetsService {
         numeroLinea: numeroLinea ?? null,
         fechaEntrega: fechaEntrega ? new Date(fechaEntrega) : null,
         observacionesEntrega: observacionesEntrega ?? null,
-        asset: savedAsset,
       });
-
+    
       await movilRepository.save(movilData);
-
+    
       // ✅ Generar Word SIEMPRE (reutilizable)
       const buffer = await generarWordMovil({
         nombre: savedAsset.nombre,
@@ -202,19 +205,17 @@ export class AssetsService {
         firmaPath: null,
         fechaFirma: null,
       });
-
+    
       // ✅ Enviar correo SOLO si hay responsable
       if (correoResponsable) {
         try {
-
-
           await sendMovilEmail({
             correo: correoResponsable,
             nombreActivo: savedAsset.nombre!,
             assetId: savedAsset.id,
             linkFirma: `${process.env.FRONTEND_URL}/firmar/${savedAsset.id}`,
           });
-
+        
           await bitacoraRepository.save(
             bitacoraRepository.create({
               asset: savedAsset,
@@ -228,6 +229,7 @@ export class AssetsService {
         }
       }
     }
+
 
     // ======================
     // BITÁCORA CREACIÓN
@@ -248,7 +250,12 @@ export class AssetsService {
   }
 
   
-  async firmarMovil(assetId: string, firmaBase64: string) {
+
+  async firmarMovil(assetId: string, firmaBase64: string, observacionesEntrega?: string) {
+
+    // ✅ Sanitizar ID
+    assetId = assetId.replace(/[^a-fA-F0-9-]/g, "");
+
     const assetRepo    = AppDataSource.getRepository(Asset);
     const movilRepo    = AppDataSource.getRepository(Movil);
     const bitacoraRepo = AppDataSource.getRepository(Bitacora);
@@ -258,39 +265,38 @@ export class AssetsService {
       relations: ["movil"],
     });
 
-  if (!asset || asset.tipo !== "MOVIL" || !asset.movil) {
-    throw new Error("Activo no encontrado o no es MOVIL");
-  }
-  
-  if (asset.movil.firmaPath) {
-    throw new Error("Este activo ya fue firmado");
-  }
-  ``
+    if (!asset || asset.tipo !== "MOVIL" || !asset.movil) {
+      throw new Error("Activo no encontrado o no es MOVIL");
+    }
 
+    if (asset.movil.firmaPath) {
+      throw new Error("Este activo ya fue firmado");
+    }
 
-    // 1️⃣ Guardar firma en disco
+    // ──────────────
+    // 1️⃣ Guardar firma PNG
+    // ──────────────
     const firmaBuffer = Buffer.from(
       firmaBase64.replace(/^data:image\/png;base64,/, ""),
       "base64"
     );
 
     const firmaDir = path.join(process.cwd(), "storage/firmas");
-    if (!fs.existsSync(firmaDir)) {
-      fs.mkdirSync(firmaDir, { recursive: true });
-    }
+    fs.mkdirSync(firmaDir, { recursive: true });
 
     const firmaPath = path.join(firmaDir, `${assetId}.png`);
     fs.writeFileSync(firmaPath, firmaBuffer);
 
     const fechaFirma = new Date();
 
-    // 2️⃣ Guardar referencia en BD
     await movilRepo.update(
-      { asset: { id: assetId } },
-      { firmaPath, fechaFirma }
+      { id: assetId },
+      { firmaPath, fechaFirma, observacionesEntrega: observacionesEntrega ?? asset.movil.observacionesEntrega }
     );
 
-    // 3️⃣ Regenerar Word CON firma
+    // ──────────────
+    // 2️⃣ Generar Word firmado
+    // ──────────────
     const m = asset.movil;
 
     const buffer = await generarWordMovil({
@@ -317,18 +323,38 @@ export class AssetsService {
       fechaFirma,
     });
 
-    // 4️⃣ Guardar Word firmado
-    const actasDir = path.join(process.cwd(), "storage/actas");
-    if (!fs.existsSync(actasDir)) {
-      fs.mkdirSync(actasDir, { recursive: true });
+    // ──────────────
+    // ✅ 3️⃣ ENVIAR AL FLOW (RAW)
+    // ──────────────
+    try {
+      const nombreArchivo = `Acta_Entrega_${asset.nombre?.replace(/\s+/g, "_")}.docx`;
+      const archivoBase64 = buffer.toString("base64");
+
+      await sendToFlowFirmada({
+        correo: m.correoResponsable,
+        nombreActivo: asset.nombre,
+        assetId,
+        nombreArchivo,
+        observacionesEntrega,
+        archivoBase64,
+      });
+
+      await bitacoraRepo.save(
+        bitacoraRepo.create({
+          asset: { id: assetId },
+          autor: "Sistema",
+          tipoEvento: "NOTA",
+          descripcion: "Acta firmada enviada a Power Automate.",
+        })
+      );
+
+    } catch (error) {
+      console.error("⚠️ Error enviando acta firmada al Flow:", error);
     }
 
-    const nombreArchivo = `Acta_Entrega_${asset.nombre?.replace(/\s+/g, "_")}.docx`;
-    const rutaWord = path.join(actasDir, nombreArchivo);
-
-    fs.writeFileSync(rutaWord, buffer);
-
-    // 5️⃣ Bitácora
+    // ──────────────
+    // 4️⃣ Bitácora final
+    // ──────────────
     await bitacoraRepo.save(
       bitacoraRepo.create({
         asset: { id: assetId },
@@ -340,11 +366,11 @@ export class AssetsService {
 
     return {
       ok: true,
-      rutaWord,
-      firmaPath,
       fechaFirma,
     };
   }
+
+
 
 
 
