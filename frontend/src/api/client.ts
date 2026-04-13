@@ -18,6 +18,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+
 /**
  * Interceptor de response:
  * Si el backend devuelve 401 → token expirado → logout automático.
@@ -85,5 +86,25 @@ export const restoreAsset = (id: string, autor: string = "Sistema") =>
 
 export const getDeleted = () =>
   api.get("/assets/deleted").then(r => r.data.data);
+
+
+
+export const firmarMovil = (
+  assetId: string,
+  payload: {
+    firmaBase64: string;
+    observacionesEntrega?: string;
+  }
+) => {
+  return axios.post(
+    `http://localhost:3000/api/assets/${assetId}/firmar`,
+    payload,
+    { headers: { "Content-Type": "application/json" } }
+  ).then(r => r.data);
+};
+
+
+
+
 
 export default api;

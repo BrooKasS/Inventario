@@ -7,40 +7,57 @@ const toISODate = (d?: any) =>
 
 // Convierte MB -> "X GB"
 const toGB = (mb?: number) =>
-  typeof mb === "number" && !Number.isNaN(mb) ? `${Math.round(mb / 1024)} GB` : undefined;
+  typeof mb === "number" && !Number.isNaN(mb)
+    ? `${Math.round(mb / 1024)} GB`
+    : undefined;
+
+/**
+ * ✅ Inyecta siempre el flag Eliminado
+ * Power Automate y Office Script lo reciben dentro del objeto
+ */
+function withEliminado(asset: AnyObj, payload: AnyObj) {
+  return {
+    ...payload,
+    Eliminado: asset.deletedAt != null,
+  };
+}
 
 /** Normaliza el 'tipo' de tu DB al 'tipo' de Power Automate (Switch) */
-export function toFlowTipo(dbTipoOrFlowTipo: string): "TServidores" | "TRedes" | "TUPS" | "TBD" {
+export function toFlowTipo(
+  dbTipoOrFlowTipo: string
+): "TServidores" | "TRedes" | "TUPS" | "TBD" {
   const v = (dbTipoOrFlowTipo || "").toUpperCase();
+
   if (v === "SERVIDOR") return "TServidores";
   if (v === "RED") return "TRedes";
   if (v === "UPS") return "TUPS";
   if (v === "BASE_DATOS" || v === "BASE-DATOS" || v === "BASEDATOS") return "TBD";
 
   // Si ya viene con el nombre de tabla, respeta
-  if (["TSERVIDORES", "TREDES", "TUPS", "TBD"].includes(v)) return dbTipoOrFlowTipo as any;
+  if (["TSERVIDORES", "TREDES", "TUPS", "TBD"].includes(v))
+    return dbTipoOrFlowTipo as any;
 
-  // Por defecto (mejor fallar explícito)
   throw new Error(`Tipo no reconocido para Flow: ${dbTipoOrFlowTipo}`);
 }
 
-/** Mapea un asset tipo SERVIDOR → registro para TServidores */
+/** SERVIDOR → TServidores */
 export function mapServidorToFlow(a: AnyObj) {
   const s = a.servidor ?? {};
-  return {
+
+  return withEliminado(a, {
     id: a.id,
     nombre: a.nombre,
     propietario: a.propietario,
     custodio: a.custodio,
     monitoreo: s.monitoreo,
-    backup: s.backup,                            // En Excel existe "Backup"
-    ip: s.ip ?? s.ipInterna,                     // tolera 'ip' o 'ipInterna'
+    backup: s.backup,
+    ip: s.ip ?? s.ipInterna,
     ipGestion: s.ipGestion,
     ipBackup: s.ipBackup,
     ipServicio: s.ipServicio,
     ambiente: s.ambiente,
     tipoServidor: s.tipoServidor,
-    aplicacion: s.aplicacion ?? a.aplicacion,    // tolera campo arriba
+    aplicacion: s.aplicacion ?? a.aplicacion,
     ubicacion: a.ubicacion,
     responsable: a.responsable,
     vcpu: s.vcpu != null ? String(s.vcpu) : undefined,
@@ -49,14 +66,15 @@ export function mapServidorToFlow(a: AnyObj) {
     fechaFinSoporte: toISODate(s.fechaFinSoporte),
     rutasBackup: s.rutasBackup,
     contratoAsociado: a.contratoAsociado,
-    bitacora: "",                                // lo puedes poblar si quieres
-  };
+    bitacora: "",
+  });
 }
 
-/** Mapea un asset tipo RED → registro para TRedes */
+/** RED → TRedes */
 export function mapRedToFlow(a: AnyObj) {
   const r = a.red ?? {};
-  return {
+
+  return withEliminado(a, {
     id: a.id,
     nombre: a.nombre,
     propietario: a.propietario,
@@ -71,13 +89,14 @@ export function mapRedToFlow(a: AnyObj) {
     ubicacion: a.ubicacion,
     contratoAsociado: a.contratoAsociado,
     bitacora: "",
-  };
+  });
 }
 
-/** Mapea un asset tipo UPS → registro para TUPS */
+/** UPS → TUPS */
 export function mapUpsToFlow(a: AnyObj) {
   const u = a.ups ?? {};
-  return {
+
+  return withEliminado(a, {
     id: a.id,
     nombre: a.nombre,
     propietario: a.propietario,
@@ -89,13 +108,14 @@ export function mapUpsToFlow(a: AnyObj) {
     ubicacion: a.ubicacion,
     responsable: a.responsable,
     bitacora: "",
-  };
+  });
 }
 
-/** Mapea un asset tipo BASE_DATOS → registro para TBD */
+/** BASE_DATOS → TBD */
 export function mapBDToFlow(a: AnyObj) {
   const b = a.baseDatos ?? {};
-  return {
+
+  return withEliminado(a, {
     id: a.id,
     nombre: a.nombre,
     propietario: a.propietario,
@@ -108,14 +128,18 @@ export function mapBDToFlow(a: AnyObj) {
     versionBD: b.versionBd ?? b.versionBD,
     contenedorFisico: b.contenedorFisico,
     bitacora: "",
-  };
+  });
 }
 
-/** Mapea un array de assets del tipo indicado al payload { tipo, assets } */
-export function mapAssetsToFlowPayload(dbTipoOrFlowTipo: string, assets: AnyObj[]) {
+/** Mapea assets al payload { tipo, assets } */
+export function mapAssetsToFlowPayload(
+  dbTipoOrFlowTipo: string,
+  assets: AnyObj[]
+) {
   const flowTipo = toFlowTipo(dbTipoOrFlowTipo);
 
   let mapped: AnyObj[];
+
   switch (flowTipo) {
     case "TServidores":
       mapped = assets.map(mapServidorToFlow);
@@ -133,5 +157,8 @@ export function mapAssetsToFlowPayload(dbTipoOrFlowTipo: string, assets: AnyObj[
       throw new Error(`Tipo de Flow no soportado: ${flowTipo}`);
   }
 
-  return { tipo: flowTipo, assets: mapped };
+  return {
+    tipo: flowTipo,
+    assets: mapped,
+  };
 }

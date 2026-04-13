@@ -8,6 +8,7 @@ import { sanitizePayloadForFlow } from "../utils/flowSanitizer";
 import { generarWordMovil } from "../utils/generarMovilDocx";
 import { generarExcelInventario } from "../utils/ExportInventario";
 import { generarExcelObservaciones } from "../utils/exportObservaciones"
+
 const r = Router();
 
 export class AssetsController {
@@ -199,6 +200,8 @@ export class AssetsController {
         observacionesEntrega:    m?.observacionesEntrega   ?? null,
         fechaDevolucion:         m?.fechaDevolucion        ?? null,
         observacionesDevolucion: m?.observacionesDevolucion ?? null,
+        firmaPath:              m?.firmaPath             ?? null,
+        fechaFirma:             m?.fechaFirma            ?? null,
       });
 
       const nombre = `FR-GTE-02-044_${(asset.nombre ?? "movil").replace(/\s+/g, "_")}.docx`;
@@ -349,6 +352,36 @@ export class AssetsController {
       return res.status(500).json({ success: false, error: "Error generando el Excel de observaciones" });
     }
   }
+  // POST /assets/:id/firmar
+async firmarMovil(req: Request, res: Response) {
+  const id = req.params.id as string;
+  const { firmaBase64 } = req.body;
+
+  if (!firmaBase64) {
+    return res.status(400).json({
+      success: false,
+      error: "El campo 'firmaBase64' es requerido",
+    });
+  }
+
+  try {
+    const result = await assetsService.firmarMovil(id, firmaBase64);
+
+    return res.json({
+      success: true,
+      message: "Firma registrada correctamente. Puede venir por el equipo.",
+      data: result,
+    });
+  } catch (error: any) {
+    console.error("❌ Error firmando acta:", error);
+
+    return res.status(400).json({
+      success: false,
+      error: error.message ?? "Error firmando el acta",
+    });
+  }
+}
+
  
   
 }

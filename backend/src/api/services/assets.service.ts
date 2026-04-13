@@ -9,6 +9,12 @@ import { BaseDatos } from "../../entities/BaseDatos";
 import { Vpn } from "../../entities/Vpn";
 import { Movil } from "../../entities/Movil";
 import { FindOptionsWhere, In, IsNull, Not } from "typeorm";
+import { generarWordMovil } from "../utils/generarMovilDocx";
+import { sendMovilEmail } from "../utils/sendMovilEmail";
+import fs from "fs";
+import { sendToFlowRaw } from "../utils/flowRaw"
+import path from "path";
+import {sendToFlowFirmada} from "../utils/flowRaw";
 
 export class AssetsService {
   async getAssets(filters: AssetFilters) {
@@ -101,11 +107,14 @@ export class AssetsService {
     return asset;
   }
 
+  
+
   async createAsset(data: any, autor: string = "Sistema") {
     const {
       tipo, nombre, ubicacion, propietario, custodio, codigoServicio,
       servidor, red, ups, baseDatos, vpn,
-      // Campos MOVIL
+
+      // MOVIL
       numeroCaso, region, dependencia, sede, cedula, usuarioRed,
       correoResponsable, uni, marca, modelo, serial, imei1, imei2,
       sim, numeroLinea, fechaEntrega, observacionesEntrega,
@@ -120,7 +129,9 @@ export class AssetsService {
     const vpnRepository = AppDataSource.getRepository(Vpn);
     const movilRepository = AppDataSource.getRepository(Movil);
 
-    // Create asset
+    // ======================
+    // CREAR ASSET
+    // ======================
     const asset = assetRepository.create({
       tipo,
       nombre,
@@ -132,35 +143,23 @@ export class AssetsService {
 
     const savedAsset = await assetRepository.save(asset);
 
-    
-    if (servidor) {
-      const servidorData = servidorRepository.create({ ...servidor, asset: savedAsset });
-      await servidorRepository.save(servidorData);
-    }
+    // ======================
+    // RELACIONES
+    // ======================
+    if (servidor)  await servidorRepository.save({ ...servidor, asset: savedAsset });
+    if (red)       await redRepository.save({ ...red, asset: savedAsset });
+    if (ups)       await upsRepository.save({ ...ups, asset: savedAsset });
+    if (baseDatos) await baseDatosRepository.save({ ...baseDatos, asset: savedAsset });
+    if (vpn)       await vpnRepository.save({ ...vpn, asset: savedAsset });
 
-    if (red) {
-      const redData = redRepository.create({ ...red, asset: savedAsset });
-      await redRepository.save(redData);
-    }
-
-    if (ups) {
-      const upsData = upsRepository.create({ ...ups, asset: savedAsset });
-      await upsRepository.save(upsData);
-    }
-
-    if (baseDatos) {
-      const baseDatosData = baseDatosRepository.create({ ...baseDatos, asset: savedAsset });
-      await baseDatosRepository.save(baseDatosData);
-    }
-
-    if (vpn) {
-      const vpnData = vpnRepository.create({ ...vpn, asset: savedAsset });
-      await vpnRepository.save(vpnData);
-    }
-
-    // Create movil if tipo is MOVIL
+    // ======================
+    // MOVIL + WORD (+ CORREO OPCIONAL) ✅
+    // ======================
     if (tipo === "MOVIL") {
       const movilData = movilRepository.create({
+        id: savedAsset.id,          // ✅ CLAVE: MISMO ID DEL ASSET
+        asset: savedAsset,          // ✅ relación correcta
+      
         numeroCaso: numeroCaso ?? null,
         region: region ?? null,
         dependencia: dependencia ?? null,
@@ -178,26 +177,202 @@ export class AssetsService {
         numeroLinea: numeroLinea ?? null,
         fechaEntrega: fechaEntrega ? new Date(fechaEntrega) : null,
         observacionesEntrega: observacionesEntrega ?? null,
-        asset: savedAsset,
       });
+    
       await movilRepository.save(movilData);
+    
+      // ✅ Generar Word SIEMPRE (reutilizable)
+      const buffer = await generarWordMovil({
+        nombre: savedAsset.nombre,
+        numeroCaso,
+        region,
+        dependencia,
+        sede,
+        cedula,
+        usuarioRed,
+        uni,
+        marca,
+        modelo,
+        serial,
+        imei1,
+        imei2,
+        sim,
+        numeroLinea,
+        fechaEntrega,
+        observacionesEntrega,
+        fechaDevolucion: null,
+        observacionesDevolucion: null,
+        firmaPath: null,
+        fechaFirma: null,
+      });
+    
+      // ✅ Enviar correo SOLO si hay responsable
+      if (correoResponsable) {
+        try {
+          await sendMovilEmail({
+            correo: correoResponsable,
+            nombreActivo: savedAsset.nombre!,
+            assetId: savedAsset.id,
+            linkFirma: `${process.env.FRONTEND_URL}/firmar/${savedAsset.id}`,
+          });
+        
+          await bitacoraRepository.save(
+            bitacoraRepository.create({
+              asset: savedAsset,
+              autor: "Sistema",
+              tipoEvento: "NOTA",
+              descripcion: `Acta de entrega enviada a ${correoResponsable}`,
+            })
+          );
+        } catch (error) {
+          console.error("⚠️ Error enviando acta MOVIL:", error);
+        }
+      }
     }
 
-    // Create bitacora entry
-    const bitacoraEntry = bitacoraRepository.create({
-      asset: savedAsset,
-      autor,
-      tipoEvento: "IMPORTACION",
-      descripcion: "Activo creado manualmente.",
-    });
-    await bitacoraRepository.save(bitacoraEntry);
 
-    // Return asset with relations
+    // ======================
+    // BITÁCORA CREACIÓN
+    // ======================
+    await bitacoraRepository.save(
+      bitacoraRepository.create({
+        asset: savedAsset,
+        autor,
+        tipoEvento: "IMPORTACION",
+        descripcion: "Activo creado manualmente.",
+      })
+    );
+
     return assetRepository.findOne({
       where: { id: savedAsset.id },
       relations: ["servidor", "red", "ups", "baseDatos", "vpn", "movil"],
     });
   }
+
+  
+
+  async firmarMovil(assetId: string, firmaBase64: string, observacionesEntrega?: string) {
+
+    // ✅ Sanitizar ID
+    assetId = assetId.replace(/[^a-fA-F0-9-]/g, "");
+
+    const assetRepo    = AppDataSource.getRepository(Asset);
+    const movilRepo    = AppDataSource.getRepository(Movil);
+    const bitacoraRepo = AppDataSource.getRepository(Bitacora);
+
+    const asset = await assetRepo.findOne({
+      where: { id: assetId },
+      relations: ["movil"],
+    });
+
+    if (!asset || asset.tipo !== "MOVIL" || !asset.movil) {
+      throw new Error("Activo no encontrado o no es MOVIL");
+    }
+
+    if (asset.movil.firmaPath) {
+      throw new Error("Este activo ya fue firmado");
+    }
+
+    // ──────────────
+    // 1️⃣ Guardar firma PNG
+    // ──────────────
+    const firmaBuffer = Buffer.from(
+      firmaBase64.replace(/^data:image\/png;base64,/, ""),
+      "base64"
+    );
+
+    const firmaDir = path.join(process.cwd(), "storage/firmas");
+    fs.mkdirSync(firmaDir, { recursive: true });
+
+    const firmaPath = path.join(firmaDir, `${assetId}.png`);
+    fs.writeFileSync(firmaPath, firmaBuffer);
+
+    const fechaFirma = new Date();
+
+    await movilRepo.update(
+      { id: assetId },
+      { firmaPath, fechaFirma, observacionesEntrega: observacionesEntrega ?? asset.movil.observacionesEntrega }
+    );
+
+    // ──────────────
+    // 2️⃣ Generar Word firmado
+    // ──────────────
+    const m = asset.movil;
+
+    const buffer = await generarWordMovil({
+      nombre: asset.nombre,
+      numeroCaso: m.numeroCaso,
+      region: m.region,
+      dependencia: m.dependencia,
+      sede: m.sede,
+      cedula: m.cedula,
+      usuarioRed: m.usuarioRed,
+      uni: m.uni,
+      marca: m.marca,
+      modelo: m.modelo,
+      serial: m.serial,
+      imei1: m.imei1,
+      imei2: m.imei2,
+      sim: m.sim,
+      numeroLinea: m.numeroLinea,
+      fechaEntrega: m.fechaEntrega,
+      observacionesEntrega: m.observacionesEntrega,
+      fechaDevolucion: m.fechaDevolucion,
+      observacionesDevolucion: m.observacionesDevolucion,
+      firmaPath,
+      fechaFirma,
+    });
+
+    // ──────────────
+    // ✅ 3️⃣ ENVIAR AL FLOW (RAW)
+    // ──────────────
+    try {
+      const nombreArchivo = `Acta_Entrega_${asset.nombre?.replace(/\s+/g, "_")}.docx`;
+      const archivoBase64 = buffer.toString("base64");
+
+      await sendToFlowFirmada({
+        correo: m.correoResponsable,
+        nombreActivo: asset.nombre,
+        assetId,
+        nombreArchivo,
+        observacionesEntrega,
+        archivoBase64,
+      });
+
+      await bitacoraRepo.save(
+        bitacoraRepo.create({
+          asset: { id: assetId },
+          autor: "Sistema",
+          tipoEvento: "NOTA",
+          descripcion: "Acta firmada enviada a Power Automate.",
+        })
+      );
+
+    } catch (error) {
+      console.error("⚠️ Error enviando acta firmada al Flow:", error);
+    }
+
+    // ──────────────
+    // 4️⃣ Bitácora final
+    // ──────────────
+    await bitacoraRepo.save(
+      bitacoraRepo.create({
+        asset: { id: assetId },
+        autor: "Usuario",
+        tipoEvento: "NOTA",
+        descripcion: "Acta firmada digitalmente. Equipo listo para entrega.",
+      })
+    );
+
+    return {
+      ok: true,
+      fechaFirma,
+    };
+  }
+
+
+
+
 
   async updateAsset(id: string, data: any, autor: string) {
     const assetRepository = AppDataSource.getRepository(Asset);
@@ -539,6 +714,7 @@ export class AssetsService {
       order: { deletedAt: "DESC" },
     });
   }
+  
 }
 
 export const assetsService = new AssetsService();
