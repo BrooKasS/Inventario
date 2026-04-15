@@ -21,7 +21,7 @@ router.post("/export-observaciones", assetsController.exportObservaciones);
 
 router.post("/export-excel", assetsController.exportExcel);
 
-// FIRMAR ACTA (DEBE IR ANTES DE /:id)
+
 router.post(
   "/:id/firmar",
   asyncHandler(assetsController.firmarMovil.bind(assetsController))
@@ -33,7 +33,7 @@ router.get("/:id/word", assetsController.generarWord);
 
 
 // GET /assets/:id - Detalle de un asset
-router.get("/:id", asyncHandler(assetsController.getAssetById.bind(assetsController)));
+router.get("/public/:id", asyncHandler(assetsController.getAssetById.bind(assetsController)));
 
 // PATCH /assets/:id - Actualizar asset
 router.patch("/:id", asyncHandler(assetsController.updateAsset.bind(assetsController)));

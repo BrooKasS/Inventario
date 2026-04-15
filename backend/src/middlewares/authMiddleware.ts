@@ -1,16 +1,25 @@
 import { Request, Response, NextFunction } from "express";
 import { authService } from "../auth/auth.service";
 
-export function authMiddleware(req: Request, res: Response, next: NextFunction) {
-
+export function authMiddleware(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  // ✅ Rutas públicas (SIN TOKEN)
   const rutasPublicas = [
     "/api/auth/login",
     "/health",
   ];
 
-  // ✅ Permitir login, health y firma pública
+  // ✅ Permitir:
+  // - login
+  // - health
+  // - GET asset público para firma
+  // - POST firmar acta
   if (
     rutasPublicas.includes(req.path) ||
+    req.path.match(/^\/api\/assets\/public\/[^/]+$/) ||
     req.path.match(/^\/api\/assets\/[^/]+\/firmar$/)
   ) {
     return next();

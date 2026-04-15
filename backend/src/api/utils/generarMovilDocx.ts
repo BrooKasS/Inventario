@@ -328,6 +328,29 @@ function firmaRow(
 }
 ``
 
+function logoParagraph(): Paragraph | null {
+  const logoPath = "storage/img/logo.png";
+
+  if (!fs.existsSync(logoPath)) return null;
+
+  return new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: {
+      after: 300, // espacio debajo del logo
+    },
+    children: [
+      new ImageRun({
+        data: fs.readFileSync(logoPath),
+        transformation: {
+          width: 300, // ajusta tamaño
+          height: 80,
+        },
+        type: "png",
+      }),
+    ],
+  });
+}
+
 /* ══════════════════════════════════════════════
    FUNCIÓN PRINCIPAL
 ══════════════════════════════════════════════ */
@@ -601,6 +624,7 @@ export async function generarWordMovil(datos: DatosMovil): Promise<Buffer> {
         },
       },
       children: [
+        ...(logoParagraph() ? [logoParagraph()!] : []),
         tabla1,
         new Paragraph({ spacing: { after: 200 }, children: [] }),
         tabla2,

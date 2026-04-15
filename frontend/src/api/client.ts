@@ -1,5 +1,6 @@
 import axios from "axios";
 import { getToken, logoutUser } from "./auth";
+import publicApi from "./publicClient";
 
 const api = axios.create({
   baseURL: "http://localhost:3000/api",
@@ -103,6 +104,24 @@ export const firmarMovil = (
   ).then(r => r.data);
 };
 
+/* =========================
+   ✅ FUNCIONES PÚBLICAS
+   ========================= */
+
+/* Obtener asset para firma (sin login) */
+export const getAssetByIdPublic = (id: string) =>
+  publicApi.get(`/assets/public/${id}`).then(r => r.data.data);
+
+/* Firmar móvil (sin login) */
+export const firmarMovilPublic = (
+  assetId: string,
+  payload: {
+    firmaBase64: string;
+    observacionesEntrega?: string;
+  }
+) =>
+  publicApi.post(`/assets/${assetId}/firmar`, payload)
+    .then(r => r.data);
 
 
 
