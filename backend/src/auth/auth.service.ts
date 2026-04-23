@@ -18,13 +18,18 @@ export interface TokenPayload {
 }
 
 export class AuthService {
+  // ✅ Token Blacklist - Sesiones únicas por usuario
+  private static revokedTokens = new Set<string>();
+  private static usuarioTokenMap = new Map<string, string>();
 
-  async login(usuario: string, password: string): Promise<string> {
+  async login(usuario: string, password: string): Promise<{ token: string; nombre: string }> {
 
     const ldapUrl    = process.env.LDAP_URL    ?? "ldap://fiduprevisora.com.co:389";
     const ldapDomain = process.env.LDAP_DOMAIN ?? "fiduprevisora.com.co";
 
-    // Conectar al AD y validar credenciales
+    // Conectar al AD y validar credenciales + traer displayName
+    let nombreReal = usuario; // fallback si no se encuentra en AD
+    
     await new Promise<void>((resolve, reject) => {
       const client = ldap.createClient({
         url:            ldapUrl,
@@ -40,22 +45,85 @@ export class AuthService {
 
       // Intentar bind con usuario@dominio y contraseña
       client.bind(`${usuario}@${ldapDomain}`, password, (err) => {
-        client.destroy();
         if (err) {
+          client.destroy();
           reject(new Error("Credenciales incorrectas"));
         } else {
-          resolve();
+          // ✅ Credenciales OK → Buscar displayName usando sAMAccountName
+          const searchBase = `DC=fiduprevisora,DC=com,DC=co`;
+          const searchOptions: any = {
+            scope: "sub" as any,
+            filter: `(sAMAccountName=${usuario})`,
+            attributes: ["displayName"],
+            sizeLimit: 1,
+          };
+          
+          client.search(searchBase, searchOptions, (searchErr: any, res: any) => {
+            if (searchErr) {
+              // Si falla la búsqueda, continuar con fallback (nombreReal = usuario)
+              client.destroy();
+              resolve();
+              return;
+            }
+
+            let encontrado = false;
+
+            res.on("searchEntry", (entry: any) => {
+              encontrado = true;
+              console.log("[LDAP-DEBUG] searchEntry encontrada para:", usuario);
+              console.log("[LDAP-DEBUG] entry.pojo:", JSON.stringify(entry.pojo, null, 2));
+              const attrs: any = entry.pojo.attributes;
+              if (attrs && attrs.length > 0) {
+                const displayNameAttr = attrs.find((a: any) => a.type === "displayName");
+                if (displayNameAttr && displayNameAttr.values && displayNameAttr.values.length > 0) {
+                  nombreReal = displayNameAttr.values[0];
+                  console.log("[LDAP-DEBUG] ✅ displayName encontrado:", nombreReal);
+                } else {
+                  console.log("[LDAP-DEBUG] ❌ displayName NOT found. Attrs:", JSON.stringify(attrs, null, 2));
+                }
+              } else {
+                console.log("[LDAP-DEBUG] ❌ attrs vacío o no es array");
+              }
+            });
+
+            res.on("error", (err: any) => {
+              client.destroy();
+              resolve();
+            });
+
+            res.on("end", () => {
+              client.destroy();
+              resolve();
+            });
+          });
         }
       });
     });
 
-    // Si llegó acá → credenciales correctas → generar token
+    // Si llegó acá → credenciales correctas y nombre obtenido
+    
+    // ✅ REVOCAR token anterior de este usuario (sesión única)
+    const tokenAnterior = AuthService.usuarioTokenMap.get(usuario);
+    if (tokenAnterior) {
+      AuthService.revokedTokens.add(tokenAnterior);
+    }
+    
     const payload: TokenPayload = {
       usuario,
-      nombre: usuario, // El AD no devuelve nombre en bind simple
+      nombre: nombreReal, // ✅ Nombre real del AD (displayName)
     };
 
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES } as any);
+    const nuevoToken = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES } as any);
+    
+    // ✅ Guardar el nuevo token como activo para este usuario
+    AuthService.usuarioTokenMap.set(usuario, nuevoToken);
+    
+    console.log("[LDAP-DEBUG] 📤 FINAL: usuario =", usuario, "| nombreReal =", nombreReal);
+    
+    return {
+      token: nuevoToken,
+      nombre: nombreReal, // ✅ Devolver también el nombre
+    };
   }
 
   /**
@@ -64,6 +132,13 @@ export class AuthService {
    */
   verificarToken(token: string): TokenPayload {
     return jwt.verify(token, JWT_SECRET) as TokenPayload;
+  }
+
+  /**
+   * ✅ Verifica si un token ha sido revocado (logout en otro dispositivo)
+   */
+  estaTokenRevocado(token: string): boolean {
+    return AuthService.revokedTokens.has(token);
   }
 }
 

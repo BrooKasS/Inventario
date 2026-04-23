@@ -29,6 +29,15 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
 
   try {
     const payload = authService.verificarToken(token);
+    
+    // ✅ NUEVO: Verificar si el token fue revocado (sesión en otro dispositivo)
+    if (authService.estaTokenRevocado(token)) {
+      return res.status(401).json({
+        success: false,
+        error: "Sesión expirada en otro dispositivo — inicia sesión nuevamente",
+      });
+    }
+    
     (req as any).usuario = payload.usuario;
     (req as any).nombre = payload.nombre;
     next();

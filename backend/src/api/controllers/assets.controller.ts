@@ -7,7 +7,8 @@ import { mapAssetsToFlowPayload, toFlowTipo } from "../utils/flowMappers";
 import { sanitizePayloadForFlow } from "../utils/flowSanitizer";
 import { generarWordMovil } from "../utils/generarMovilDocx";
 import { generarExcelInventario } from "../utils/ExportInventario";
-import { generarExcelObservaciones } from "../utils/exportObservaciones"
+import { generarExcelObservaciones } from "../utils/exportObservaciones";
+import { sendMovilEmail } from "../utils/sendMovilEmail";
 
 const r = Router();
 
@@ -382,6 +383,91 @@ async firmarMovil(req: Request, res: Response) {
   }
 }
 
+  // 🧪 TEST: Enviar email de prueba sin crear activo
+  async testEmail(req: Request, res: Response) {
+    try {
+      const { correo, nombreActivo, linkFirma } = req.body;
+
+      if (!correo) {
+        return res.status(400).json({
+          success: false,
+          error: "Correo es requerido",
+        });
+      }
+
+      console.log("🧪 TEST EMAIL - Enviando a:", correo);
+      
+      await sendMovilEmail({
+        correo,
+        nombreActivo: nombreActivo || "TEST",
+        assetId: "test-" + Date.now(),
+        linkFirma: linkFirma || "http://localhost:5173/firmar/test",
+      });
+
+      return res.json({
+        success: true,
+        message: "Email de prueba enviado exitosamente",
+        data: {
+          correo,
+          nombreActivo: nombreActivo || "TEST",
+          linkFirma: linkFirma || "http://localhost:5173/firmar/test",
+        },
+      });
+    } catch (error: any) {
+      console.error("❌ Error en test email:", error);
+      return res.status(500).json({
+        success: false,
+        error: error.message || "Error enviando email de prueba",
+      });
+    }
+  }
+
+  // 🧪 TEST: Enviar email de FIRMA de prueba (segundo flujo)
+  async testFirmaEmail(req: Request, res: Response) {
+    try {
+      const { correo, nombreActivo } = req.body;
+
+      if (!correo) {
+        return res.status(400).json({
+          success: false,
+          error: "Correo es requerido",
+        });
+      }
+
+      console.log("🧪 TEST FIRMA EMAIL - Enviando a:", correo);
+
+      const { sendToFlowFirmada } = await import("../utils/flowRaw");
+
+      // Simular un archivo Word en Base64 (Word vacío mínimo)
+      const wordBase64 = "UEsDBBQABgAIAAAAIQDfpq61XgEAAHoFAAATAAAAd29yZC9kb2N1bWVudC54bWxMjMHqwjAUhV8l5N4m7dSKY";
+
+      await sendToFlowFirmada({
+        correo,
+        nombreActivo: nombreActivo || "TEST",
+        assetId: "test-firma-" + Date.now(),
+        nombreArchivo: "Acta_Entrega_TEST.docx",
+        archivoBase64: wordBase64,
+        observacionesEntrega: "Test de envío - No es un documento real",
+      });
+
+      return res.json({
+        success: true,
+        message: "Email de prueba FIRMA enviado exitosamente",
+        data: {
+          correo,
+          nombreActivo: nombreActivo || "TEST",
+          assetId: "test-firma-" + Date.now(),
+          flujo: "FLOW_URL_FIRMADA",
+        },
+      });
+    } catch (error: any) {
+      console.error("❌ Error en test firma email:", error);
+      return res.status(500).json({
+        success: false,
+        error: error.message || "Error enviando email de firma",
+      });
+    }
+  }
  
   
 }

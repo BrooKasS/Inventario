@@ -16,6 +16,7 @@ function normalizeFlowUrl(envVar?: string): string {
   return normalized;
 }
 
+
 export async function sendToFlowRaw(payload: any) {
   const url = normalizeFlowUrl(process.env.FLOW_URL2);
 
@@ -36,7 +37,8 @@ export async function sendToFlowFirmada(payload: any) {
 
   const res = await axios.post(url, payload, {
     headers: { "Content-Type": "application/json" },
-    maxBodyLength: Infinity,
+    maxBodyLength:  Infinity,
+    
   });
 
   return res.data;

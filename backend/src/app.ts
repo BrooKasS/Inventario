@@ -3,6 +3,7 @@ import cors from "cors";
 import routes from "./api/routes";
 import { errorHandler } from "./middlewares/errorHandler";
 import { authMiddleware } from "./middlewares/authMiddleware";
+import { assetsController } from "./api/controllers/assets.controller";
 
 export const app = express();
 
@@ -11,17 +12,21 @@ app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-// Health check
+// Health check (sin autenticación)
 app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
+
+// 🧪 TEST: Endpoints de prueba SIN autenticación
+app.post("/api/assets/test-email", assetsController.testEmail.bind(assetsController));
+app.post("/api/assets/test-firma-email", assetsController.testFirmaEmail.bind(assetsController));
 
 app.use(authMiddleware); 
 app.use("/api", routes);
 app.use(errorHandler);
 
-// API Routes
-app.use("/api", routes);
+// Error handler (debe ir al final)
+app.use(errorHandler);
 
 // Error handler (debe ir al final)
 app.use(errorHandler);

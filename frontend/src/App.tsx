@@ -5,44 +5,44 @@ import AssetList from "./pages/AssetList";
 import AssetDetail from "./pages/AssetDetail/index";
 import Papelera from "./pages/Papelera";
 import Login from "./pages/Login";
-import { isAuthenticated } from "./api/auth";
 import FirmaMovil from "./pages/FirmaMovil";
+import { isAuthenticated } from "./api/auth";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated()) {
     return <Navigate to="/login" replace />;
   }
   return <>{children}</>;
+  
 }
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-
-        {/* ✅ RUTAS PÚBLICAS */}
+        {/* Rutas públicas */}
         <Route path="/login" element={<Login />} />
         <Route path="/firmar/:assetId" element={<FirmaMovil />} />
 
-        {/* ✅ RUTAS PROTEGIDAS */}
+        {/* Rutas protegidas */}
         <Route
           path="/"
           element={
             <ProtectedRoute>
               <Layout />
             </ProtectedRoute>
+            
           }
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="dashboard"        element={<Dashboard />} />
           <Route path="inventario/:tipo" element={<AssetList />} />
-          <Route path="activo/:id" element={<AssetDetail />} />
-          <Route path="papelera" element={<Papelera />} />
+          <Route path="activo/:id"       element={<AssetDetail />} />
+          <Route path="/papelera"        element={<Papelera />} />
         </Route>
 
-        {/* Fallback */}
+        {/* Cualquier ruta desconocida */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
-
       </Routes>
     </BrowserRouter>
   );

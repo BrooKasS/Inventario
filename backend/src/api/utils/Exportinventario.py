@@ -12,10 +12,12 @@ import sys
 import json
 import copy
 import re
+import os
 from datetime import datetime
 from openpyxl import load_workbook, Workbook
 from openpyxl.styles import Font, Border, Side, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
+from openpyxl.drawing.image import Image as XLImage
 
 # ─────────────────────────────────────────────────────────────────────
 # PARSEO DE FECHAS
@@ -154,6 +156,7 @@ def crear_hoja_extra(dst_wb, sheet_name, labels, widths, data_rows, date_label_k
         date_label_keys = set()
 
     ws       = dst_wb.create_sheet(sheet_name)
+    add_logo_to_sheet(ws)  # ✅ Agregar logo en esquina izquierda
     num_cols = len(labels)
 
     # Fila 1 — título naranja
@@ -209,6 +212,28 @@ def crear_hoja_extra(dst_wb, sheet_name, labels, widths, data_rows, date_label_k
     return ws
 
 # ─────────────────────────────────────────────────────────────────────
+# INSERTAR LOGO
+# ─────────────────────────────────────────────────────────────────────
+def add_logo_to_sheet(ws, logo_filename='logo.png'):
+    """Agrega logo en B2 — tamaño 236x51px (modo seguro, sin romper Excel)."""
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        logo_path = os.path.join(script_dir, logo_filename)
+        
+        # Verificar que el archivo existe Y es un archivo válido
+        if not os.path.exists(logo_path) or os.path.getsize(logo_path) < 100:
+            return  # Archivo no existe o es muy pequeño
+        
+        img = XLImage(logo_path)
+        img.width = 236
+        img.height = 51
+        ws.add_image(img, 'B2')
+    except Exception as e:
+        # Silenciar CUALQUIER error — la imagen es opcional
+        # No romper Excel por problemas de imagen
+        pass
+
+# ─────────────────────────────────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────────────────────────────────
 def main():
@@ -226,6 +251,7 @@ def main():
     # ── SERVIDORES ──────────────────────────────────────────────────
     src_ws = src_wb['InventarioServidores']
     dst_ws = dst_wb.create_sheet('InventarioServidores')
+    add_logo_to_sheet(dst_ws)
     copy_header(src_ws, dst_ws)
     write_data_rows(dst_ws, 'InventarioServidores', payload['servidores'], [
         'nombre', 'propietario', 'custodio', 'monitoreo', 'backup',
@@ -238,6 +264,7 @@ def main():
     # ── REDES ────────────────────────────────────────────────────────
     src_ws = src_wb['InventarioRedes']
     dst_ws = dst_wb.create_sheet('InventarioRedes')
+    add_logo_to_sheet(dst_ws)
     copy_header(src_ws, dst_ws)
     write_data_rows(dst_ws, 'InventarioRedes', payload['redes'], [
         'nombre', 'propietario', 'custodio', 'serial', 'mac', 'modelo',
@@ -248,6 +275,7 @@ def main():
     # ── UPS ──────────────────────────────────────────────────────────
     src_ws = src_wb['InventarioUPS']
     dst_ws = dst_wb.create_sheet('InventarioUPS')
+    add_logo_to_sheet(dst_ws)
     copy_header(src_ws, dst_ws)
     write_data_rows(dst_ws, 'InventarioUPS', payload['ups'], [
         'nombre', 'propietario', 'custodio', 'serial', 'placa',
@@ -257,6 +285,7 @@ def main():
     # ── BASES DE DATOS ───────────────────────────────────────────────
     src_ws = src_wb['InventarioBD']
     dst_ws = dst_wb.create_sheet('InventarioBD')
+    add_logo_to_sheet(dst_ws)
     copy_header(src_ws, dst_ws)
     write_data_rows(dst_ws, 'InventarioBD', payload['bds'], [
         'nombre', 'propietario', 'custodio', 'servidor1', 'servidor2',

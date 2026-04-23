@@ -23,7 +23,7 @@ export const AppDataSource = new DataSource({
   password: process.env.DB_PASSWORD!,
 
   synchronize: true,       // solo en desarrollo
-  logging: true,
+  logging: false,           // Desactivar para ver logs de LDAP claramente
 
   entities: [
     Asset,

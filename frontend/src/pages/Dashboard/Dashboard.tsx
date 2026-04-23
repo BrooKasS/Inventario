@@ -7,6 +7,7 @@ import StatCard from "./components/StatCard";
 import RecentRow from "./components/RecentRow";
 import ExportModal from "./components/ExportModal";
 import ObservationsModal from "./components/ObservationsModal";
+import { getNombreReal, getUsuario } from "../../api/auth";
 
 import { useDashboardData } from "./hooks/useDashboardData";
 import { useDashboardFilters } from "./hooks/useDashboardFilters";
@@ -194,6 +195,22 @@ export default function Dashboard() {
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
         {/* ────── HEADER ────── */}
         <div style={{ marginBottom: 16 }}>
+          {/* Mensaje de bienvenida */}
+          <div style={{ 
+            fontSize: 18, 
+            fontWeight: 800, 
+            letterSpacing: "0.08em", 
+            textTransform: "uppercase",
+            color: "rgba(255, 255, 255, 0.95)",
+            marginBottom: 12,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+          }}>
+            <span style={{ fontSize: 24 }}>👋</span>
+            <span>BIENVENIDO, <span style={{ fontWeight: 900, fontSize: 20 }}>{(getNombreReal() || getUsuario() || "Usuario").toUpperCase()}</span></span>
+          </div>
+
           <h1
             style={{
               fontSize: 28,
@@ -208,7 +225,7 @@ export default function Dashboard() {
             Dashboard
           </h1>
           <p style={{ fontSize: 20, color: "rgb(255, 255, 255)", margin: "6px 0 12px" }}>
-            Estado general del inventario de infraestructura
+            Revisa y haz trazabilidad de los activos de infraestructura
           </p>
 
           <button

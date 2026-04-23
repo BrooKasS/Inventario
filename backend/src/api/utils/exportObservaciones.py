@@ -11,9 +11,11 @@ Uso: python3 exportObservaciones.py <payload.json> <output.xlsx>
 import sys
 import json
 import copy
+import os
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Border, Side, Alignment, GradientFill
 from openpyxl.utils import get_column_letter
+from openpyxl.drawing.image import Image as XLImage
 
 # ── Colores corporativos ──
 COLOR_HEADER_BG  = "861F41"   # rojo oscuro — fondo header columnas
@@ -66,6 +68,26 @@ def left():
     return Alignment(horizontal='left', vertical='center', wrap_text=False)
 
 
+# ── Insertar logo ──
+def add_logo_to_sheet(ws, logo_filename='logo.png'):
+    """Agrega logo en B2 — tamaño 236x51px (modo seguro, sin romper Excel)."""
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        logo_path = os.path.join(script_dir, logo_filename)
+        
+        # Verificar que el archivo existe Y es un archivo válido
+        if not os.path.exists(logo_path) or os.path.getsize(logo_path) < 100:
+            return  # Archivo no existe o es muy pequeño
+        
+        img = XLImage(logo_path)
+        img.width = 236
+        img.height = 51
+        ws.add_image(img, 'B2')
+    except Exception as e:
+        # Silenciar CUALQUIER error — la imagen es opcional
+        pass
+
+
 # ── Definición de columnas ──
 # incluir_tecnicos: si True agrega Campo modificado, Valor anterior, Valor nuevo
 def get_columns(incluir_tecnicos=False):
@@ -90,6 +112,7 @@ def get_columns(incluir_tecnicos=False):
 def escribir_hoja(wb, nombre_hoja, rows, incluir_tecnicos=False):
     """Crea y formatea una hoja con las observaciones dadas."""
     ws = wb.create_sheet(title=nombre_hoja[:31])
+    add_logo_to_sheet(ws)  # ✅ Agregar logo en esquina izquierda
 
     cols = get_columns(incluir_tecnicos)
     num_cols = len(cols)
@@ -225,3 +248,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+    
+    

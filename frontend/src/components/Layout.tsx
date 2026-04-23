@@ -1,6 +1,6 @@
 import { Outlet, NavLink } from "react-router-dom";
 import { useState } from "react";
-import { logoutUser, getUsuario } from "../api/auth";
+import { logoutUser, getUsuario, getNombreReal } from "../api/auth";
 
 const nav = [
   { label: "Dashboard",      path: "/dashboard",            icon: "⊞" },
@@ -148,7 +148,7 @@ export default function Layout() {
             fontSize: 11, color: "#666", textAlign: "center",
             marginBottom: 10, fontWeight: 700, letterSpacing: "0.03em",
           }}>
-            👤 {getUsuario() ?? "Usuario"}
+            👤 {getNombreReal() ?? getUsuario() ?? "Usuario"}
           </div>
           
           <button
