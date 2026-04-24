@@ -12,12 +12,15 @@ const ACCENT = "#B7312C";
 export default function FirmaMovil() {
   const { assetId } = useParams<{ assetId: string }>();
   const sigRef = useRef<any>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const [asset, setAsset] = useState<any>(null);
   const [observaciones, setObservaciones] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [firmaSource, setFirmaSource] = useState<'mouse' | 'file'>('mouse');
+  const [archivoSeleccionado, setArchivoSeleccionado] = useState<File | null>(null);
 
   /* ────────────── cargar activo ────────────── */
   useEffect(() => {
@@ -37,19 +40,44 @@ export default function FirmaMovil() {
     loadAsset();
   }, [assetId]);
 
+  /* ────────────── manejar archivo de firma ────────────── */
+  const manejarArchivoFirma = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert("Debe ser una imagen (PNG, JPG, etc)");
+      return;
+    }
+
+    setArchivoSeleccionado(file);
+  };
+
   /* ────────────── firmar ────────────── */
   const enviarFirma = async () => {
-    if (!sigRef.current || sigRef.current.isEmpty()) {
-      alert("Debe firmar antes de enviar");
-      return;
+    let firmaBase64: string;
+
+    if (firmaSource === 'mouse') {
+      if (!sigRef.current || sigRef.current.isEmpty()) {
+        alert("Debe firmar antes de enviar");
+        return;
+      }
+      firmaBase64 = sigRef.current.getCanvas().toDataURL("image/png");
+    } else {
+      if (!archivoSeleccionado) {
+        alert("Debe seleccionar un archivo de firma");
+        return;
+      }
+
+      firmaBase64 = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(archivoSeleccionado);
+      });
     }
 
     try {
       setEnviando(true);
-
-      const firmaBase64 = sigRef.current
-        .getCanvas()
-        .toDataURL("image/png");
 
       await firmarMovil(assetId!, {
         firmaBase64,
@@ -148,21 +176,68 @@ export default function FirmaMovil() {
               </div>
 
               {/* ── Firma ── */}
-              <h3 style={{ marginBottom: 8, color: ACCENT }}>Firma del Responsable</h3>
+              <h3 style={{ marginBottom: 12, color: ACCENT }}>Firma del Responsable</h3>
 
-              <SignatureCanvas
-                ref={sigRef}
-                penColor="black"
-                canvasProps={{
-                  width: 600,
-                  height: 180,
-                  style: {
-                    border: "2px dashed #ccc",
-                    borderRadius: 8,
-                    background: "#fff",
-                  },
-                }}
-              />
+              {/* ── Selector de fuente de firma ── */}
+              <div style={{ marginBottom: 16, display: 'flex', gap: 12 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '8px 12px', background: firmaSource === 'mouse' ? '#E8F4F8' : '#f5f5f5', borderRadius: 8, border: firmaSource === 'mouse' ? '2px solid ' + PRIMARY : '1px solid #ddd' }}>
+                  <input
+                    type="radio"
+                    name="firmaSource"
+                    value="mouse"
+                    checked={firmaSource === 'mouse'}
+                    onChange={() => { setFirmaSource('mouse'); setArchivoSeleccionado(null); }}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span style={{ fontSize: 14, fontWeight: 600, color: '#333' }}>✍️ Firmar con mouse</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '8px 12px', background: firmaSource === 'file' ? '#E8F4F8' : '#f5f5f5', borderRadius: 8, border: firmaSource === 'file' ? '2px solid ' + PRIMARY : '1px solid #ddd' }}>
+                  <input
+                    type="radio"
+                    name="firmaSource"
+                    value="file"
+                    checked={firmaSource === 'file'}
+                    onChange={() => { setFirmaSource('file'); sigRef.current?.clear(); }}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span style={{ fontSize: 14, fontWeight: 600, color: '#333' }}>📎 Cargar archivo</span>
+                </label>
+              </div>
+
+              {/* ── Canvas (solo si mouse) ── */}
+              {firmaSource === 'mouse' && (
+                <SignatureCanvas
+                  ref={sigRef}
+                  penColor="black"
+                  canvasProps={{
+                    width: 600,
+                    height: 180,
+                    style: {
+                      border: "2px dashed #ccc",
+                      borderRadius: 8,
+                      background: "#fff",
+                    },
+                  }}
+                />
+              )}
+
+              {/* ── Input de archivo (solo si file) ── */}
+              {firmaSource === 'file' && (
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: 'flex', gap: 12, alignItems: 'center', cursor: 'pointer', padding: '12px 14px', background: '#f9f9f9', border: '2px dashed ' + PRIMARY, borderRadius: 8 }}>
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={manejarArchivoFirma}
+                      style={{ display: 'none' }}
+                    />
+                    <span style={{ fontSize: 14, fontWeight: 600, color: '#333', flex: 1 }}>
+                      {archivoSeleccionado ? `✅ ${archivoSeleccionado.name}` : '📁 Click aquí para seleccionar imagen de firma'}
+                    </span>
+                  </label>
+                </div>
+              )}
 
               {/* ── Observaciones ── */}
               <textarea
@@ -184,7 +259,14 @@ export default function FirmaMovil() {
               {/* ── Botones ── */}
               <div style={{ marginTop: 24, display: "flex", justifyContent: "flex-end", gap: 12 }}>
                 <button
-                  onClick={() => sigRef.current?.clear()}
+                  onClick={() => {
+                    if (firmaSource === 'mouse') {
+                      sigRef.current?.clear();
+                    } else {
+                      setArchivoSeleccionado(null);
+                      if (fileRef.current) fileRef.current.value = '';
+                    }
+                  }}
                   disabled={enviando}
                   style={{
                     padding: "10px 18px",

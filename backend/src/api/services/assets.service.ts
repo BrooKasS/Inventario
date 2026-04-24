@@ -9,12 +9,14 @@ import { BaseDatos } from "../../entities/BaseDatos";
 import { Vpn } from "../../entities/Vpn";
 import { Movil } from "../../entities/Movil";
 import { FindOptionsWhere, In, IsNull, Not } from "typeorm";
+import { v4 as uuidv4 } from "uuid";
 import { generarWordMovil } from "../utils/generarMovilDocx";
 import { sendMovilEmail } from "../utils/sendMovilEmail";
 import fs from "fs";
 import { sendToFlowRaw } from "../utils/flowRaw"
 import path from "path";
 import {sendToFlowFirmada} from "../utils/flowRaw";
+import { validateAssetData, isCreatedToday } from "../utils/validationRules";
 
 export class AssetsService {
   async getAssets(filters: AssetFilters) {
@@ -120,6 +122,12 @@ export class AssetsService {
       sim, numeroLinea, fechaEntrega, observacionesEntrega,
     } = data;
 
+    // ✅ VALIDACIÓN: nuevas entradas SIEMPRE se validan
+    const { valid, errors } = validateAssetData(tipo, data, true);
+    if (!valid) {
+      throw new Error(`Validación fallida: ${errors.join(", ")}`);
+    }
+
     const assetRepository = AppDataSource.getRepository(Asset);
     const bitacoraRepository = AppDataSource.getRepository(Bitacora);
     const servidorRepository = AppDataSource.getRepository(Servidor);
@@ -146,11 +154,31 @@ export class AssetsService {
     // ======================
     // RELACIONES
     // ======================
-    if (servidor)  await servidorRepository.save({ ...servidor, asset: savedAsset });
-    if (red)       await redRepository.save({ ...red, asset: savedAsset });
-    if (ups)       await upsRepository.save({ ...ups, asset: savedAsset });
-    if (baseDatos) await baseDatosRepository.save({ ...baseDatos, asset: savedAsset });
-    if (vpn)       await vpnRepository.save({ ...vpn, asset: savedAsset });
+    if (servidor) {
+      const servidorToSave = { ...servidor, asset: savedAsset };
+      if (!servidorToSave.id) servidorToSave.id = uuidv4();
+      await servidorRepository.save(servidorToSave);
+    }
+    if (red) {
+      const redToSave = { ...red, asset: savedAsset };
+      if (!redToSave.id) redToSave.id = uuidv4();
+      await redRepository.save(redToSave);
+    }
+    if (ups) {
+      const upsToSave = { ...ups, asset: savedAsset };
+      if (!upsToSave.id) upsToSave.id = uuidv4();
+      await upsRepository.save(upsToSave);
+    }
+    if (baseDatos) {
+      const baseDatosToSave = { ...baseDatos, asset: savedAsset };
+      if (!baseDatosToSave.id) baseDatosToSave.id = uuidv4();
+      await baseDatosRepository.save(baseDatosToSave);
+    }
+    if (vpn) {
+      const vpnToSave = { ...vpn, asset: savedAsset };
+      if (!vpnToSave.id) vpnToSave.id = uuidv4();
+      await vpnRepository.save(vpnToSave);
+    }
 
     // ======================
     // MOVIL + WORD (+ CORREO OPCIONAL) ✅
@@ -391,6 +419,15 @@ export class AssetsService {
 
     if (!data || typeof data !== "object") throw new Error("Body inválido");
     if (!asset) throw new Error("Asset no encontrado");
+
+    // ✅ VALIDACIÓN: solo validar si es registro NUEVO (creado hoy)
+    const isNewRecord = isCreatedToday(asset.creadoEn);
+    if (isNewRecord) {
+      const { valid, errors } = validateAssetData(asset.tipo, data, false);
+      if (!valid) {
+        throw new Error(`Validación fallida: ${errors.join(", ")}`);
+      }
+    }
 
     const updates: Partial<Asset> = {};
     const bitacoraEntries: any[] = [];

@@ -1,8 +1,9 @@
 /**
  * auth.ts
  * Funciones de autenticación para el frontend.
- * El token se guarda en localStorage y se adjunta
+ * El token se guarda en sessionStorage (por tab) y se adjunta
  * automáticamente a cada request via axios interceptor.
+ * sessionStorage: cada tab tiene su propia sesión (protege contra clonación)
  */
 
 import api from "./client";
@@ -17,18 +18,18 @@ const NOMBRE_KEY = "inventario_nombre"; // ✅ NUEVO: Guardar nombre real
 export async function loginUser(usuario: string, password: string): Promise<void> {
   const res = await api.post("/auth/login", { usuario, password });
   const { token, usuario: user, nombre } = res.data;
-  localStorage.setItem(TOKEN_KEY, token);
-  localStorage.setItem(USER_KEY, user);
-  localStorage.setItem(NOMBRE_KEY, nombre || user); // ✅ Guardar nombre real (o fallback al user)
+  sessionStorage.setItem(TOKEN_KEY, token);
+  sessionStorage.setItem(USER_KEY, user);
+  sessionStorage.setItem(NOMBRE_KEY, nombre || user); // ✅ Guardar nombre real (o fallback al user)
 }
 
 /**
  * Logout — borra token, usuario y nombre, luego redirige a login.
  */
 export function logoutUser(): void {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
-  localStorage.removeItem(NOMBRE_KEY); // ✅ Limpiar también el nombre
+  sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(USER_KEY);
+  sessionStorage.removeItem(NOMBRE_KEY); // ✅ Limpiar también el nombre
   window.location.href = "/login";
 }
 
@@ -36,21 +37,21 @@ export function logoutUser(): void {
  * Retorna el token guardado o null si no existe.
  */
 export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+  return sessionStorage.getItem(TOKEN_KEY);
 }
 
 /**
  * Retorna el usuario guardado o null.
  */
 export function getUsuario(): string | null {
-  return localStorage.getItem(USER_KEY);
+  return sessionStorage.getItem(USER_KEY);
 }
 
 /**
  * funcion para obtener el nombre completo de la persona
  */
 export function getNombreReal(): string | null {
-  return localStorage.getItem(NOMBRE_KEY);
+  return sessionStorage.getItem(NOMBRE_KEY);
 }
 
 /**

@@ -9,6 +9,7 @@ import { generarWordMovil } from "../utils/generarMovilDocx";
 import { generarExcelInventario } from "../utils/ExportInventario";
 import { generarExcelObservaciones } from "../utils/exportObservaciones";
 import { sendMovilEmail } from "../utils/sendMovilEmail";
+import { validateAssetData } from "../utils/validationRules";
 
 const r = Router();
 
@@ -73,14 +74,24 @@ export class AssetsController {
       });
     }
 
-    const autor = (req as any).usuario ?? "Sistema";
-    const asset = await assetsService.createAsset(data, autor);
+    try {
+      const autor = (req as any).usuario ?? "Sistema";
+      const asset = await assetsService.createAsset(data, autor);
 
-    res.status(201).json({
-      success: true,
-      data: asset,
-      message: "Activo creado correctamente",
-    });
+      res.status(201).json({
+        success: true,
+        data: asset,
+        message: "Activo creado correctamente",
+      });
+    } catch (error: any) {
+      if (error.message && error.message.includes("Validación fallida")) {
+        return res.status(400).json({
+          success: false,
+          error: error.message,
+        });
+      }
+      throw error;
+    }
   }
 
   // PATCH /assets/:id

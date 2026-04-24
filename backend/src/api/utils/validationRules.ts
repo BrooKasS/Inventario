@@ -75,6 +75,16 @@ function validateBackupMonitoreo(val: any): string | null {
 }
 
 /**
+ * Valida campo obligatorio (no vacío, no null, no undefined)
+ */
+function validateRequired(val: any, fieldName: string): string | null {
+  if (!val || (typeof val === "string" && String(val).trim() === "")) {
+    return `${fieldName}: campo obligatorio`;
+  }
+  return null;
+}
+
+/**
  * Valida email: formato básico
  */
 function validateEmail(val: any): string | null {
@@ -171,6 +181,14 @@ export function validateAssetData(
   if (tipo === "MOVIL") {
     const movil = data.movil || data;
 
+    // ✅ OBLIGATORIOS
+    const userErr = validateRequired(movil.usuarioRed, "Usuario Red (user)");
+    if (userErr) errors.push(userErr);
+
+    const emailErr = validateRequired(movil.correoResponsable, "Correo Responsable (correo)");
+    if (emailErr) errors.push(emailErr);
+
+    // ✅ VALIDACIONES OPCIONALES (si existen)
     if (movil.numeroCaso) {
       const err = validateNumeroCaso(movil.numeroCaso);
       if (err) errors.push(err);
@@ -211,16 +229,25 @@ export function validateAssetData(
   if (tipo === "SERVIDOR") {
     const servidor = data.servidor || data;
 
-    if (servidor.backup) {
+    // ✅ OBLIGATORIOS
+    const backupErr = validateRequired(servidor.backup, "Backup");
+    if (backupErr) errors.push(backupErr);
+    else {
       const err = validateBackupMonitoreo(servidor.backup);
       if (err) errors.push(err);
     }
 
-    if (servidor.monitoreo) {
+    const monitoreoErr = validateRequired(servidor.monitoreo, "Monitoreo");
+    if (monitoreoErr) errors.push(monitoreoErr);
+    else {
       const err = validateBackupMonitoreo(servidor.monitoreo);
       if (err) errors.push(err);
     }
 
+    const ambienteErr = validateRequired(servidor.ambiente, "Ambiente");
+    if (ambienteErr) errors.push(ambienteErr);
+
+    // ✅ VALIDACIONES OPCIONALES (si existen)
     if (servidor.ipInterna) {
       const err = validateIP(servidor.ipInterna);
       if (err) errors.push(err);
@@ -251,18 +278,25 @@ export function validateAssetData(
   if (tipo === "RED") {
     const red = data.red || data;
 
-    if (red.mac) {
+    // ✅ OBLIGATORIOS
+    const macErr = validateRequired(red.mac, "MAC");
+    if (macErr) errors.push(macErr);
+    else {
       const err = validateMAC(red.mac);
       if (err) errors.push(err);
     }
 
-    if (red.ipGestion) {
-      const err = validateIP(red.ipGestion);
+    const estadoErr = validateRequired(red.estado, "Estado");
+    if (estadoErr) errors.push(estadoErr);
+    else {
+      const err = validateBackupMonitoreo(red.estado);
       if (err) errors.push(err);
     }
 
-    if (red.estado) {
-      const err = validateBackupMonitoreo(red.estado);
+    const ipGestionErr = validateRequired(red.ipGestion, "IP Gestión");
+    if (ipGestionErr) errors.push(ipGestionErr);
+    else {
+      const err = validateIP(red.ipGestion);
       if (err) errors.push(err);
     }
 
@@ -276,7 +310,10 @@ export function validateAssetData(
   if (tipo === "UPS") {
     const ups = data.ups || data;
 
-    if (ups.estado) {
+    // ✅ OBLIGATORIO
+    const estadoErr = validateRequired(ups.estado, "Estado");
+    if (estadoErr) errors.push(estadoErr);
+    else {
       const err = validateBackupMonitoreo(ups.estado);
       if (err) errors.push(err);
     }
@@ -286,6 +323,11 @@ export function validateAssetData(
   if (tipo === "BASE_DATOS") {
     const bd = data.baseDatos || data;
 
+    // ✅ OBLIGATORIO
+    const ambienteErr = validateRequired(bd.ambiente, "Ambiente");
+    if (ambienteErr) errors.push(ambienteErr);
+
+    // ✅ VALIDACIONES OPCIONALES
     if (bd.fechaFinalSoporte) {
       const err = validateFecha(bd.fechaFinalSoporte, "Fecha final soporte");
       if (err) errors.push(err);

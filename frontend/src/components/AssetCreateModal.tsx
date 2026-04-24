@@ -22,6 +22,31 @@ const TIPO_LABEL: Record<string, string> = {
   MOVIL:      "Móvil",
 };
 
+/**
+ * Parsea errores de validación del backend
+ * Entrada: "Validación fallida: Error1, Error2, Error3"
+ * Salida: ["Error1", "Error2", "Error3"]
+ * Si no es validación fallida, retorna el string como array de 1 elemento
+ */
+function parseValidationErrors(errorMsg: string | null): string[] {
+  if (!errorMsg || typeof errorMsg !== "string") return [];
+  
+  const trimmed = errorMsg.trim();
+  if (!trimmed) return [];
+  
+  if (trimmed.includes("Validación fallida:")) {
+    const afterPrefix = trimmed.split("Validación fallida:")[1];
+    if (afterPrefix) {
+      return afterPrefix
+        .split(",")
+        .map((err) => err.trim())
+        .filter((err) => err.length > 0);
+    }
+  }
+  
+  return [trimmed];
+}
+
 const TIPO_ICON: Record<string, string> = {
   SERVIDOR:   "🖥️",
   BASE_DATOS: "🗄️",
@@ -270,11 +295,15 @@ export default function AssetCreateModal({
 
   if (!open) return null;
 
-  const handleGeneral = (field: string, val: string) =>
+  const handleGeneral = (field: string, val: string) => {
     setGeneral(prev => ({ ...prev, [field]: val }));
+    setError(null);
+  };
 
-  const handleDetalle = (field: string, val: string) =>
+  const handleDetalle = (field: string, val: string) => {
     setDetalle(prev => ({ ...prev, [field]: val }));
+    setError(null);
+  };
 
   /* ── Limpiar al cerrar ── */
   const handleClose = () => {
@@ -420,11 +449,28 @@ if (tipoKey && Object.keys(detalleConvertido).length > 0) {
           {error && (
             <div style={{
               background: "#fff0f0", border: "1.5px solid #f5c6c6",
-              borderRadius: 8, padding: "10px 14px", marginBottom: 16,
+              borderRadius: 8, padding: "12px 14px", marginBottom: 16,
               fontSize: 13, color: "#c0392b", fontFamily: "Calibri, sans-serif",
-              display: "flex", alignItems: "center", gap: 8,
             }}>
-              <span>⚠️</span><span>{error}</span>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                <span style={{ marginTop: 2, flexShrink: 0 }}>⚠️</span>
+                <div style={{ flex: 1 }}>
+                  {parseValidationErrors(error).length > 1 ? (
+                    <>
+                      <div style={{ fontWeight: 600, marginBottom: 6 }}>Validación fallida:</div>
+                      <ul style={{ margin: 0, paddingLeft: 20 }}>
+                        {parseValidationErrors(error).map((err, idx) => (
+                          <li key={idx} style={{ marginBottom: idx < parseValidationErrors(error).length - 1 ? 4 : 0 }}>
+                            {err}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : (
+                    <span>{error}</span>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 

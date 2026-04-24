@@ -8,9 +8,10 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
     "/health",
   ];
 
-  // ✅ Permitir login, health y firma pública
+  // ✅ Permitir login, health, lectura pública de activos y firma pública
   if (
     rutasPublicas.includes(req.path) ||
+    (req.path.match(/^\/api\/assets\/[^/]+$/) && req.method === "GET") ||
     req.path.match(/^\/api\/assets\/[^/]+\/firmar$/)
   ) {
     return next();
