@@ -4,6 +4,12 @@ import { asyncHandler } from "../../middlewares/errorHandler";
 
 const router = Router();
 
+
+
+// GET /assets/:id - Detalle de un asset
+router.get("/public/:id", asyncHandler(assetsController.getAssetById.bind(assetsController)));
+router.get("/activo/:id", asyncHandler(assetsController.getAssetById.bind(assetsController)));
+
 // GET /assets - Lista de assets con filtros y paginación
 router.get("/", asyncHandler(assetsController.getAssets.bind(assetsController)));
 
@@ -32,8 +38,6 @@ router.get("/:id/word", assetsController.generarWord);
 
 
 
-// GET /assets/:id - Detalle de un asset
-router.get("/public/:id", asyncHandler(assetsController.getAssetById.bind(assetsController)));
 
 // PATCH /assets/:id - Actualizar asset
 router.patch("/:id", asyncHandler(assetsController.updateAsset.bind(assetsController)));

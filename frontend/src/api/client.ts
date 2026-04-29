@@ -38,7 +38,7 @@ export const getAssets = (params?: Record<string, any>) =>
   api.get("/assets", { params }).then(r => r.data.data);
 
 export const getAssetById = (id: string) =>
-  api.get(`/assets/${id}`).then(r => r.data.data);
+  api.get(`/assets/activo/${id}`).then(r => r.data.data);
 
 export const getStats = () =>
   api.get("/assets/stats").then(r => r.data.data);
@@ -122,6 +122,8 @@ export const firmarMovilPublic = (
 ) =>
   publicApi.post(`/assets/${assetId}/firmar`, payload)
     .then(r => r.data);
+
+  
 
 
 
