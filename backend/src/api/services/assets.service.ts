@@ -8,7 +8,7 @@ import { Ups } from "../../entities/Ups";
 import { BaseDatos } from "../../entities/BaseDatos";
 import { Vpn } from "../../entities/Vpn";
 import { Movil } from "../../entities/Movil";
-import { FindOptionsWhere, In, IsNull, Not } from "typeorm";
+import { Db, FindOptionsWhere, In, IsNull, Not } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { generarWordMovil } from "../utils/generarMovilDocx";
 import { sendMovilEmail } from "../utils/sendMovilEmail";
@@ -22,6 +22,7 @@ export class AssetsService {
   async getAssets(filters: AssetFilters) {
     const { tipo, q, page = 1, limit = 50 } = filters;
     const skip = (page - 1) * limit;
+    
 
     const assetRepository = AppDataSource.getRepository(Asset);
 
@@ -34,7 +35,7 @@ export class AssetsService {
         .leftJoinAndSelect("asset.ups", "ups")
         .leftJoinAndSelect("asset.baseDatos", "baseDatos")
         .leftJoinAndSelect("asset.vpn", "vpn")
-        .leftJoinAndSelect("asset.movil", "movil")
+        .leftJoinAndSelect("asset.movil", "movil")  
         .where("asset.deletedAt IS NULL")
         .andWhere(
           "(LOWER(asset.nombre) LIKE LOWER(:q) OR LOWER(asset.codigoServicio) LIKE LOWER(:q))",
@@ -90,6 +91,7 @@ export class AssetsService {
   async getAssetById(id: string) {
     const assetRepository = AppDataSource.getRepository(Asset);
     const bitacoraRepository = AppDataSource.getRepository(Bitacora);
+    
 
     const asset = await assetRepository.findOne({
       where: { id },
@@ -249,9 +251,9 @@ export class AssetsService {
               asset: savedAsset,
               autor: "Sistema",
               tipoEvento: "NOTA",
-              descripcion: `Acta de entrega enviada a ${correoResponsable}`,
-            })
+              descripcion: `Acta de entrega enviada a ${correoResponsable}`,            })
           );
+          
         } catch (error) {
           console.error("⚠️ Error enviando acta MOVIL:", error);
         }
@@ -358,6 +360,7 @@ export class AssetsService {
       const nombreArchivo = `Acta_Entrega_${asset.nombre?.replace(/\s+/g, "_")}.docx`;
       const archivoBase64 = buffer.toString("base64");
 
+
       await sendToFlowFirmada({
         correo: m.correoResponsable,
         nombreActivo: asset.nombre,
@@ -366,6 +369,7 @@ export class AssetsService {
         observacionesEntrega,
         archivoBase64,
       });
+      
 
       await bitacoraRepo.save(
         bitacoraRepo.create({
@@ -397,10 +401,6 @@ export class AssetsService {
       fechaFirma,
     };
   }
-
-
-
-
 
   async updateAsset(id: string, data: any, autor: string) {
     const assetRepository = AppDataSource.getRepository(Asset);
@@ -728,9 +728,9 @@ export class AssetsService {
 
     const asset = await assetRepository.findOne({ where: { id } });
     if (!asset) throw new Error("Asset no encontrado");
-
+    
     await assetRepository.update(id, { deletedAt: null });
-
+     
     const bitacoraEntry = bitacoraRepository.create({
       asset: { id },
       autor,

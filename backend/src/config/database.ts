@@ -15,14 +15,14 @@ export const AppDataSource = new DataSource({
   host: process.env.DB_HOST!,
   port: Number(process.env.DB_PORT!),
 
-  // ✅ ORACLE 21c XE → SOLO SERVICE NAME
+  // para que en el env sea service name
   serviceName: process.env.DB_SERVICE!,
 
-  // ✅ Usuario de aplicación
+  // user de la app
   username: process.env.DB_USER!,
   password: process.env.DB_PASSWORD!,
 
-  synchronize: true,       // solo en desarrollo
+  synchronize: false,       // solo en desarrollo
   logging: false,           // Desactivar para ver logs de LDAP claramente
 
   entities: [

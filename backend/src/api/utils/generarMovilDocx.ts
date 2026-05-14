@@ -4,6 +4,7 @@ import {
   Header, ImageRun, PageOrientation,
 } from "docx";
 import fs from "fs";
+import path from "path";
 
 /* ─── Tipos ─── */
 interface DatosMovil {
@@ -303,7 +304,7 @@ function firmaRow(
                         width: 200,
                         height: 80,
                       },
-                      type: "png", // ✅ FIX DEFINITIVO PARA TYPESCRIPT
+                      type: "png",
                     }),
                   ],
                 }),
@@ -318,6 +319,75 @@ function firmaRow(
                 text: `Fecha de firma: ${fechaFirma}`,
                 font: "Calibri",
                 size: 20,
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+}
+
+/* ─── Tabla de encabezado con logo y título ─── */
+function logoHeaderTable(): Table {
+  const logoPath = path.join(__dirname, "logo.png");
+  
+  return new Table({
+    width: { size: 10035, type: WidthType.DXA },
+    columnWidths: [3000, 7035],
+    rows: [
+      new TableRow({
+        height: { value: 800, rule: "atLeast" },
+        children: [
+          // Columna izquierda: Logo
+          new TableCell({
+            width: { size: 3000, type: WidthType.DXA },
+            borders: ALL_BORDERS,
+            shading: SHADING_CLEAR,
+            verticalAlign: VerticalAlign.CENTER,
+            margins: CELL_MARGINS,
+            children: [
+              fs.existsSync(logoPath)
+                ? new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [
+                      new ImageRun({
+                        data: fs.readFileSync(logoPath),
+                        transformation: {
+                          width: 120,
+                          height: 100,
+                        },
+                        type: "png",
+                      }),
+                    ],
+                  })
+                : new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [new TextRun({ text: "[Logo]", font: "Calibri", size: 20 })],
+                  }),
+            ],
+          }),
+          
+          // Columna derecha: Título
+          new TableCell({
+            width: { size: 7035, type: WidthType.DXA },
+            borders: ALL_BORDERS,
+            shading: SHADING_CLEAR,
+            verticalAlign: VerticalAlign.CENTER,
+            margins: CELL_MARGINS,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 0, line: 240 },
+                children: [
+                  new TextRun({
+                    text: "FORMATO ENTREGA EQUIPOS MOVILES VTI",
+                    bold: true,
+                    font: "Calibri",
+                    size: 28,
+                    color: "000000",
+                  }),
+                ],
               }),
             ],
           }),
@@ -601,6 +671,8 @@ export async function generarWordMovil(datos: DatosMovil): Promise<Buffer> {
         },
       },
       children: [
+        logoHeaderTable(),
+        new Paragraph({ spacing: { after: 200 }, children: [] }),
         tabla1,
         new Paragraph({ spacing: { after: 200 }, children: [] }),
         tabla2,

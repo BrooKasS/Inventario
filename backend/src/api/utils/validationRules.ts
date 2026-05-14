@@ -1,8 +1,4 @@
-/**
- * VALIDACIÓN DE ASSETS
- * ✅ SOLO para NUEVAS ENTRADAS
- * ✅ Datos viejos = IGNORADOS
- */
+
 
 /**
  * Detecta si un asset fue creado HOY
@@ -28,7 +24,9 @@ function validateCedula(val: any): string | null {
   if (str.length > 10) return "Cédula: máximo 10 dígitos";
   if (!/^[\d\-]*$/.test(str)) return "Cédula: solo números y guiones";
   return null;
+  
 }
+
 
 /**
  * Valida IMEI: máx 10 dígitos
@@ -37,9 +35,10 @@ function validateIMEI(val: any): string | null {
   if (!val) return null;
   const str = String(val).trim();
   if (str.length > 10) return "IMEI: máximo 10 dígitos";
-  if (!/^\d+$/.test(str)) return "IMEI: solo números";
+  if (!/^\d+$/.test(str)) return "IMEI deben ser solo números";
   return null;
 }
+
 
 /**
  * Valida número de línea: máx 10 dígitos
@@ -51,6 +50,7 @@ function validateNumeroLinea(val: any): string | null {
   if (!/^\d+$/.test(str)) return "Número de línea: solo números";
   return null;
 }
+
 
 /**
  * Valida número de caso: máx 10 caracteres
@@ -203,6 +203,7 @@ export function validateAssetData(
       const err = validateIMEI(movil.imei1);
       if (err) errors.push(err);
     }
+  
 
     if (movil.imei2) {
       const err = validateIMEI(movil.imei2);
@@ -213,6 +214,7 @@ export function validateAssetData(
       const err = validateNumeroLinea(movil.numeroLinea);
       if (err) errors.push(err);
     }
+    
 
     if (movil.correoResponsable) {
       const err = validateEmail(movil.correoResponsable);

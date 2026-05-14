@@ -482,7 +482,7 @@ if (tipoKey && Object.keys(detalleConvertido).length > 0) {
               required
               placeholder={
                 tipo === "VPN"   ? "Ej: ALFAGL_BACKUP"  :
-                tipo === "MOVIL" ? "Ej: Juan Pérez"      :
+                tipo === "MOVIL" ? "Ej: Movil 001"      :
                 tipo === "SERVIDOR" ? "Ej: SRV-PROD-01"  :
                 "Ej: EQUIPO-001"
               }

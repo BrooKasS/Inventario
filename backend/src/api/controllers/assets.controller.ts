@@ -394,7 +394,7 @@ async firmarMovil(req: Request, res: Response) {
   }
 }
 
-  // 🧪 TEST: Enviar email de prueba sin crear activo
+  // TEST: Enviar gmail sin que se cree un activo necesariamente
   async testEmail(req: Request, res: Response) {
     try {
       const { correo, nombreActivo, linkFirma } = req.body;
