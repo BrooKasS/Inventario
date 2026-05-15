@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.assetsController = exports.AssetsController = void 0;
 const express_1 = require("express");
@@ -9,6 +42,7 @@ const flowSanitizer_1 = require("../utils/flowSanitizer");
 const generarMovilDocx_1 = require("../utils/generarMovilDocx");
 const ExportInventario_1 = require("../utils/ExportInventario");
 const exportObservaciones_1 = require("../utils/exportObservaciones");
+const sendMovilEmail_1 = require("../utils/sendMovilEmail");
 const r = (0, express_1.Router)();
 class AssetsController {
     // GET /assets
@@ -59,18 +93,31 @@ class AssetsController {
                 error: "Los campos tipo y nombre son requeridos",
             });
         }
-        const asset = await assets_service_1.assetsService.createAsset(data, "Sistema");
-        res.status(201).json({
-            success: true,
-            data: asset,
-            message: "Activo creado correctamente",
-        });
+        try {
+            const autor = req.usuario ?? "Sistema";
+            const asset = await assets_service_1.assetsService.createAsset(data, autor);
+            res.status(201).json({
+                success: true,
+                data: asset,
+                message: "Activo creado correctamente",
+            });
+        }
+        catch (error) {
+            if (error.message && error.message.includes("Validación fallida")) {
+                return res.status(400).json({
+                    success: false,
+                    error: error.message,
+                });
+            }
+            throw error;
+        }
     }
     // PATCH /assets/:id
     async updateAsset(req, res) {
         const id = req.params.id;
         const data = req.body;
-        const asset = await assets_service_1.assetsService.updateAsset(id, data, "Sistema");
+        const autor = req.usuario ?? "Sistema";
+        const asset = await assets_service_1.assetsService.updateAsset(id, data, autor);
         res.json({
             success: true,
             data: asset,
@@ -80,8 +127,9 @@ class AssetsController {
     // DELETE /assets/:id
     async deleteAsset(req, res) {
         const id = req.params.id;
-        const autor = req.body.autor;
-        const asset = await assets_service_1.assetsService.softDelete(id, autor ?? "Sistema");
+        const autor = req.usuario ?? "Sistema";
+        const motivo = req.body.motivo ?? "Sin motivo";
+        const asset = await assets_service_1.assetsService.softDelete(id, autor, motivo);
         res.json({
             success: true,
             data: asset,
@@ -91,8 +139,8 @@ class AssetsController {
     // POST /assets/:id/restore
     async restoreAsset(req, res) {
         const id = req.params.id;
-        const autor = req.body.autor;
-        const asset = await assets_service_1.assetsService.restoreAsset(id, autor ?? "Sistema");
+        const autor = req.usuario ?? "Sistema";
+        const asset = await assets_service_1.assetsService.restoreAsset(id, autor);
         res.json({
             success: true,
             data: asset,
@@ -112,11 +160,12 @@ class AssetsController {
     // POST /assets/:id/bitacora
     async addBitacoraEntry(req, res) {
         const id = req.params.id;
-        const { autor, tipoEvento, descripcion } = req.body;
-        if (!autor || !tipoEvento || !descripcion) {
+        const { tipoEvento, descripcion } = req.body;
+        const autor = req.usuario ?? "Sistema";
+        if (!tipoEvento || !descripcion) {
             return res.status(400).json({
                 success: false,
-                error: "Los campos autor, tipoEvento y descripcion son requeridos",
+                error: "Los campos tipoEvento y descripcion son requeridos",
             });
         }
         const entry = await assets_service_1.assetsService.addBitacoraEntry(id, {
@@ -161,6 +210,8 @@ class AssetsController {
                 observacionesEntrega: m?.observacionesEntrega ?? null,
                 fechaDevolucion: m?.fechaDevolucion ?? null,
                 observacionesDevolucion: m?.observacionesDevolucion ?? null,
+                firmaPath: m?.firmaPath ?? null,
+                fechaFirma: m?.fechaFirma ?? null,
             });
             const nombre = `FR-GTE-02-044_${(asset.nombre ?? "movil").replace(/\s+/g, "_")}.docx`;
             res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
@@ -234,14 +285,8 @@ class AssetsController {
     }
     async exportExcel(req, res) {
         try {
-            // ids es opcional — si no viene, exporta todos los del tipo
-            const tipos = req.query.tipos
-                ? String(req.query.tipos).split(",").filter(Boolean)
-                : [];
-            const ids = req.query.ids
-                ? String(req.query.ids).split(",").filter(Boolean)
-                : [];
-            // Traer activos
+            const tipos = req.body.tipos ?? [];
+            const ids = req.body.ids ?? [];
             let assets = [];
             if (ids.length > 0) {
                 assets = await assets_service_1.assetsService.getAssetsByTipoAndIds({ ids });
@@ -253,8 +298,7 @@ class AssetsController {
                 }
             }
             else {
-                // Todos (SERVIDOR, RED, UPS, BASE_DATOS)
-                for (const tipo of ["SERVIDOR", "RED", "UPS", "BASE_DATOS"]) {
+                for (const tipo of ["SERVIDOR", "RED", "UPS", "BASE_DATOS", "VPN", "MOVIL"]) {
                     const r = await assets_service_1.assetsService.getAssetsByTipoAndIds({ tipo });
                     assets = assets.concat(r);
                 }
@@ -262,8 +306,6 @@ class AssetsController {
             if (assets.length === 0) {
                 return res.status(404).json({ success: false, error: "No hay activos para exportar" });
             }
-            console.log("🔍 Assets recibidos:", assets.length);
-            console.log("🔍 Primer asset:", JSON.stringify(assets[0], null, 2));
             const buffer = await (0, ExportInventario_1.generarExcelInventario)(assets);
             const fecha = new Date().toISOString().slice(0, 10);
             res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
@@ -295,6 +337,108 @@ class AssetsController {
         catch (error) {
             console.error("❌ Error exportando observaciones:", error);
             return res.status(500).json({ success: false, error: "Error generando el Excel de observaciones" });
+        }
+    }
+    // POST /assets/:id/firmar
+    async firmarMovil(req, res) {
+        const id = req.params.id;
+        const { firmaBase64 } = req.body;
+        if (!firmaBase64) {
+            return res.status(400).json({
+                success: false,
+                error: "El campo 'firmaBase64' es requerido",
+            });
+        }
+        try {
+            const result = await assets_service_1.assetsService.firmarMovil(id, firmaBase64);
+            return res.json({
+                success: true,
+                message: "Firma registrada correctamente. Puede venir por el equipo.",
+                data: result,
+            });
+        }
+        catch (error) {
+            console.error("❌ Error firmando acta:", error);
+            return res.status(400).json({
+                success: false,
+                error: error.message ?? "Error firmando el acta",
+            });
+        }
+    }
+    // TEST: Enviar gmail sin que se cree un activo necesariamente
+    async testEmail(req, res) {
+        try {
+            const { correo, nombreActivo, linkFirma } = req.body;
+            if (!correo) {
+                return res.status(400).json({
+                    success: false,
+                    error: "Correo es requerido",
+                });
+            }
+            console.log("🧪 TEST EMAIL - Enviando a:", correo);
+            await (0, sendMovilEmail_1.sendMovilEmail)({
+                correo,
+                nombreActivo: nombreActivo || "TEST",
+                assetId: "test-" + Date.now(),
+                linkFirma: linkFirma || "http://localhost:5173/firmar/test",
+            });
+            return res.json({
+                success: true,
+                message: "Email de prueba enviado exitosamente",
+                data: {
+                    correo,
+                    nombreActivo: nombreActivo || "TEST",
+                    linkFirma: linkFirma || "http://localhost:5173/firmar/test",
+                },
+            });
+        }
+        catch (error) {
+            console.error("❌ Error en test email:", error);
+            return res.status(500).json({
+                success: false,
+                error: error.message || "Error enviando email de prueba",
+            });
+        }
+    }
+    // 🧪 TEST: Enviar email de FIRMA de prueba (segundo flujo)
+    async testFirmaEmail(req, res) {
+        try {
+            const { correo, nombreActivo } = req.body;
+            if (!correo) {
+                return res.status(400).json({
+                    success: false,
+                    error: "Correo es requerido",
+                });
+            }
+            console.log("🧪 TEST FIRMA EMAIL - Enviando a:", correo);
+            const { sendToFlowFirmada } = await Promise.resolve().then(() => __importStar(require("../utils/flowRaw")));
+            // Simular un archivo Word en Base64 (Word vacío mínimo)
+            const wordBase64 = "UEsDBBQABgAIAAAAIQDfpq61XgEAAHoFAAATAAAAd29yZC9kb2N1bWVudC54bWxMjMHqwjAUhV8l5N4m7dSKY";
+            await sendToFlowFirmada({
+                correo,
+                nombreActivo: nombreActivo || "TEST",
+                assetId: "test-firma-" + Date.now(),
+                nombreArchivo: "Acta_Entrega_TEST.docx",
+                archivoBase64: wordBase64,
+                observacionesEntrega: "Test de envío - No es un documento real",
+            });
+            return res.json({
+                success: true,
+                message: "Email de prueba FIRMA enviado exitosamente",
+                data: {
+                    correo,
+                    nombreActivo: nombreActivo || "TEST",
+                    assetId: "test-firma-" + Date.now(),
+                    flujo: "FLOW_URL_FIRMADA",
+                },
+            });
+        }
+        catch (error) {
+            console.error("❌ Error en test firma email:", error);
+            return res.status(500).json({
+                success: false,
+                error: error.message || "Error enviando email de firma",
+            });
         }
     }
 }

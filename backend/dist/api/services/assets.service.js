@@ -1,4 +1,7 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.assetsService = exports.AssetsService = void 0;
 const database_1 = require("../../config/database");
@@ -11,6 +14,13 @@ const BaseDatos_1 = require("../../entities/BaseDatos");
 const Vpn_1 = require("../../entities/Vpn");
 const Movil_1 = require("../../entities/Movil");
 const typeorm_1 = require("typeorm");
+const uuid_1 = require("uuid");
+const generarMovilDocx_1 = require("../utils/generarMovilDocx");
+const sendMovilEmail_1 = require("../utils/sendMovilEmail");
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
+const flowRaw_1 = require("../utils/flowRaw");
+const validationRules_1 = require("../utils/validationRules");
 class AssetsService {
     async getAssets(filters) {
         const { tipo, q, page = 1, limit = 50 } = filters;
@@ -25,11 +35,16 @@ class AssetsService {
                 .leftJoinAndSelect("asset.ups", "ups")
                 .leftJoinAndSelect("asset.baseDatos", "baseDatos")
                 .leftJoinAndSelect("asset.vpn", "vpn")
+                .leftJoinAndSelect("vpn.reglas", "vpnReglas")
                 .leftJoinAndSelect("asset.movil", "movil")
                 .where("asset.deletedAt IS NULL")
                 .andWhere("(LOWER(asset.nombre) LIKE LOWER(:q) OR LOWER(asset.codigoServicio) LIKE LOWER(:q))", { q: `%${q}%` });
             if (tipo) {
                 qb.andWhere("asset.tipo = :tipo", { tipo });
+                // Si es VPN, mostrar SOLO principales (vpnPrincipalId IS NULL)
+                if (tipo === "VPN") {
+                    qb.andWhere("vpn.vpnPrincipalId IS NULL");
+                }
             }
             const [assets, total] = await qb
                 .orderBy("asset.actualizadoEn", "DESC")
@@ -49,10 +64,14 @@ class AssetsService {
         const where = { deletedAt: (0, typeorm_1.IsNull)() };
         if (tipo)
             where.tipo = tipo;
+        // Si es VPN, mostrar SOLO principales (vpnPrincipalId IS NULL)
+        if (tipo === "VPN") {
+            where.vpn = { vpnPrincipalId: (0, typeorm_1.IsNull)() };
+        }
         const [assets, total] = await Promise.all([
             assetRepository.find({
                 where,
-                relations: ["servidor", "red", "ups", "baseDatos", "vpn", "movil"],
+                relations: ["servidor", "red", "ups", "baseDatos", "vpn", "vpn.reglas", "movil"],
                 order: { actualizadoEn: "DESC" },
                 skip,
                 take: limit,
@@ -74,7 +93,7 @@ class AssetsService {
         const bitacoraRepository = database_1.AppDataSource.getRepository(Bitacora_1.Bitacora);
         const asset = await assetRepository.findOne({
             where: { id },
-            relations: ["servidor", "red", "ups", "baseDatos", "vpn", "movil"],
+            relations: ["servidor", "red", "ups", "baseDatos", "vpn", "vpn.reglas", "movil"],
         });
         if (!asset)
             throw new Error("Asset no encontrado");
@@ -89,8 +108,13 @@ class AssetsService {
     }
     async createAsset(data, autor = "Sistema") {
         const { tipo, nombre, ubicacion, propietario, custodio, codigoServicio, servidor, red, ups, baseDatos, vpn, 
-        // Campos MOVIL
+        // MOVIL
         numeroCaso, region, dependencia, sede, cedula, usuarioRed, correoResponsable, uni, marca, modelo, serial, imei1, imei2, sim, numeroLinea, fechaEntrega, observacionesEntrega, } = data;
+        // ✅ VALIDACIÓN: nuevas entradas SIEMPRE se validan
+        const { valid, errors } = (0, validationRules_1.validateAssetData)(tipo, data, true);
+        if (!valid) {
+            throw new Error(`Validación fallida: ${errors.join(", ")}`);
+        }
         const assetRepository = database_1.AppDataSource.getRepository(Asset_1.Asset);
         const bitacoraRepository = database_1.AppDataSource.getRepository(Bitacora_1.Bitacora);
         const servidorRepository = database_1.AppDataSource.getRepository(Servidor_1.Servidor);
@@ -99,7 +123,9 @@ class AssetsService {
         const baseDatosRepository = database_1.AppDataSource.getRepository(BaseDatos_1.BaseDatos);
         const vpnRepository = database_1.AppDataSource.getRepository(Vpn_1.Vpn);
         const movilRepository = database_1.AppDataSource.getRepository(Movil_1.Movil);
-        // Create asset
+        // ======================
+        // CREAR ASSET
+        // ======================
         const asset = assetRepository.create({
             tipo,
             nombre,
@@ -109,30 +135,46 @@ class AssetsService {
             codigoServicio: codigoServicio ?? null,
         });
         const savedAsset = await assetRepository.save(asset);
-        // Create related detail if provided
+        // ======================
+        // RELACIONES
+        // ======================
         if (servidor) {
-            const servidorData = servidorRepository.create({ ...servidor, asset: savedAsset });
-            await servidorRepository.save(servidorData);
+            const servidorToSave = { ...servidor, asset: savedAsset };
+            if (!servidorToSave.id)
+                servidorToSave.id = (0, uuid_1.v4)();
+            await servidorRepository.save(servidorToSave);
         }
         if (red) {
-            const redData = redRepository.create({ ...red, asset: savedAsset });
-            await redRepository.save(redData);
+            const redToSave = { ...red, asset: savedAsset };
+            if (!redToSave.id)
+                redToSave.id = (0, uuid_1.v4)();
+            await redRepository.save(redToSave);
         }
         if (ups) {
-            const upsData = upsRepository.create({ ...ups, asset: savedAsset });
-            await upsRepository.save(upsData);
+            const upsToSave = { ...ups, asset: savedAsset };
+            if (!upsToSave.id)
+                upsToSave.id = (0, uuid_1.v4)();
+            await upsRepository.save(upsToSave);
         }
         if (baseDatos) {
-            const baseDatosData = baseDatosRepository.create({ ...baseDatos, asset: savedAsset });
-            await baseDatosRepository.save(baseDatosData);
+            const baseDatosToSave = { ...baseDatos, asset: savedAsset };
+            if (!baseDatosToSave.id)
+                baseDatosToSave.id = (0, uuid_1.v4)();
+            await baseDatosRepository.save(baseDatosToSave);
         }
         if (vpn) {
-            const vpnData = vpnRepository.create({ ...vpn, asset: savedAsset });
-            await vpnRepository.save(vpnData);
+            const vpnToSave = { ...vpn, asset: savedAsset };
+            if (!vpnToSave.id)
+                vpnToSave.id = (0, uuid_1.v4)();
+            await vpnRepository.save(vpnToSave);
         }
-        // Create movil if tipo is MOVIL
+        // ======================
+        // MOVIL + WORD (+ CORREO OPCIONAL) ✅
+        // ======================
         if (tipo === "MOVIL") {
             const movilData = movilRepository.create({
+                id: savedAsset.id, // ✅ CLAVE: MISMO ID DEL ASSET
+                asset: savedAsset, // ✅ relación correcta
                 numeroCaso: numeroCaso ?? null,
                 region: region ?? null,
                 dependencia: dependencia ?? null,
@@ -150,23 +192,157 @@ class AssetsService {
                 numeroLinea: numeroLinea ?? null,
                 fechaEntrega: fechaEntrega ? new Date(fechaEntrega) : null,
                 observacionesEntrega: observacionesEntrega ?? null,
-                asset: savedAsset,
             });
             await movilRepository.save(movilData);
+            // ✅ Generar Word SIEMPRE (reutilizable)
+            const buffer = await (0, generarMovilDocx_1.generarWordMovil)({
+                nombre: savedAsset.nombre,
+                numeroCaso,
+                region,
+                dependencia,
+                sede,
+                cedula,
+                usuarioRed,
+                uni,
+                marca,
+                modelo,
+                serial,
+                imei1,
+                imei2,
+                sim,
+                numeroLinea,
+                fechaEntrega,
+                observacionesEntrega,
+                fechaDevolucion: null,
+                observacionesDevolucion: null,
+                firmaPath: null,
+                fechaFirma: null,
+            });
+            // ✅ Enviar correo SOLO si hay responsable
+            if (correoResponsable) {
+                try {
+                    await (0, sendMovilEmail_1.sendMovilEmail)({
+                        correo: correoResponsable,
+                        nombreActivo: savedAsset.nombre,
+                        assetId: savedAsset.id,
+                        linkFirma: `${process.env.FRONTEND_URL}/firmar/${savedAsset.id}`,
+                    });
+                    await bitacoraRepository.save(bitacoraRepository.create({
+                        asset: savedAsset,
+                        autor: "Sistema",
+                        tipoEvento: "NOTA",
+                        descripcion: `Acta de entrega enviada a ${correoResponsable}`,
+                    }));
+                }
+                catch (error) {
+                    console.error("⚠️ Error enviando acta MOVIL:", error);
+                }
+            }
         }
-        // Create bitacora entry
-        const bitacoraEntry = bitacoraRepository.create({
+        // ======================
+        // BITÁCORA CREACIÓN
+        // ======================
+        await bitacoraRepository.save(bitacoraRepository.create({
             asset: savedAsset,
             autor,
             tipoEvento: "IMPORTACION",
             descripcion: "Activo creado manualmente.",
-        });
-        await bitacoraRepository.save(bitacoraEntry);
-        // Return asset with relations
+        }));
         return assetRepository.findOne({
             where: { id: savedAsset.id },
-            relations: ["servidor", "red", "ups", "baseDatos", "vpn", "movil"],
+            relations: ["servidor", "red", "ups", "baseDatos", "vpn", "vpn.reglas", "movil"],
         });
+    }
+    async firmarMovil(assetId, firmaBase64, observacionesEntrega) {
+        // ✅ Sanitizar ID
+        assetId = assetId.replace(/[^a-fA-F0-9-]/g, "");
+        const assetRepo = database_1.AppDataSource.getRepository(Asset_1.Asset);
+        const movilRepo = database_1.AppDataSource.getRepository(Movil_1.Movil);
+        const bitacoraRepo = database_1.AppDataSource.getRepository(Bitacora_1.Bitacora);
+        const asset = await assetRepo.findOne({
+            where: { id: assetId },
+            relations: ["movil"],
+        });
+        if (!asset || asset.tipo !== "MOVIL" || !asset.movil) {
+            throw new Error("Activo no encontrado o no es MOVIL");
+        }
+        if (asset.movil.firmaPath) {
+            throw new Error("Este activo ya fue firmado");
+        }
+        // ──────────────
+        // 1️⃣ Guardar firma PNG
+        // ──────────────
+        const firmaBuffer = Buffer.from(firmaBase64.replace(/^data:image\/png;base64,/, ""), "base64");
+        const firmaDir = path_1.default.join(process.cwd(), "storage/firmas");
+        fs_1.default.mkdirSync(firmaDir, { recursive: true });
+        const firmaPath = path_1.default.join(firmaDir, `${assetId}.png`);
+        fs_1.default.writeFileSync(firmaPath, firmaBuffer);
+        const fechaFirma = new Date();
+        await movilRepo.update({ id: assetId }, { firmaPath, fechaFirma, observacionesEntrega: observacionesEntrega ?? asset.movil.observacionesEntrega });
+        // ──────────────
+        // 2️⃣ Generar Word firmado
+        // ──────────────
+        const m = asset.movil;
+        const buffer = await (0, generarMovilDocx_1.generarWordMovil)({
+            nombre: asset.nombre,
+            numeroCaso: m.numeroCaso,
+            region: m.region,
+            dependencia: m.dependencia,
+            sede: m.sede,
+            cedula: m.cedula,
+            usuarioRed: m.usuarioRed,
+            uni: m.uni,
+            marca: m.marca,
+            modelo: m.modelo,
+            serial: m.serial,
+            imei1: m.imei1,
+            imei2: m.imei2,
+            sim: m.sim,
+            numeroLinea: m.numeroLinea,
+            fechaEntrega: m.fechaEntrega,
+            observacionesEntrega: m.observacionesEntrega,
+            fechaDevolucion: m.fechaDevolucion,
+            observacionesDevolucion: m.observacionesDevolucion,
+            firmaPath,
+            fechaFirma,
+        });
+        // ──────────────
+        // ✅ 3️⃣ ENVIAR AL FLOW (RAW)
+        // ──────────────
+        try {
+            const nombreArchivo = `Acta_Entrega_${asset.nombre?.replace(/\s+/g, "_")}.docx`;
+            const archivoBase64 = buffer.toString("base64");
+            await (0, flowRaw_1.sendToFlowFirmada)({
+                correo: m.correoResponsable,
+                nombreActivo: asset.nombre,
+                assetId,
+                nombreArchivo,
+                observacionesEntrega,
+                archivoBase64,
+            });
+            await bitacoraRepo.save(bitacoraRepo.create({
+                asset: { id: assetId },
+                autor: "Sistema",
+                tipoEvento: "NOTA",
+                descripcion: "Acta firmada enviada a Power Automate.",
+            }));
+        }
+        catch (error) {
+            console.error("⚠️ Error enviando acta firmada al Flow:", error);
+        }
+        // ──────────────
+        // 4️⃣ Bitácora final
+        // ──────────────
+        await bitacoraRepo.save(bitacoraRepo.create({
+            asset: { id: assetId },
+            autor: "Usuario",
+            tipoEvento: "NOTA",
+            descripcion: "Acta firmada digitalmente. Equipo listo para entrega.",
+        }));
+        return {
+            ok: true,
+            fechaFirma,
+        };
     }
     async updateAsset(id, data, autor) {
         const assetRepository = database_1.AppDataSource.getRepository(Asset_1.Asset);
@@ -179,12 +355,20 @@ class AssetsService {
         const bitacoraRepository = database_1.AppDataSource.getRepository(Bitacora_1.Bitacora);
         const asset = await assetRepository.findOne({
             where: { id },
-            relations: ["servidor", "red", "ups", "baseDatos", "vpn", "movil"],
+            relations: ["servidor", "red", "ups", "baseDatos", "vpn", "vpn.reglas", "movil"],
         });
         if (!data || typeof data !== "object")
             throw new Error("Body inválido");
         if (!asset)
             throw new Error("Asset no encontrado");
+        // ✅ VALIDACIÓN: solo validar si es registro NUEVO (creado hoy)
+        const isNewRecord = (0, validationRules_1.isCreatedToday)(asset.creadoEn);
+        if (isNewRecord) {
+            const { valid, errors } = (0, validationRules_1.validateAssetData)(asset.tipo, data, false);
+            if (!valid) {
+                throw new Error(`Validación fallida: ${errors.join(", ")}`);
+            }
+        }
         const updates = {};
         const bitacoraEntries = [];
         // ======================
@@ -393,7 +577,7 @@ class AssetsService {
             where.id = (0, typeorm_1.In)(opts.ids);
         const assets = await assetRepository.find({
             where,
-            relations: ["servidor", "red", "ups", "baseDatos", "vpn", "movil"],
+            relations: ["servidor", "red", "ups", "baseDatos", "vpn", "vpn.reglas", "movil"],
             order: { actualizadoEn: "DESC" },
             take: 10000,
         });
@@ -402,18 +586,22 @@ class AssetsService {
     // ======================
     // SOFT DELETE / PAPELERA
     // ======================
-    async softDelete(id, autor = "Sistema") {
+    async softDelete(id, autor = "Sistema", motivo = "Sin motivo") {
         const assetRepository = database_1.AppDataSource.getRepository(Asset_1.Asset);
         const bitacoraRepository = database_1.AppDataSource.getRepository(Bitacora_1.Bitacora);
         const asset = await assetRepository.findOne({ where: { id } });
         if (!asset)
             throw new Error("Asset no encontrado");
-        await assetRepository.update(id, { deletedAt: new Date() });
+        await assetRepository.update(id, {
+            deletedAt: new Date(),
+            motivoDeshabilitacion: motivo,
+            deshabilitadoPor: autor,
+        });
         const bitacoraEntry = bitacoraRepository.create({
             asset: { id },
             autor,
             tipoEvento: "NOTA",
-            descripcion: "Activo eliminado y movido a papelera.",
+            descripcion: "Activo deshabilitado y movido a histórico.",
         });
         await bitacoraRepository.save(bitacoraEntry);
         const updatedAsset = await assetRepository.findOne({ where: { id } });
@@ -440,7 +628,7 @@ class AssetsService {
         const assetRepository = database_1.AppDataSource.getRepository(Asset_1.Asset);
         return assetRepository.find({
             where: { deletedAt: (0, typeorm_1.Not)((0, typeorm_1.IsNull)()) },
-            relations: ["servidor", "red", "ups", "baseDatos", "vpn", "movil"],
+            relations: ["servidor", "red", "ups", "baseDatos", "vpn", "vpn.reglas", "movil"],
             order: { deletedAt: "DESC" },
         });
     }

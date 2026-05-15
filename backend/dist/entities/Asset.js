@@ -73,6 +73,14 @@ __decorate([
     __metadata("design:type", Object)
 ], Asset.prototype, "deletedAt", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: "varchar2", length: 500, nullable: true }),
+    __metadata("design:type", Object)
+], Asset.prototype, "motivoDeshabilitacion", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "varchar2", length: 200, nullable: true }),
+    __metadata("design:type", Object)
+], Asset.prototype, "deshabilitadoPor", void 0);
+__decorate([
     (0, typeorm_1.OneToOne)(() => Servidor_1.Servidor, (s) => s.asset, { cascade: true }),
     __metadata("design:type", Object)
 ], Asset.prototype, "servidor", void 0);

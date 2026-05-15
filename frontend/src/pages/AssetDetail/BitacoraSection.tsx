@@ -1,5 +1,5 @@
 import type { BitacoraEntry, TipoEvento } from "../../types";
-import { C, EVENTO_LABEL, EVENTO_COLOR, labelStyle } from "./constants";
+import { C, EVENTO_LABEL, EVENTO_COLOR } from "./constants";
 import { ExportBtn } from "./DetailComponents";
 
 interface BitacoraSectionProps {

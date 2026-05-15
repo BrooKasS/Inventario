@@ -475,26 +475,47 @@ async function importarBD(workbook: XLSX.WorkBook, autor: string, resumen: Resum
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// VPN — Funciones Auxiliares para Vincular Principales + Reglas
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Identifica si una VPN es REGLA de otra y la vincula automáticamente
+ * 
+ * LÓGICA:
+ *   1. Si existen otras VPNs con la misma CONEXIÓN (IP)
+ *   2. Busca la que NO tiene sufijos numéricos (principal)
+ *   3. Asigna vpnPrincipalId a la actual si es regla
+ */
+async function vincularVpnRegla(vpnId: string, conexion: string | null) {
+  if (!conexion) return; // Sin IP, no hay vinculación
+  
+  // Buscar todas las VPNs con la misma conexión
+  const vpnsConMismaConexion = await vpnRepo.find({
+    where: { conexion } as any,
+    relations: ["asset"],
+  });
+
+  if (vpnsConMismaConexion.length < 2) return; // Solo una VPN, es principal
+
+  // Encontrar la principal (sin sufijos numéricos)
+  const principal = vpnsConMismaConexion.find((v) => {
+    const nombre = v.asset?.nombre || "";
+    // Si NO termina con _N (donde N es número), es principal
+    return !/(_\d+$|_[a-zA-Z]+\d+$)/.test(nombre);
+  });
+
+  if (!principal) return; // No se encontró principal clara
+
+  // Actualizar la VPN actual si es diferente de la principal
+  const vpnActual = vpnsConMismaConexion.find((v) => v.id === vpnId);
+  if (vpnActual && vpnActual.id !== principal.id && vpnActual.vpnPrincipalId !== principal.id) {
+    vpnActual.vpnPrincipalId = principal.id;
+    await vpnRepo.save(vpnActual);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // VPN — llave: nombre (único en el Excel)
-//
-// ESTRUCTURA HOJA "Export" (confirmada analizando ambos archivos reales):
-//   Fila 0 (índice 0): vacía
-//   Fila 1 (índice 1): encabezados — col[1]="Nombre de la VPN", col[2]="Conexión"...
-//   Fila 2+ (índice 2+): datos
-//
-// IMPORTANTE: la col[0] (columna A) es SIEMPRE None en ambos archivos.
-// Los datos reales están en col[1], col[2], col[3], col[4].
-//
-// CORRECCIÓN APLICADA: el código anterior usaba fila[0] como nombre (siempre None)
-// y fila[1..3] para el resto. Ahora se detecta automáticamente el offset:
-//   - Si col[0] es null → offset=1 (datos en col[1..4])
-//   - Si col[0] tiene datos → offset=0 (datos en col[0..3])
-//
-// Casos especiales manejados:
-//   - IPs numéricas (ej: 177253101154 → "177.253.101.154")
-//   - N/A en Conexión → null
-//   - N/A en Origen/Destino → null
-//   - Nombres simbólicos (ej: "GRP_DU-TORRETAS") → guardados tal cual
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -621,7 +642,10 @@ async function importarVPN(workbook: XLSX.WorkBook, autor: string, resumen: Resu
           ...datosVpn,
           asset: { id: savedAsset.id } as any,
         });
-        await vpnRepo.save(vpn);
+        const savedVpn = await vpnRepo.save(vpn);
+        
+        // ✅ NUEVO: Vincular automáticamente con VPN principal si es regla
+        await vincularVpnRegla(savedVpn.id, conexion);
         
         const bitacora = bitacoraRepo.create({
           asset:     { id: savedAsset.id } as any,
@@ -635,9 +659,15 @@ async function importarVPN(workbook: XLSX.WorkBook, autor: string, resumen: Resu
         const vpn = await vpnRepo.findOne({ where: { asset: { id: existing.id } } as any });
         if (vpn) {
           await vpnRepo.update({ asset: { id: existing.id } } as any, datosVpn);
+          
+          // ✅ NUEVO: Re-vincular en caso de que haya cambio de IP
+          await vincularVpnRegla(vpn.id, conexion);
         } else {
           const newVpn = vpnRepo.create({ asset: { id: existing.id } as any, ...datosVpn });
-          await vpnRepo.save(newVpn);
+          const savedVpn = await vpnRepo.save(newVpn);
+          
+          // ✅ NUEVO: Vincular automáticamente
+          await vincularVpnRegla(savedVpn.id, conexion);
         }
         
         const bitacora = bitacoraRepo.create({

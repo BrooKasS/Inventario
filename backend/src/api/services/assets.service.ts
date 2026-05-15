@@ -8,7 +8,7 @@ import { Ups } from "../../entities/Ups";
 import { BaseDatos } from "../../entities/BaseDatos";
 import { Vpn } from "../../entities/Vpn";
 import { Movil } from "../../entities/Movil";
-import { Db, FindOptionsWhere, In, IsNull, Not } from "typeorm";
+import { Db, FindOptionsWhere, In, IsNull, Not, Brackets } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { generarWordMovil } from "../utils/generarMovilDocx";
 import { sendMovilEmail } from "../utils/sendMovilEmail";
@@ -35,6 +35,7 @@ export class AssetsService {
         .leftJoinAndSelect("asset.ups", "ups")
         .leftJoinAndSelect("asset.baseDatos", "baseDatos")
         .leftJoinAndSelect("asset.vpn", "vpn")
+        .leftJoinAndSelect("vpn.reglas", "vpnReglas")
         .leftJoinAndSelect("asset.movil", "movil")  
         .where("asset.deletedAt IS NULL")
         .andWhere(
@@ -44,6 +45,11 @@ export class AssetsService {
 
       if (tipo) {
         qb.andWhere("asset.tipo = :tipo", { tipo });
+        
+        // Si es VPN, mostrar SOLO principales (vpnPrincipalId IS NULL)
+        if (tipo === "VPN") {
+          qb.andWhere("vpn.vpnPrincipalId IS NULL");
+        }
       }
 
       const [assets, total] = await qb 
@@ -66,10 +72,15 @@ export class AssetsService {
     const where: FindOptionsWhere<Asset> = { deletedAt: IsNull() };
     if (tipo) where.tipo = tipo as any;
 
+    // Si es VPN, mostrar SOLO principales (vpnPrincipalId IS NULL)
+    if (tipo === "VPN") {
+      where.vpn = { vpnPrincipalId: IsNull() } as any;
+    }
+
     const [assets, total] = await Promise.all([
       assetRepository.find({
         where,
-        relations: ["servidor", "red", "ups", "baseDatos", "vpn", "movil"],
+        relations: ["servidor", "red", "ups", "baseDatos", "vpn", "vpn.reglas", "movil"],
         order: { actualizadoEn: "DESC" },
         skip,
         take: limit,
@@ -95,7 +106,7 @@ export class AssetsService {
 
     const asset = await assetRepository.findOne({
       where: { id },
-      relations: ["servidor", "red", "ups", "baseDatos", "vpn", "movil"],
+      relations: ["servidor", "red", "ups", "baseDatos", "vpn", "vpn.reglas", "movil"],
     });
 
     if (!asset) throw new Error("Asset no encontrado");
@@ -275,7 +286,7 @@ export class AssetsService {
 
     return assetRepository.findOne({
       where: { id: savedAsset.id },
-      relations: ["servidor", "red", "ups", "baseDatos", "vpn", "movil"],
+      relations: ["servidor", "red", "ups", "baseDatos", "vpn", "vpn.reglas", "movil"],
     });
   }
 
@@ -414,7 +425,7 @@ export class AssetsService {
 
     const asset = await assetRepository.findOne({
       where: { id },
-      relations: ["servidor", "red", "ups", "baseDatos", "vpn", "movil"],
+      relations: ["servidor", "red", "ups", "baseDatos", "vpn", "vpn.reglas", "movil"],
     });
 
     if (!data || typeof data !== "object") throw new Error("Body inválido");
@@ -659,15 +670,26 @@ export class AssetsService {
   async getStats() {
     const assetRepository = AppDataSource.getRepository(Asset);
 
-    const total = await assetRepository.count({ where: { deletedAt: IsNull() } });
-
+    // ════════════════════════════════════════════════════════════════
+    // TOTAL: Contar Assets SIN VPN Reglas (solo VPN Principales)
+    // ════════════════════════════════════════════════════════════════
     const porTipo = await assetRepository
       .createQueryBuilder("asset")
+      .leftJoinAndSelect("asset.vpn", "vpn")
       .select("asset.tipo", "tipo")
-      .addSelect("COUNT(*)", "count")
+      .addSelect("COUNT(DISTINCT asset.id)", "count")
       .where("asset.deletedAt IS NULL")
+      .andWhere(
+        new Brackets(qb => {
+          qb.where("asset.tipo != :vpnTipo", { vpnTipo: "VPN" })
+            .orWhere("vpn.vpnPrincipalId IS NULL");
+        })
+      )
       .groupBy("asset.tipo")
       .getRawMany();
+
+    // Calcular total sumando todos los tipos (sin reglas VPN)
+    const total = porTipo.reduce((sum, t) => sum + parseInt(t.count, 10), 0);
 
     return {
       total,
@@ -685,7 +707,7 @@ export class AssetsService {
 
     const assets = await assetRepository.find({
       where,
-      relations: ["servidor", "red", "ups", "baseDatos", "vpn", "movil"],
+      relations: ["servidor", "red", "ups", "baseDatos", "vpn", "vpn.reglas", "movil"],
       order: { actualizadoEn: "DESC" },
       take: 10_000,
     });
@@ -747,7 +769,7 @@ export class AssetsService {
     const assetRepository = AppDataSource.getRepository(Asset);
     return assetRepository.find({
       where: { deletedAt: Not(IsNull()) },
-      relations: ["servidor", "red", "ups", "baseDatos", "vpn", "movil"],
+      relations: ["servidor", "red", "ups", "baseDatos", "vpn", "vpn.reglas", "movil"],
       order: { deletedAt: "DESC" },
     });
   }

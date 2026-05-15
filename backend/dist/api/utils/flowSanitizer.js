@@ -3,12 +3,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.sanitizeRecordForFlow = sanitizeRecordForFlow;
 exports.sanitizePayloadForFlow = sanitizePayloadForFlow;
 /**
- * Convierte null/undefined -> "" y números/fechas -> string.
- * NOTA: no hace deep para objetos anidados (no lo necesitas porque tus registros son planos).
+ * Convierte null/undefined -> ""
+ * Convierte Date -> YYYY-MM-DD
+ * Convierte number -> string
+ * ✅ PRESERVA boolean (especialmente Eliminado)
  */
 function sanitizeRecordForFlow(rec) {
     const out = {};
     for (const [k, v] of Object.entries(rec)) {
+        // ✅ PRESERVAR Eliminado COMO BOOLEAN
+        if (k === "Eliminado") {
+            out[k] = v === true;
+            continue;
+        }
         if (v === null || v === undefined) {
             out[k] = "";
         }

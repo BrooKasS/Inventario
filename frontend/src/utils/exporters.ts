@@ -9,14 +9,6 @@ const TIPO_LABEL_SINGULAR: Record<string, string> = {
   UPS:        "UPS",
 };
 
-/** NUEVO: Mapa de labels en plural para nombrar las hojas del Excel */
-const TIPO_LABEL_PLURAL: Record<string, string> = {
-  SERVIDOR:   "Servidores",
-  BASE_DATOS: "Bases de Datos",
-  RED:        "Red",
-  UPS:        "UPS",
-};
-
 
 function prepararFilasActivos(assets: Asset[]) {
   return assets.map((a) => {
@@ -104,17 +96,12 @@ function fechaArchivo() {
   return new Date().toISOString().slice(0, 10);
 }
 
-/** Excel: crea hoja con ancho estándar por columnas del primer row */
-function aplicarAnchosSheetJS(ws: any, rows: any[], wch = 22) {
-  ws["!cols"] = Object.keys(rows[0] || {}).map(() => ({ wch }));
-}
-
 /** Segura para nombres de hoja (<=31 chars y sin caracteres inválidos) */
-function nombreHojaSeguro(name: string) {
-  const invalid = /[\\/?*[\]:]/g; // Excel no permite estos
-  const cleaned = name.replace(invalid, " ");
-  return cleaned.slice(0, 31).trim() || "Hoja";
-}
+// function nombreHojaSeguro(name: string) {
+//   const invalid = /[\\/?*[\]:]/g; // Excel no permite estos
+//   const cleaned = name.replace(invalid, " ");
+//   return cleaned.slice(0, 31).trim() || "Hoja";
+// }
 
 /** Exporta a Excel usando SheetJS — separado por hojas por tipo */
 export async function exportarActivosExcel(assets: Asset[], nombre: string): Promise<void> {
@@ -198,14 +185,6 @@ export async function exportarActivosPDF(assets: Asset[], nombre: string) {
 /*               OBSERVACIONES                 */
 /* ─────────────────────────────────────────── */
 
-const EVENTO_LABEL: Record<string, string> = {
-  IMPORTACION: "Importación",
-  CAMBIO_CAMPO: "Cambio de campo",
-  MANTENIMIENTO: "Mantenimiento",
-  INCIDENTE: "Incidente",
-  NOTA: "Nota",
-};
-
 export type ObservacionRow = {
   Activo: string;
   Tipo: string;           // <- Se usa para agrupar por hoja
@@ -221,21 +200,21 @@ export type ObservacionRow = {
 };
 
 /** Excel: aplica anchos específicos para Observaciones */
-function setColsObservaciones(ws: any) {
-  ws["!cols"] = [
-    { wch: 26 }, // Activo
-    { wch: 16 }, // Tipo
-    { wch: 18 }, // Código
-    { wch: 24 }, // Ubicación
-    { wch: 22 }, // Fecha
-    { wch: 18 }, // Autor
-    { wch: 18 }, // Tipo de evento
-    { wch: 60 }, // Descripción
-    { wch: 24 }, // Campo modificado
-    { wch: 22 }, // Valor anterior
-    { wch: 22 }, // Valor nuevo
-  ];
-}
+// function setColsObservaciones(ws: any) {
+//   ws["!cols"] = [
+//     { wch: 26 }, // Activo
+//     { wch: 16 }, // Tipo
+//     { wch: 18 }, // Código
+//     { wch: 24 }, // Ubicación
+//     { wch: 22 }, // Fecha
+//     { wch: 18 }, // Autor
+//     { wch: 18 }, // Tipo de evento
+//     { wch: 60 }, // Descripción
+//     { wch: 24 }, // Campo modificado
+//     { wch: 22 }, // Valor anterior
+//     { wch: 22 }, // Valor nuevo
+//   ];
+// }
 
 export async function exportarObservacionesExcel(
   rows: ObservacionRow[],

@@ -1,7 +1,12 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generarWordMovil = generarWordMovil;
 const docx_1 = require("docx");
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
 /* ─── Helpers ─── */
 const val = (v) => v ?? "";
 function formatFecha(f) {
@@ -221,7 +226,7 @@ function obsRow(text, height = 800, totalW = 10035) {
     });
 }
 /* ─── Fila firma ─── */
-function firmaRow(totalW = 10035) {
+function firmaRow(firmaPath, fechaFirma, totalW = 10035) {
     return new docx_1.TableRow({
         height: { value: 700, rule: "atLeast" },
         children: [
@@ -233,11 +238,44 @@ function firmaRow(totalW = 10035) {
                 verticalAlign: docx_1.VerticalAlign.CENTER,
                 margins: CELL_MARGINS,
                 children: [
+                    // Título
                     new docx_1.Paragraph({
-                        spacing: { after: 0, line: 240 },
                         children: [
-                            new docx_1.TextRun({ text: "        ", font: "Calibri", size: 20 }),
-                            new docx_1.TextRun({ text: "Firma: ", bold: true, font: "Calibri", size: 24, color: "000000" }),
+                            new docx_1.TextRun({
+                                text: "Firma del responsable:",
+                                bold: true,
+                                font: "Calibri",
+                                size: 24,
+                            }),
+                        ],
+                    }),
+                    // Imagen de la firma (si existe)
+                    ...(firmaPath && fs_1.default.existsSync(firmaPath)
+                        ? [
+                            new docx_1.Paragraph({
+                                spacing: { before: 200 },
+                                children: [
+                                    new docx_1.ImageRun({
+                                        data: fs_1.default.readFileSync(firmaPath),
+                                        transformation: {
+                                            width: 200,
+                                            height: 80,
+                                        },
+                                        type: "png",
+                                    }),
+                                ],
+                            }),
+                        ]
+                        : []),
+                    // Fecha de firma
+                    new docx_1.Paragraph({
+                        spacing: { before: 100 },
+                        children: [
+                            new docx_1.TextRun({
+                                text: `Fecha de firma: ${fechaFirma}`,
+                                font: "Calibri",
+                                size: 20,
+                            }),
                         ],
                     }),
                 ],
@@ -245,6 +283,73 @@ function firmaRow(totalW = 10035) {
         ],
     });
 }
+/* ─── Tabla de encabezado con logo y título ─── */
+function logoHeaderTable() {
+    const logoPath = path_1.default.join(__dirname, "logo.png");
+    return new docx_1.Table({
+        width: { size: 10035, type: docx_1.WidthType.DXA },
+        columnWidths: [3000, 7035],
+        rows: [
+            new docx_1.TableRow({
+                height: { value: 800, rule: "atLeast" },
+                children: [
+                    // Columna izquierda: Logo
+                    new docx_1.TableCell({
+                        width: { size: 3000, type: docx_1.WidthType.DXA },
+                        borders: ALL_BORDERS,
+                        shading: SHADING_CLEAR,
+                        verticalAlign: docx_1.VerticalAlign.CENTER,
+                        margins: CELL_MARGINS,
+                        children: [
+                            fs_1.default.existsSync(logoPath)
+                                ? new docx_1.Paragraph({
+                                    alignment: docx_1.AlignmentType.CENTER,
+                                    children: [
+                                        new docx_1.ImageRun({
+                                            data: fs_1.default.readFileSync(logoPath),
+                                            transformation: {
+                                                width: 120,
+                                                height: 100,
+                                            },
+                                            type: "png",
+                                        }),
+                                    ],
+                                })
+                                : new docx_1.Paragraph({
+                                    alignment: docx_1.AlignmentType.CENTER,
+                                    children: [new docx_1.TextRun({ text: "[Logo]", font: "Calibri", size: 20 })],
+                                }),
+                        ],
+                    }),
+                    // Columna derecha: Título
+                    new docx_1.TableCell({
+                        width: { size: 7035, type: docx_1.WidthType.DXA },
+                        borders: ALL_BORDERS,
+                        shading: SHADING_CLEAR,
+                        verticalAlign: docx_1.VerticalAlign.CENTER,
+                        margins: CELL_MARGINS,
+                        children: [
+                            new docx_1.Paragraph({
+                                alignment: docx_1.AlignmentType.CENTER,
+                                spacing: { after: 0, line: 240 },
+                                children: [
+                                    new docx_1.TextRun({
+                                        text: "FORMATO ENTREGA EQUIPOS MOVILES VTI",
+                                        bold: true,
+                                        font: "Calibri",
+                                        size: 28,
+                                        color: "000000",
+                                    }),
+                                ],
+                            }),
+                        ],
+                    }),
+                ],
+            }),
+        ],
+    });
+}
+``;
 /* ══════════════════════════════════════════════
    FUNCIÓN PRINCIPAL
 ══════════════════════════════════════════════ */
@@ -318,8 +423,8 @@ async function generarWordMovil(datos) {
             grayHeaderRow("OBSERVACIONES"),
             // Observaciones entrega
             obsRow(val(datos.observacionesEntrega)),
-            // Firma entrega
-            firmaRow(),
+            // Firma entrega  
+            firmaRow(datos.firmaPath, formatFecha(datos.fechaFirma)),
         ],
     });
     /* ── TABLA 2: DEVOLUCIÓN ── */
@@ -492,6 +597,8 @@ async function generarWordMovil(datos) {
                     },
                 },
                 children: [
+                    logoHeaderTable(),
+                    new docx_1.Paragraph({ spacing: { after: 200 }, children: [] }),
                     tabla1,
                     new docx_1.Paragraph({ spacing: { after: 200 }, children: [] }),
                     tabla2,

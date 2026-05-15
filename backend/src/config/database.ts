@@ -10,6 +10,7 @@ import { Vpn } from "../entities/Vpn";
 import { Movil } from "../entities/Movil";
 import { Bitacora } from "../entities/Bitacora";
 
+//agarra el .env del backend
 export const AppDataSource = new DataSource({
   type: "oracle",
   host: process.env.DB_HOST!,

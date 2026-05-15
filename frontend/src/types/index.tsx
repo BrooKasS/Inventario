@@ -62,6 +62,8 @@ export interface Vpn {
   fases: string | null;
   origen: string | null;
   destino: string | null;
+  vpnPrincipalId?: string | null;
+  reglas?: Vpn[];
 }
 
 export interface Movil {

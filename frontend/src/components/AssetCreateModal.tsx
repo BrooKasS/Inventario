@@ -11,6 +11,10 @@ const C = {
   surface: "#FAFAFA",
   text:    "#1A1A1A",
   muted:   "#888",
+  success: "#27AE60",
+  error:   "#E74C3C",
+  warning: "#F39C12",
+  info:    "#3498DB",
 };
 
 const TIPO_LABEL: Record<string, string> = {
@@ -59,16 +63,17 @@ const TIPO_ICON: Record<string, string> = {
 /* ─── Estilos base ─── */
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  padding: "11px 14px",
-  border: `1.5px solid ${C.border}`,
-  borderRadius: 12,
+  padding: "13px 15px",
+  border: `1px solid #e5ddd8`,
+  borderRadius: 8,
   fontSize: 13,
   fontFamily: "Calibri, sans-serif",
   color: C.text,
-  background: "#fafbfc",
+  background: "#fefcfa",
   outline: "none",
-  transition: "all .25s cubic-bezier(0.4, 0, 0.2, 1)",
+  transition: "all 0.2s ease",
   boxSizing: "border-box",
+  boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
 };
 
 const labelStyle: React.CSSProperties = {
@@ -77,10 +82,9 @@ const labelStyle: React.CSSProperties = {
   fontWeight: 800,
   letterSpacing: "0.12em",
   textTransform: "uppercase",
-  color: "#333",
+  color: "#4a4a4a",
   marginBottom: 7,
   fontFamily: "Calibri, sans-serif",
-  opacity: 0.85,
 };
 
 /* ─── Componente Field ─── */
@@ -96,6 +100,7 @@ function Field({
   required?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
+
   return (
     <div>
       <label style={labelStyle}>
@@ -108,7 +113,10 @@ function Field({
         placeholder={placeholder ?? `Ej: ${label.toLowerCase()}...`}
         style={{
           ...inputStyle,
-          borderColor: focused ? C.primary : C.border,
+          borderColor: focused ? C.primary : "#e5ddd8",
+          boxShadow: focused 
+            ? `0 0 0 2px rgba(183, 49, 44, 0.08), 0 2px 6px rgba(0,0,0,0.06)`
+            : "0 1px 2px rgba(0,0,0,0.03)",
         }}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
@@ -122,23 +130,23 @@ function FormSection({ title, icon, children }: {
   title: string; icon?: string; children: React.ReactNode;
 }) {
   return (
-    <div style={{ marginBottom: 20 }}>
+    <div style={{ marginBottom: 26 }}>
       <div style={{
-        display: "flex", alignItems: "center", gap: 8,
-        marginBottom: 12, paddingBottom: 8,
-        borderBottom: `1.5px solid ${C.border}`,
+        display: "flex", alignItems: "center", gap: 10,
+        marginBottom: 14, paddingBottom: 10,
+        borderBottom: `1px solid #f0e8e3`,
       }}>
-        {icon && <span style={{ fontSize: 14 }}>{icon}</span>}
+        {icon && <span style={{ fontSize: 16 }}>{icon}</span>}
         <span style={{
-          fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
-          textTransform: "uppercase", color: C.muted,
+          fontSize: 11, fontWeight: 800, letterSpacing: "0.12em",
+          textTransform: "uppercase", color: "#5a4a45",
           fontFamily: "Calibri, sans-serif",
         }}>{title}</span>
       </div>
       <div style={{
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-        gap: "14px 16px",
+        gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))",
+        gap: "15px 16px",
       }}>
         {children}
       </div>
@@ -389,55 +397,83 @@ if (tipoKey && Object.keys(detalleConvertido).length > 0) {
     >
       <div style={{
         background: "#fff",
-        borderRadius: 14,
+        borderRadius: 12,
         width: "100%",
         maxWidth: 680,
         maxHeight: "90vh",
         display: "flex",
         flexDirection: "column",
-        boxShadow: "0 20px 60px rgba(0,0,0,.4)",
-        animation: "fadeIn .2s ease",
+        boxShadow: "0 20px 60px rgba(0,0,0,.12), 0 0 1px rgba(0,0,0,.16)",
         overflow: "hidden",
+        animation: "modalIn .25s ease-out",
       }}>
         <style>{`
-          @keyframes fadeIn { from { opacity:0; transform:scale(.97) } to { opacity:1; transform:scale(1) } }
-          .create-scroll::-webkit-scrollbar { width: 5px }
-          .create-scroll::-webkit-scrollbar-track { background: #fdf8f8 }
-          .create-scroll::-webkit-scrollbar-thumb { background: #e0c8c8; border-radius: 4px }
+          @keyframes modalIn {
+            from {
+              opacity: 0;
+              transform: scale(0.98) translateY(10px);
+            }
+            to {
+              opacity: 1;
+              transform: scale(1) translateY(0);
+            }
+          }
+          .create-scroll::-webkit-scrollbar { width: 6px; }
+          .create-scroll::-webkit-scrollbar-track { background: #f8f6f3; }
+          .create-scroll::-webkit-scrollbar-thumb { 
+            background: #ddd; 
+            border-radius: 3px;
+          }
+          .create-scroll::-webkit-scrollbar-thumb:hover { 
+            background: #bbb;
+          }
         `}</style>
 
         {/* ── Header ── */}
         <div style={{
           background: C.grad,
-          padding: "18px 24px",
+          padding: "24px 28px",
           display: "flex", alignItems: "center", justifyContent: "space-between",
           flexShrink: 0,
+          boxShadow: "0 2px 8px rgba(0,0,0,.08)",
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <div style={{
-              width: 36, height: 36, borderRadius: 10,
+              width: 48, height: 48, borderRadius: 10,
               background: "rgba(255,255,255,.2)",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 18,
+              fontSize: 22,
             }}>
               {TIPO_ICON[tipo] ?? "📦"}
             </div>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "#fff" }}>
                 Nuevo {TIPO_LABEL[tipo] ?? "Activo"}
               </div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,.7)", marginTop: 1 }}>
-                Completa los campos y guarda
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,.7)", marginTop: 2 }}>
+                Completa los campos requeridos
               </div>
             </div>
           </div>
           <button
             onClick={handleClose}
             style={{
-              background: "rgba(255,255,255,.12)", border: "1.5px solid rgba(255,255,255,.25)",
-              color: "#fff", borderRadius: 8, width: 32, height: 32,
+              background: "rgba(255,255,255,.15)", 
+              border: "none",
+              color: "#fff", 
+              borderRadius: 8, 
+              width: 36, height: 36,
               display: "flex", alignItems: "center", justifyContent: "center",
-              cursor: "pointer", fontSize: 18, lineHeight: 1,
+              cursor: "pointer", 
+              fontSize: 20, 
+              lineHeight: 1,
+              transition: "all 0.15s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(255,255,255,.25)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(255,255,255,.15)";
             }}
           >×</button>
         </div>
@@ -448,19 +484,25 @@ if (tipoKey && Object.keys(detalleConvertido).length > 0) {
           {/* Error */}
           {error && (
             <div style={{
-              background: "#fff0f0", border: "1.5px solid #f5c6c6",
-              borderRadius: 8, padding: "12px 14px", marginBottom: 16,
-              fontSize: 13, color: "#c0392b", fontFamily: "Calibri, sans-serif",
+              background: "linear-gradient(135deg, #fff5f5 0%, #ffebeb 100%)", 
+              border: "1.5px solid #f08080",
+              borderRadius: 10, 
+              padding: "14px 16px", 
+              marginBottom: 18,
+              fontSize: 13, 
+              color: "#c0392b", 
+              fontFamily: "Calibri, sans-serif",
+              boxShadow: "0 2px 8px rgba(192, 57, 43, 0.1)",
             }}>
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                <span style={{ marginTop: 2, flexShrink: 0 }}>⚠️</span>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                <span style={{ marginTop: 2, flexShrink: 0, fontSize: 16 }}>⚠️</span>
                 <div style={{ flex: 1 }}>
                   {parseValidationErrors(error).length > 1 ? (
                     <>
-                      <div style={{ fontWeight: 600, marginBottom: 6 }}>Validación fallida:</div>
+                      <div style={{ fontWeight: 700, marginBottom: 8, color: "#c0392b" }}>Validación fallida:</div>
                       <ul style={{ margin: 0, paddingLeft: 20 }}>
                         {parseValidationErrors(error).map((err, idx) => (
-                          <li key={idx} style={{ marginBottom: idx < parseValidationErrors(error).length - 1 ? 4 : 0 }}>
+                          <li key={idx} style={{ marginBottom: idx < parseValidationErrors(error).length - 1 ? 5 : 0, color: "#a93226" }}>
                             {err}
                           </li>
                         ))}
@@ -528,53 +570,56 @@ if (tipoKey && Object.keys(detalleConvertido).length > 0) {
 
         {/* ── Footer ── */}
         <div style={{
-          padding: "14px 24px",
-          borderTop: `1px solid ${C.border}`,
-          background: C.surface,
-          display: "flex", justifyContent: "flex-end", gap: 10,
+          display: "flex", gap: 12, padding: "20px 28px",
+          background: "#fafaf9",
+          borderTop: "1px solid #e5ddd8",
           flexShrink: 0,
         }}>
           <button
             onClick={handleClose}
             style={{
-              padding: "10px 22px", borderRadius: 8,
-              border: `1.5px solid ${C.border}`,
-              background: "#fff", color: C.muted,
-              fontWeight: 600, fontSize: 13,
-              cursor: "pointer", fontFamily: "Calibri, sans-serif",
-              transition: "all .15s",
+              flex: 1, padding: "12px 16px", borderRadius: 8, border: "1px solid #e5ddd8",
+              background: "#fff", color: "#2C2C2C", fontSize: 13, fontWeight: 700,
+              cursor: "pointer", transition: "all 0.15s ease",
+              letterSpacing: "0.02em",
             }}
-            onMouseEnter={e => (e.currentTarget.style.background = "#f5f0f0")}
-            onMouseLeave={e => (e.currentTarget.style.background = "#fff")}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "#f5f3f1";
+              e.currentTarget.style.borderColor = "#d5cdc8";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "#fff";
+              e.currentTarget.style.borderColor = "#e5ddd8";
+            }}
           >
             Cancelar
           </button>
           <button
             onClick={handleSubmit}
-            disabled={saving}
+            disabled={!general.nombre}
             style={{
-              padding: "10px 24px", borderRadius: 8, border: "none",
-              background: saving ? "#ccc" : C.grad,
-              color: "#fff", fontWeight: 700, fontSize: 13,
-              cursor: saving ? "not-allowed" : "pointer",
-              fontFamily: "Calibri, sans-serif",
-              boxShadow: saving ? "none" : "0 4px 12px rgba(183,49,44,.3)",
-              transition: "all .15s",
-              display: "flex", alignItems: "center", gap: 8,
+              flex: 1, padding: "12px 16px", borderRadius: 8, border: "none",
+              background: !general.nombre ? "#ddd" : C.grad,
+              color: "#fff", fontSize: 13, fontWeight: 800,
+              cursor: !general.nombre ? "not-allowed" : "pointer",
+              transition: "all 0.15s ease",
+              letterSpacing: "0.02em",
+              boxShadow: !general.nombre 
+                ? "none"
+                : "0 4px 12px rgba(183, 49, 44, 0.25)",
+            }}
+            onMouseEnter={(e) => {
+              if (!general.nombre) return;
+              e.currentTarget.style.boxShadow = "0 6px 18px rgba(183, 49, 44, 0.35)";
+              e.currentTarget.style.transform = "translateY(-1px)";
+            }}
+            onMouseLeave={(e) => {
+              if (!general.nombre) return;
+              e.currentTarget.style.boxShadow = "0 4px 12px rgba(183, 49, 44, 0.25)";
+              e.currentTarget.style.transform = "translateY(0)";
             }}
           >
-            {saving ? (
-              <>
-                <div style={{
-                  width: 14, height: 14, border: "2px solid rgba(255,255,255,.3)",
-                  borderTop: "2px solid #fff", borderRadius: "50%",
-                  animation: "spin 1s linear infinite",
-                }} />
-                Guardando...
-              </>
-            ) : (
-              <>💾 Crear {TIPO_LABEL[tipo]}</>
-            )}
+            {saving ? "Guardando..." : "Crear Activo"}
           </button>
         </div>
       </div>

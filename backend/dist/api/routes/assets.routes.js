@@ -12,7 +12,8 @@ router.get("/deleted", (0, errorHandler_1.asyncHandler)(assets_controller_1.asse
 // POST /assets - Crear nuevo asset
 router.post("/", (0, errorHandler_1.asyncHandler)(assets_controller_1.assetsController.createAsset.bind(assets_controller_1.assetsController)));
 router.post("/export-observaciones", assets_controller_1.assetsController.exportObservaciones);
-router.get("/export-excel", assets_controller_1.assetsController.exportExcel);
+router.post("/export-excel", assets_controller_1.assetsController.exportExcel);
+router.post("/:id/firmar", (0, errorHandler_1.asyncHandler)(assets_controller_1.assetsController.firmarMovil.bind(assets_controller_1.assetsController)));
 router.get("/:id/word", assets_controller_1.assetsController.generarWord);
 // GET /assets/:id - Detalle de un asset
 router.get("/:id", (0, errorHandler_1.asyncHandler)(assets_controller_1.assetsController.getAssetById.bind(assets_controller_1.assetsController)));

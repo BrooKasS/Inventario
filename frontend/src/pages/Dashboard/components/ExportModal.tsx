@@ -601,7 +601,7 @@ export default function ExportModal({
 
 /* ─── Botones de exportación reutilizables ─── */
 function ExportButtons({
-  exporting, onExcel, onPDF, label,
+  exporting, onExcel, onPDF,
 }: {
   exporting: "excel" | "pdf" | null;
   onExcel: () => Promise<void>;

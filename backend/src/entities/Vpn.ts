@@ -1,5 +1,5 @@
 import {
-  Entity, PrimaryColumn, Column, OneToOne, JoinColumn, BeforeInsert,
+  Entity, PrimaryColumn, Column, OneToOne, OneToMany, ManyToOne, JoinColumn, BeforeInsert,
 } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { Asset } from "./Asset";
@@ -29,4 +29,18 @@ export class Vpn {
 
   @Column({ type: "varchar2", length: 1000, nullable: true })
   destino!: string | null;
+
+  // ─────────────────────────────────────────────────────────────────────
+  // RELACIONES PARA REGLAS: VPN Principal + Reglas Asociadas
+  // ─────────────────────────────────────────────────────────────────────
+
+  @Column({ name: "VPN_PRINCIPAL_ID", type: "varchar2", length: 36, nullable: true })
+  vpnPrincipalId!: string | null;
+
+  @ManyToOne(() => Vpn, (v) => v.reglas, { onDelete: "SET NULL" })
+  @JoinColumn({ name: "VPN_PRINCIPAL_ID" })
+  vpnPrincipal!: Vpn | null;
+
+  @OneToMany(() => Vpn, (v) => v.vpnPrincipal, { cascade: true, eager: false })
+  reglas!: Vpn[];
 }

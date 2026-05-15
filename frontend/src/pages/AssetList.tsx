@@ -296,13 +296,11 @@ export default function AssetList() {
   const navigate = useNavigate();
 
   const [assets,     setAssets]     = useState<Asset[]>([]);
-  const [allAssets,  setAllAssets]  = useState<Asset[]>([]);
   const [allAssetsForFiltering, setAllAssetsForFiltering] = useState<Asset[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [q,          setQ]          = useState("");
   const [page,       setPage]       = useState(1);
   const [loading,    setLoading]    = useState(true);
-  const [loadingFilters, setLoadingFilters] = useState(false);
 
   const [showFilters,     setShowFilters]     = useState(false);
   const [filtroNombre,    setFiltroNombre]    = useState("");
@@ -331,7 +329,7 @@ export default function AssetList() {
     try {
       const data = await getAssets({ tipo, q: q || undefined, page, limit: 50 });
       const list = data.assets || [];
-      setAllAssets(list);
+      // setAllAssets(list);  // Removed - unused
       setAssets(list);
       setPagination(data.pagination);
     } catch (err) {
@@ -342,14 +340,14 @@ export default function AssetList() {
   }, [tipo, q, page]);
 
   const loadAllForFiltering = useCallback(async () => {
-    setLoadingFilters(true);
+    // setLoadingFilters(true);  // Removed - unused
     try {
       const data = await getAssets({ tipo, limit: 10000 });
       setAllAssetsForFiltering(data.assets || []);
     } catch (err) {
       console.error("Error cargando todos los activos para filtros:", err);
     } finally {
-      setLoadingFilters(false);
+      // setLoadingFilters(false);  // Removed - unused
     }
   }, [tipo]);
 

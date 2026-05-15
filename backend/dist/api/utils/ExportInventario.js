@@ -35,43 +35,29 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generarExcelInventario = generarExcelInventario;
 /**
- * exportInventario.ts
- * Genera el Excel de inventario con el formato exacto del template FR-GTE-02-049
- * Estrategia: copia el template y escribe los datos desde fila 11
- *
- * Ubicación: backend/src/utils/exportInventario.ts
+ * ExportInventario.ts — v4
+ * + Hojas InventarioVPN e InventarioMovil
+ * Ubicación: backend/src/api/utils/ExportInventario.ts
  */
-console.log("EXPORT INVENTARIO EJECUTANDO");
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const child_process_1 = require("child_process");
-// Ruta al template — copiado en backend/src/utils/template_inventario.xlsx
 const TEMPLATE_PATH = path.join(__dirname, "template_inventario.xlsx");
-console.log("EXPORT INVENTARIO EJECUTANDO");
 function v(val) {
     if (val === null || val === undefined)
         return "";
     return String(val);
 }
-function mbToGb(mb) {
-    if (!mb)
-        return "";
-    return `${Math.round(mb / 1024)} GB`;
-}
-/**
- * Genera el Excel de inventario usando Python + openpyxl
- * Retorna el buffer del archivo generado
- */
 async function generarExcelInventario(assets) {
     if (!fs.existsSync(TEMPLATE_PATH)) {
-        throw new Error(`Template no encontrado en: ${TEMPLATE_PATH}. Copia el archivo FR-GTE-02-049 ahí.`);
+        throw new Error(`Template no encontrado en: ${TEMPLATE_PATH}`);
     }
-    // Separar por tipo
     const servidores = assets.filter(a => a.tipo === "SERVIDOR");
     const redes = assets.filter(a => a.tipo === "RED");
     const ups = assets.filter(a => a.tipo === "UPS");
     const bds = assets.filter(a => a.tipo === "BASE_DATOS");
-    // Construir payload JSON para el script Python
+    const vpns = assets.filter(a => a.tipo === "VPN");
+    const moviles = assets.filter(a => a.tipo === "MOVIL");
     const payload = {
         template: TEMPLATE_PATH,
         servidores: servidores.map(a => ({
@@ -88,7 +74,7 @@ async function generarExcelInventario(assets) {
             appSoporta: v(a.servidor?.appSoporta),
             ubicacion: v(a.ubicacion),
             vcpu: v(a.servidor?.vcpu),
-            vramMb: mbToGb(a.servidor?.vramMb),
+            vramMb: v(a.servidor?.vramMb),
             sistemaOperativo: v(a.servidor?.sistemaOperativo),
             fechaFinSoporte: v(a.servidor?.fechaFinSoporte),
             rutasBackup: v(a.servidor?.rutasBackup),
@@ -132,18 +118,48 @@ async function generarExcelInventario(assets) {
             contenedorFisico: v(a.baseDatos?.contenedorFisico),
             contratoQueSoporta: v(a.baseDatos?.contratoQueSoporta),
         })),
+        vpns: vpns.map(a => ({
+            nombre: v(a.nombre),
+            conexion: v(a.vpn?.conexion),
+            fases: v(a.vpn?.fases),
+            origen: v(a.vpn?.origen),
+            destino: v(a.vpn?.destino),
+        })),
+        moviles: moviles.map(a => ({
+            nombre: v(a.nombre),
+            numeroCaso: v(a.movil?.numeroCaso),
+            region: v(a.movil?.region),
+            dependencia: v(a.movil?.dependencia),
+            sede: v(a.movil?.sede),
+            cedula: v(a.movil?.cedula),
+            usuarioRed: v(a.movil?.usuarioRed),
+            correoResponsable: v(a.movil?.correoResponsable),
+            uni: v(a.movil?.uni),
+            marca: v(a.movil?.marca),
+            modelo: v(a.movil?.modelo),
+            serial: v(a.movil?.serial),
+            imei1: v(a.movil?.imei1),
+            imei2: v(a.movil?.imei2),
+            sim: v(a.movil?.sim),
+            numeroLinea: v(a.movil?.numeroLinea),
+            fechaEntrega: v(a.movil?.fechaEntrega),
+            observacionesEntrega: v(a.movil?.observacionesEntrega),
+            fechaDevolucion: v(a.movil?.fechaDevolucion),
+            observacionesDevolucion: v(a.movil?.observacionesDevolucion),
+        })),
     };
     const payloadPath = path.join(__dirname, `export_payload_${Date.now()}.json`);
     const outputPath = path.join(__dirname, `export_out_${Date.now()}.xlsx`);
     try {
         fs.writeFileSync(payloadPath, JSON.stringify(payload));
         const scriptPath = path.join(__dirname, "exportInventario.py");
-        (0, child_process_1.execSync)(`python3 "${scriptPath}" "${payloadPath}" "${outputPath}"`, {
-            timeout: 30000,
+        const pythonCmd = process.platform === "win32" ? "python" : "python3";
+        (0, child_process_1.execSync)(`"${pythonCmd}" "${scriptPath}" "${payloadPath}" "${outputPath}"`, {
+            timeout: 120000,
             stdio: "pipe",
+            windowsHide: true,
         });
-        const buffer = fs.readFileSync(outputPath);
-        return buffer;
+        return fs.readFileSync(outputPath);
     }
     finally {
         if (fs.existsSync(payloadPath))

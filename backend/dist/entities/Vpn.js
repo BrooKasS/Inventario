@@ -51,6 +51,19 @@ __decorate([
     (0, typeorm_1.Column)({ type: "varchar2", length: 1000, nullable: true }),
     __metadata("design:type", Object)
 ], Vpn.prototype, "destino", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: "VPN_PRINCIPAL_ID", type: "varchar2", length: 36, nullable: true }),
+    __metadata("design:type", Object)
+], Vpn.prototype, "vpnPrincipalId", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => Vpn, (v) => v.reglas, { onDelete: "SET NULL" }),
+    (0, typeorm_1.JoinColumn)({ name: "VPN_PRINCIPAL_ID" }),
+    __metadata("design:type", Object)
+], Vpn.prototype, "vpnPrincipal", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => Vpn, (v) => v.vpnPrincipal, { cascade: true, lazy: true }),
+    __metadata("design:type", Array)
+], Vpn.prototype, "reglas", void 0);
 exports.Vpn = Vpn = __decorate([
     (0, typeorm_1.Entity)("VPNS")
 ], Vpn);

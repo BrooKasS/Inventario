@@ -50,9 +50,11 @@ async function generarExcelObservaciones(opts) {
     try {
         fs.writeFileSync(payloadPath, JSON.stringify({ rows, incluirTecnicos }));
         const scriptPath = path.join(__dirname, "exportObservaciones.py");
-        (0, child_process_1.execSync)(`python3 "${scriptPath}" "${payloadPath}" "${outputPath}"`, {
-            timeout: 30000,
+        const pythonCmd = process.platform === "win32" ? "python" : "python3";
+        (0, child_process_1.execSync)(`"${pythonCmd}" "${scriptPath}" "${payloadPath}" "${outputPath}"`, {
+            timeout: 120000,
             stdio: "pipe",
+            windowsHide: true,
         });
         const buffer = fs.readFileSync(outputPath);
         return buffer;

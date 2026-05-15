@@ -11,28 +11,17 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Movil = void 0;
 const typeorm_1 = require("typeorm");
-const uuid_1 = require("uuid");
 const Asset_1 = require("./Asset");
 let Movil = class Movil {
-    generateId() {
-        if (!this.id)
-            this.id = (0, uuid_1.v4)();
-    }
 };
 exports.Movil = Movil;
 __decorate([
-    (0, typeorm_1.PrimaryColumn)({ type: "varchar2", length: 36 }),
+    (0, typeorm_1.PrimaryColumn)({ name: "ID", type: "varchar2", length: 36 }),
     __metadata("design:type", String)
 ], Movil.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.BeforeInsert)(),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], Movil.prototype, "generateId", null);
-__decorate([
     (0, typeorm_1.OneToOne)(() => Asset_1.Asset, (a) => a.movil, { onDelete: "CASCADE" }),
-    (0, typeorm_1.JoinColumn)({ name: "ASSET_ID" }),
+    (0, typeorm_1.JoinColumn)({ name: "ID", referencedColumnName: "id" }),
     __metadata("design:type", Asset_1.Asset)
 ], Movil.prototype, "asset", void 0);
 __decorate([
@@ -111,6 +100,14 @@ __decorate([
     (0, typeorm_1.Column)({ type: "varchar2", length: 2000, nullable: true }),
     __metadata("design:type", Object)
 ], Movil.prototype, "observacionesDevolucion", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "varchar2", length: 500, nullable: true }),
+    __metadata("design:type", Object)
+], Movil.prototype, "firmaPath", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "timestamp", nullable: true }),
+    __metadata("design:type", Object)
+], Movil.prototype, "fechaFirma", void 0);
 exports.Movil = Movil = __decorate([
     (0, typeorm_1.Entity)("MOVILES")
 ], Movil);
