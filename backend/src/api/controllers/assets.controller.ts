@@ -7,7 +7,8 @@ import { mapAssetsToFlowPayload, toFlowTipo } from "../utils/flowMappers";
 import { sanitizePayloadForFlow } from "../utils/flowSanitizer";
 import { generarWordMovil } from "../utils/generarMovilDocx";
 import { generarExcelInventario } from "../utils/ExportInventario";
-import { generarExcelObservaciones } from "../utils/exportObservaciones"
+import { generarExcelObservaciones } from "../utils/exportObservaciones";
+
 
 const r = Router();
 
@@ -351,6 +352,30 @@ export class AssetsController {
       console.error("❌ Error exportando observaciones:", error);
       return res.status(500).json({ success: false, error: "Error generando el Excel de observaciones" });
     }
+  }
+  async cambiarEstadoMovil(req: Request<{id:string}>, res: Response) {
+    const id = req.params.id;
+    
+    const result = await assetsService.cambiarEstadoMovil(id);
+    
+    res.json({
+      success: true,
+      data: result,
+    });
+  }
+  async firmarDevolucion(
+    req: Request<{ id: string }>,
+    res: Response
+  ) {
+    const id = req.params.id;
+    const { firmaBase64 } = req.body;
+
+    const result = await assetsService.firmarDevolucion(id, firmaBase64);
+
+    res.json({
+      success: true,
+      data: result,
+    });
   }
   // POST /assets/:id/firmar
 async firmarMovil(req: Request, res: Response) {

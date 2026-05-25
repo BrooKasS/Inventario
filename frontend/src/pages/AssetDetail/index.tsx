@@ -11,6 +11,7 @@ import {
 import { BitacoraSection } from "./BitacoraSection";
 import { useAssetDetail } from "./useAssetDetail";
 import { C, inputStyle, labelStyle } from "./constants";
+import { useState } from "react";
 
 /* ═══════════════════════════════════════════
    MAIN COMPONENT
@@ -21,6 +22,7 @@ export default function AssetDetail() {
 
   const {
     asset,
+    
     editing,
     setEditing,
     saving,
@@ -28,7 +30,8 @@ export default function AssetDetail() {
     handleSave,
     bitacoraFiltrada,
   } = state;
-
+ const [loadingEstado, setLoadingEstado] = useState(false)
+  
   /* ── loading state ── */
   if (!asset)
     return (
@@ -235,17 +238,17 @@ export default function AssetDetail() {
               </button>
 
               {asset.tipo === "MOVIL" && (
-  <button onClick={async () => {
-    const { descargarWordMovil } = await import("../../api/client");
-    await descargarWordMovil(asset.id);
-  }} style={{
-    padding: "10px 22px", borderRadius: 8, border: "none",
-    background: C.grad, color: "#fff", fontWeight: 700,
-    cursor: "pointer", fontSize: 14,
-  }}>
-    📄 Descargar Formato
-  </button>
-)}
+              <button onClick={async () => {
+                const { descargarWordMovil } = await import("../../api/client");
+                await descargarWordMovil(asset.id);
+              }} style={{
+                padding: "10px 22px", borderRadius: 8, border: "none",
+                background: C.grad, color: "#fff", fontWeight: 700,
+                cursor: "pointer", fontSize: 14,
+              }}>
+                📄 Descargar Formato
+              </button>
+            )}
 
               <button
                 onClick={() => setEditing(true)}
@@ -274,6 +277,109 @@ export default function AssetDetail() {
           )}
         </div>
       </div>
+
+      
+      {/* ── ESTADO MOVIL ───────────────────── */}
+      {asset.tipo === "MOVIL" && (
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 12,
+            padding: "20px 24px",
+            marginBottom: 20,
+            boxShadow: "0 6px 20px rgba(0,0,0,.1)",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 12,
+          }}
+        >
+          {/* Estado */}
+          <div>
+            <div style={{ fontSize: 13, color: "#888" }}>Estado actual</div>
+        
+            <div
+              style={{
+                fontWeight: 700,
+                fontSize: 16,
+                color:
+                  asset.movil?.estados === "ENTREGADO"
+                    ? "#2ecc71"
+                    : asset.movil?.estados === "DEVOLUCION"
+                    ? "#e67e22"
+                    : asset.movil?.estados === "PENDIENTE"
+                    ? "#f1c40f"
+                    : "#3498db",
+              }}
+            >
+              {asset.movil?.estados || "SIN ESTADO"}
+            </div>
+          </div>
+            
+          {/* BOTÓN */}
+          {asset.movil?.estados !== "DEVUELTO" && (
+            <button
+              disabled={loadingEstado}
+              onClick={async () => {
+                if (loadingEstado) return;
+              
+                const { cambiarEstadoMovil } = await import("../../api/client");
+              
+                try {
+                  setLoadingEstado(true);
+                
+                  await cambiarEstadoMovil(asset.id);
+                
+                 
+                  window.location.reload();
+                
+                } catch (err) {
+                  console.error(err);
+                  alert("Error cambiando estado");
+                } finally {
+                  setLoadingEstado(false);
+                }
+              }}
+              style={{
+                padding: "10px 20px",
+                borderRadius: 8,
+                border: "none",
+                color: "#fff",
+                cursor: loadingEstado ? "not-allowed" : "pointer",
+                fontWeight: 700,
+                fontSize: 14,
+                opacity: loadingEstado ? 0.7 : 1,
+                transition: "all .2s",
+                background:
+                  asset.movil?.estados === "ENTREGADO"
+                    ? "#e67e22"
+                    : asset.movil?.estados === "DEVOLUCION"
+                    ? "#f1c40f"
+                    : "#3498db",
+              }}
+            >
+              {loadingEstado
+                ? "Procesando..."
+                : asset.movil?.estados === "ENTREGADO"
+                ? "🔁 Solicitar devolución"
+                : asset.movil?.estados === "DEVOLUCION"
+                ? "📦 Usuario entregó"
+                : "✅ Confirmar recepción"}
+            </button>
+          )}
+
+          {/* ESTADO FINAL */}
+          {asset.movil?.estados === "DEVUELTO" && (
+            <span style={{ color: "#2ecc71", fontWeight: 700 }}>
+              ✔ Proceso completado
+            </span>
+          )}
+        </div>
+      )}
+
+
+
 
       {/* ── Información General ── */}
       <Section title="Información General" icon="🏷️">

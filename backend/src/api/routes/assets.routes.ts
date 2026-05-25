@@ -33,6 +33,9 @@ router.post(
   asyncHandler(assetsController.firmarMovil.bind(assetsController))
 );
 
+router.post(
+  "/:id/firmar-devolucion", 
+  asyncHandler(assetsController.firmarDevolucion.bind(assetsController)));
 
 router.get("/:id/word", assetsController.generarWord);
 
@@ -58,6 +61,10 @@ router.post("/:id/bitacora", asyncHandler(assetsController.addBitacoraEntry.bind
 
 // POST /assets/sync-excel - Sincroniza registros a Excel vía Power Automate
 router.post("/sync-excel",asyncHandler(assetsController.syncExcel.bind(assetsController)));
+
+router.post("/:id/estado", asyncHandler(assetsController.cambiarEstadoMovil.bind(assetsController)));
+
+
 
 
 

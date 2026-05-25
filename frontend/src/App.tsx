@@ -7,6 +7,7 @@ import Papelera from "./pages/Papelera";
 import Login from "./pages/Login";
 import { isAuthenticated } from "./api/auth";
 import FirmaMovil from "./pages/FirmaMovil";
+import FirmaDevolucion from "./pages/FirmaDevolucion";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated()) {
@@ -23,7 +24,8 @@ export default function App() {
         {/* ✅ RUTAS PÚBLICAS */}
         <Route path="/login" element={<Login />} />
         <Route path="/firmar/:assetId" element={<FirmaMovil />} />
-
+        <Route path="/firmar-devolucion/:assetId" element={<FirmaDevolucion />} />
+``
         {/* ✅ RUTAS PROTEGIDAS */}
         <Route
           path="/"

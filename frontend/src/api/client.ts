@@ -90,19 +90,7 @@ export const getDeleted = () =>
 
 
 
-export const firmarMovil = (
-  assetId: string,
-  payload: {
-    firmaBase64: string;
-    observacionesEntrega?: string;
-  }
-) => {
-  return axios.post(
-    `http://localhost:3000/api/assets/${assetId}/firmar`,
-    payload,
-    { headers: { "Content-Type": "application/json" } }
-  ).then(r => r.data);
-};
+
 
 /* =========================
    ✅ FUNCIONES PÚBLICAS
@@ -123,8 +111,18 @@ export const firmarMovilPublic = (
   publicApi.post(`/assets/${assetId}/firmar`, payload)
     .then(r => r.data);
 
-  
+  export const firmarDevolucionPublic = (
+    assetId: string,
+    payload: { firmaBase64: string }
+  ) =>
+    publicApi.post(`/assets/${assetId}/firmar-devolucion`, payload)
+      .then(r => r.data);
 
+
+export const cambiarEstadoMovil = (id: string) =>
+  api.post(`/assets/${id}/estado`).then(r => r.data.data);
+
+  
 
 
 

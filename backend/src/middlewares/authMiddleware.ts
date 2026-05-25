@@ -20,7 +20,9 @@ export function authMiddleware(
   if (
     rutasPublicas.includes(req.path) ||
     req.path.match(/^\/api\/assets\/public\/[^/]+$/) ||
-    req.path.match(/^\/api\/assets\/[^/]+\/firmar$/)
+    req.path.match(/^\/api\/assets\/[^/]+\/firmar$/) ||
+    req.path.match(/^\/api\/assets\/[^/]+\/firmar-devolucion$/)
+    
   ) {
     return next();
   }
