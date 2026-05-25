@@ -7,6 +7,7 @@ import { Red } from "../entities/Red";
 import { Ups } from "../entities/Ups";
 import { BaseDatos } from "../entities/BaseDatos";
 import { Vpn } from "../entities/Vpn";
+import { VpnRule } from "../entities/VpnRule";
 import { Movil } from "../entities/Movil";
 import { Bitacora } from "../entities/Bitacora";
 
@@ -23,7 +24,7 @@ export const AppDataSource = new DataSource({
   username: process.env.DB_USER!,
   password: process.env.DB_PASSWORD!,
 
-  synchronize: false,       // solo en desarrollo
+  synchronize: process.env.NODE_ENV !== "production",  // ← esto crea las tablas/columnas
   logging: false,           // Desactivar para ver logs de LDAP claramente
 
   entities: [
@@ -33,7 +34,12 @@ export const AppDataSource = new DataSource({
     Ups,
     BaseDatos,
     Vpn,
+    VpnRule,
     Movil,
     Bitacora,
   ],
+
+  // Migraciones automáticas SOLO en producción
+  migrationsRun: process.env.NODE_ENV === "production",
+  migrations: ["dist/migrations/*.js"],
 });

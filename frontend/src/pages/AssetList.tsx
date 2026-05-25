@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getAssets } from "../api/client";
+import { getRol } from "../api/auth";
 import type { Asset, Pagination, TipoActivo } from "../types";
 import AssetCreateModal from "../components/AssetCreateModal";
 
@@ -310,6 +311,7 @@ export default function AssetList() {
   const [showCreate, setShowCreate] = useState(false);
 
   const tipoKey     = tipo as TipoActivo;
+  const rol         = getRol();
   const headers     = HEADERS[tipoKey] ?? [];
   const extraFields = FILTER_FIELDS[tipoKey] ?? [];
 
@@ -439,12 +441,14 @@ export default function AssetList() {
               cursor: "pointer", fontSize: 14, fontFamily: "Calibri, sans-serif",
               boxShadow: "0 4px 12px rgba(0,0,0,.15)",
             }}>🔍 Filtros</button>
-            <button onClick={() => setShowCreate(true)} style={{
-              padding: "10px 20px", borderRadius: 8, border: "none",
-              background: "#B7312C", color: "#fff", fontWeight: 700,
-              cursor: "pointer", fontSize: 14, fontFamily: "Calibri, sans-serif",
-              boxShadow: "0 4px 12px rgba(0,0,0,.15)",
-            }}>➕ Crear</button>
+            {rol === "ADMIN" && (
+              <button onClick={() => setShowCreate(true)} style={{
+                padding: "10px 20px", borderRadius: 8, border: "none",
+                background: "#B7312C", color: "#fff", fontWeight: 700,
+                cursor: "pointer", fontSize: 14, fontFamily: "Calibri, sans-serif",
+                boxShadow: "0 4px 12px rgba(0,0,0,.15)",
+              }}>➕ Crear</button>
+            )}
           </div>
         </div>
 
@@ -530,12 +534,14 @@ export default function AssetList() {
       </div>
 
       {/* ── Modal Crear ── */}
-      <AssetCreateModal
-        open={showCreate}
-        onClose={() => setShowCreate(false)}
-        tipo={tipoKey}
-        onCreated={() => { setShowCreate(false); load(); }}
-      />
+      {rol === "ADMIN" && (
+        <AssetCreateModal
+          open={showCreate}
+          onClose={() => setShowCreate(false)}
+          tipo={tipoKey}
+          onCreated={() => { setShowCreate(false); load(); }}
+        />
+      )}
 
       {/* ══════════════ Modal de Filtros ══════════════ */}
       {showFilters && (

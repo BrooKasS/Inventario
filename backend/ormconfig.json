@@ -1,0 +1,13 @@
+{
+  "type": "oracle",
+  "host": "your_host",
+  "port": 1521,
+  "serviceName": "your_service",
+  "username": "your_user",
+  "password": "your_password",
+  "entities": ["src/entities/*.ts"],
+  "migrations": ["src/migrations/*.ts"],
+  "cli": {
+    "migrationsDir": "src/migrations"
+  }
+}

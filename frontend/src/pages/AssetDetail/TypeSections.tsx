@@ -1,4 +1,4 @@
-import type { Asset } from "../../types";
+import type { Asset, Vpn, VpnRule } from "../../types";
 import { Field, Section } from "./DetailComponents";
 
 /* ═══════════════════════════════════════════
@@ -385,72 +385,113 @@ export function VpnSection({
       </Section>
 
       {/* Reglas Asociadas */}
-      {v.reglas && v.reglas.length > 0 && (
-        <Section title={`Reglas Asociadas (${v.reglas.length})`} icon="🔗">
-          <div className="space-y-3">
-            {v.reglas.map((regla, idx) => (
-              <div
-                key={idx}
-                className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-indigo-200 rounded-lg hover:shadow-md transition-all"
-              >
-                {/* Encabezado de Regla */}
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="inline-block w-6 h-6 bg-indigo-600 text-white rounded-full text-center text-xs font-bold leading-6">
-                      {idx + 1}
-                    </span>
-                    <span className="font-bold text-indigo-900">Regla #{idx + 1}</span>
+      {(() => {
+        const reglasNuevas = v.reglas ?? [];
+        const reglasHistoricas = (v as any).reglasHistoricas ?? [];
+        const totalReglas = reglasNuevas.length + reglasHistoricas.length;
+        
+        if (totalReglas === 0) return null;
+        
+        return (
+          <Section title={`Reglas Asociadas (${totalReglas})`} icon="🔗">
+            <div className="space-y-3">
+              {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+              {/* NUEVAS REGLAS (VPN_RULES) */}
+              {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+              {reglasNuevas.length > 0 && (
+                <div className="mb-4">
+                  <div className="text-xs font-bold text-green-700 bg-green-50 px-3 py-1 rounded inline-block mb-2">
+                    ✨ Reglas Nuevas ({reglasNuevas.length})
+                  </div>
+                  <div className="space-y-2">
+                    {reglasNuevas.map((regla: VpnRule, idx: number) => (
+                      <div
+                        key={idx}
+                        className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-lg hover:shadow-md transition-all"
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="inline-block w-6 h-6 bg-green-600 text-white rounded-full text-center text-xs font-bold leading-6">
+                            {idx + 1}
+                          </span>
+                          <span className="font-bold text-green-900">Regla #{idx + 1}</span>
+                        </div>
+                        {regla.conexion && (
+                          <div className="mb-2 p-2 bg-white rounded border-l-4 border-blue-500">
+                            <div className="text-xs font-semibold text-gray-500 uppercase">🌐 Conexión</div>
+                            <div className="text-sm font-mono text-blue-700 font-bold mt-1">{regla.conexion}</div>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          {regla.origen && (
+                            <div className="flex-1 p-2 bg-white rounded border-l-4 border-green-500">
+                              <div className="text-xs font-semibold text-gray-500">← Origen</div>
+                              <div className="text-xs font-mono text-green-700 mt-1 break-all">{regla.origen}</div>
+                            </div>
+                          )}
+                          <div className="flex-shrink-0 text-2xl text-green-500 font-bold">→</div>
+                          {regla.destino && (
+                            <div className="flex-1 p-2 bg-white rounded border-l-4 border-red-500">
+                              <div className="text-xs font-semibold text-gray-500">Destino →</div>
+                              <div className="text-xs font-mono text-red-700 mt-1 break-all">{regla.destino}</div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-
-                {/* Conexión VPN */}
-                {regla.conexion && (
-                  <div className="mb-3 p-2 bg-white rounded border-l-4 border-blue-500">
-                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      🌐 Conexión VPN
-                    </div>
-                    <div className="text-sm font-mono text-blue-700 font-bold mt-1">
-                      {regla.conexion}
-                    </div>
+              )}
+              
+              {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+              {/* REGLAS HISTÓRICAS (VPNS - existentes) */}
+              {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+              {reglasHistoricas.length > 0 && (
+                <div>
+                  <div className="text-xs font-bold text-amber-700 bg-amber-50 px-3 py-1 rounded inline-block mb-2">
+                    📋 Reglas Históricas ({reglasHistoricas.length})
                   </div>
-                )}
-
-                {/* Flujo de Red */}
-                <div className="flex items-center gap-2 my-3">
-                  {/* Origen */}
-                  {regla.origen && (
-                    <div className="flex-1 p-2 bg-white rounded border-l-4 border-green-500">
-                      <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        ← Origen
+                  <div className="space-y-2">
+                    {reglasHistoricas.map((regla: Vpn, idx: number) => (
+                      <div
+                        key={idx}
+                        className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-lg hover:shadow-md transition-all opacity-85"
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="inline-block w-6 h-6 bg-amber-600 text-white rounded-full text-center text-xs font-bold leading-6">
+                            {idx + 1}
+                          </span>
+                          <span className="font-bold text-amber-900">{regla.conexion || `Regla ${idx + 1}`}</span>
+                        </div>
+                        {regla.conexion && (
+                          <div className="mb-2 p-2 bg-white rounded border-l-4 border-blue-400">
+                            <div className="text-xs font-semibold text-gray-500 uppercase">🌐 Conexión</div>
+                            <div className="text-sm font-mono text-blue-600 font-bold mt-1">{regla.conexion}</div>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          {regla.origen && (
+                            <div className="flex-1 p-2 bg-white rounded border-l-4 border-green-400">
+                              <div className="text-xs font-semibold text-gray-500">← Origen</div>
+                              <div className="text-xs font-mono text-green-600 mt-1 break-all">{regla.origen}</div>
+                            </div>
+                          )}
+                          <div className="flex-shrink-0 text-2xl text-amber-500 font-bold">→</div>
+                          {regla.destino && (
+                            <div className="flex-1 p-2 bg-white rounded border-l-4 border-red-400">
+                              <div className="text-xs font-semibold text-gray-500">Destino →</div>
+                              <div className="text-xs font-mono text-red-600 mt-1 break-all">{regla.destino}</div>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-xs font-mono text-green-700 mt-1 break-all">
-                        {regla.origen}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Flecha */}
-                  <div className="flex-shrink-0 flex items-center justify-center">
-                    <div className="text-2xl text-indigo-500 font-bold">→</div>
+                    ))}
                   </div>
-
-                  {/* Destino */}
-                  {regla.destino && (
-                    <div className="flex-1 p-2 bg-white rounded border-l-4 border-red-500">
-                      <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Destino →
-                      </div>
-                      <div className="text-xs font-mono text-red-700 mt-1 break-all">
-                        {regla.destino}
-                      </div>
-                    </div>
-                  )}
                 </div>
-              </div>
-            ))}
-          </div>
-        </Section>
-      )}
+              )}
+            </div>
+          </Section>
+        );
+      })()}
     </>
   );
 }

@@ -55,6 +55,15 @@ export interface BaseDatos {
   contratoQueSoporta: string | null;
 }
 
+export interface VpnRule {
+  id: string;
+  vpnId: string;
+  conexion: string | null;
+  fases: string | null;
+  origen: string | null;
+  destino: string | null;
+}
+
 export interface Vpn {
   id: string;
   assetId: string;
@@ -62,8 +71,7 @@ export interface Vpn {
   fases: string | null;
   origen: string | null;
   destino: string | null;
-  vpnPrincipalId?: string | null;
-  reglas?: Vpn[];
+  reglas?: VpnRule[];
 }
 
 export interface Movil {

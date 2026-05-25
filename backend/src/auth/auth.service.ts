@@ -15,6 +15,7 @@ const JWT_EXPIRES = process.env.JWT_EXPIRES ?? "8h";
 export interface TokenPayload {
   usuario: string;
   nombre:  string;
+  rol:     "ADMIN" | "AUDITOR";
 }
 
 export class AuthService {
@@ -22,7 +23,7 @@ export class AuthService {
   private static revokedTokens = new Set<string>();
   private static usuarioTokenMap = new Map<string, string>();
 
-  async login(usuario: string, password: string): Promise<{ token: string; nombre: string }> {
+  async login(usuario: string, password: string): Promise<{ token: string; nombre: string; rol: string }> {
 
     const ldapUrl    = process.env.LDAP_URL    ?? "ldap://fiduprevisora.com.co:389";
     const ldapDomain = process.env.LDAP_DOMAIN ?? "fiduprevisora.com.co";
@@ -102,6 +103,13 @@ export class AuthService {
 
     // Si llegó acá → credenciales correctas y nombre obtenido
     
+    // ✅ DETERMINAR ROL basado en lista ADMINS
+    const adminsStr = process.env.ADMINS ?? "";
+    const adminsList = adminsStr.split(",").map(a => a.trim().toLowerCase());
+    const rol = adminsList.includes(usuario.toLowerCase()) ? "ADMIN" : "AUDITOR";
+    
+    console.log("[LDAP-DEBUG] 🔍 ADMINS env =", JSON.stringify(adminsStr), "| adminsList =", adminsList, "| usuario.toLowerCase() =", usuario.toLowerCase(), "| match =", adminsList.includes(usuario.toLowerCase()));
+    
     // ✅ REVOCAR token anterior de este usuario (sesión única)
     const tokenAnterior = AuthService.usuarioTokenMap.get(usuario);
     if (tokenAnterior) {
@@ -111,6 +119,7 @@ export class AuthService {
     const payload: TokenPayload = {
       usuario,
       nombre: nombreReal, // ✅ Nombre real del AD (displayName)
+      rol,
     };
 
     const nuevoToken = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES } as any);
@@ -118,11 +127,12 @@ export class AuthService {
     // ✅ Guardar el nuevo token como activo para este usuario
     AuthService.usuarioTokenMap.set(usuario, nuevoToken);
     
-    console.log("[LDAP-DEBUG] 📤 FINAL: usuario =", usuario, "| nombreReal =", nombreReal);
+    console.log("[LDAP-DEBUG] 📤 FINAL: usuario =", usuario, "| nombreReal =", nombreReal, "| rol =", rol);
     
     return {
       token: nuevoToken,
       nombre: nombreReal, // ✅ Devolver también el nombre
+      rol,
     };
   }
 

@@ -41,6 +41,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
     
     (req as any).usuario = payload.usuario;
     (req as any).nombre = payload.nombre;
+    (req as any).rol = payload.rol ?? "AUDITOR";
     next();
   } catch {
     return res.status(401).json({

@@ -115,7 +115,7 @@ export async function exportarActivosExcel(assets: Asset[], nombre: string): Pro
   method: "POST",
   headers: {
     "Content-Type": "application/json",
-    "Authorization": `Bearer ${localStorage.getItem("inventario_token")}`,
+    "Authorization": `Bearer ${sessionStorage.getItem("inventario_token")}`,
   },
   body: JSON.stringify({ ids, tipos }),
 });

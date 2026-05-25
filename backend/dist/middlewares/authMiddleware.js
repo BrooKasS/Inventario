@@ -32,6 +32,7 @@ function authMiddleware(req, res, next) {
         }
         req.usuario = payload.usuario;
         req.nombre = payload.nombre;
+        req.rol = payload.rol ?? "AUDITOR";
         next();
     }
     catch {

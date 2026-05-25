@@ -7,8 +7,9 @@ import { Red } from "../../entities/Red";
 import { Ups } from "../../entities/Ups";
 import { BaseDatos } from "../../entities/BaseDatos";
 import { Vpn } from "../../entities/Vpn";
+import { VpnRule } from "../../entities/VpnRule";
 import { Movil } from "../../entities/Movil";
-import { Db, FindOptionsWhere, In, IsNull, Not, Brackets } from "typeorm";
+import { FindOptionsWhere, In, IsNull, Not } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { generarWordMovil } from "../utils/generarMovilDocx";
 import { sendMovilEmail } from "../utils/sendMovilEmail";
@@ -22,12 +23,34 @@ export class AssetsService {
   async getAssets(filters: AssetFilters) {
     const { tipo, q, page = 1, limit = 50 } = filters;
     const skip = (page - 1) * limit;
-    
 
     const assetRepository = AppDataSource.getRepository(Asset);
+    const vpnRepository = AppDataSource.getRepository(Vpn);
 
+    // ════════════════════════════════════════════════════════════════════════
+    // PARA VPN: OBTENER SOLO PRINCIPALES (1 por cada conexion/IP)
+    // ════════════════════════════════════════════════════════════════════════
+    let vpnPrincipalesIds: string[] = [];
+    if (tipo === "VPN") {
+      // Query: GROUP BY conexion para obtener 1 VPN por cada IP única
+      // Solo agrupa VPNs con conexion válida (IS NOT NULL)
+      const vpnPrincipales = await vpnRepository
+        .createQueryBuilder("vpn")
+        .select("MIN(vpn.id)", "id")
+        .addSelect("vpn.conexion", "conexion")
+        .where("vpn.conexion IS NOT NULL")
+        .groupBy("vpn.conexion")
+        .getRawMany();
+      
+      vpnPrincipalesIds = vpnPrincipales.map((v: any) => v.id);
+      
+      console.log(`✅ VPN PRINCIPALES: ${vpnPrincipalesIds.length} encontrados`);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // BÚSQUEDA CON QUERY (filtro por nombre/código)
+    // ════════════════════════════════════════════════════════════════════════
     if (q) {
-      // Use query builder for OR conditions
       const qb = assetRepository
         .createQueryBuilder("asset")
         .leftJoinAndSelect("asset.servidor", "servidor")
@@ -35,24 +58,28 @@ export class AssetsService {
         .leftJoinAndSelect("asset.ups", "ups")
         .leftJoinAndSelect("asset.baseDatos", "baseDatos")
         .leftJoinAndSelect("asset.vpn", "vpn")
-        .leftJoinAndSelect("vpn.reglas", "vpnReglas")
-        .leftJoinAndSelect("asset.movil", "movil")  
-        .where("asset.deletedAt IS NULL")
-        .andWhere(
-          "(LOWER(asset.nombre) LIKE LOWER(:q) OR LOWER(asset.codigoServicio) LIKE LOWER(:q))",
-          { q: `%${q}%` }
-        );
+        .leftJoinAndSelect("vpn.reglas", "vpnRules")
+        .leftJoinAndSelect("asset.movil", "movil")
+        .where("asset.deletedAt IS NULL");
 
       if (tipo) {
         qb.andWhere("asset.tipo = :tipo", { tipo });
-        
-        // Si es VPN, mostrar SOLO principales (vpnPrincipalId IS NULL)
-        if (tipo === "VPN") {
-          qb.andWhere("vpn.vpnPrincipalId IS NULL");
+      }
+
+      if (tipo === "VPN") {
+        if (vpnPrincipalesIds.length > 0) {
+          qb.andWhere("vpn.id IN (:...vpnIds)", { vpnIds: vpnPrincipalesIds });
+        } else {
+          qb.andWhere("1 = 0");
         }
       }
 
-      const [assets, total] = await qb 
+      qb.andWhere(
+        "(LOWER(asset.nombre) LIKE LOWER(:q) OR LOWER(asset.codigoServicio) LIKE LOWER(:q))",
+        { q: `%${q}%` }
+      );
+
+      const [assets, total] = await qb
         .orderBy("asset.actualizadoEn", "DESC")
         .skip(skip)
         .take(limit)
@@ -60,56 +87,83 @@ export class AssetsService {
 
       return {
         assets,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages: Math.ceil(total / limit),
-        },
+        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
       };
     }
 
-    const where: FindOptionsWhere<Asset> = { deletedAt: IsNull() };
-    if (tipo) where.tipo = tipo as any;
+    // ════════════════════════════════════════════════════════════════════════
+    // BÚSQUEDA SIN QUERY (solo filtro por tipo)
+    // ════════════════════════════════════════════════════════════════════════
+    const qb = assetRepository
+      .createQueryBuilder("asset")
+      .leftJoinAndSelect("asset.servidor", "servidor")
+      .leftJoinAndSelect("asset.red", "red")
+      .leftJoinAndSelect("asset.ups", "ups")
+      .leftJoinAndSelect("asset.baseDatos", "baseDatos")
+      .leftJoinAndSelect("asset.vpn", "vpn")
+      .leftJoinAndSelect("vpn.reglas", "vpnRules")
+      .leftJoinAndSelect("asset.movil", "movil")
+      .where("asset.deletedAt IS NULL");
 
-    // Si es VPN, mostrar SOLO principales (vpnPrincipalId IS NULL)
-    if (tipo === "VPN") {
-      where.vpn = { vpnPrincipalId: IsNull() } as any;
+    if (tipo) {
+      qb.andWhere("asset.tipo = :tipo", { tipo });
     }
 
-    const [assets, total] = await Promise.all([
-      assetRepository.find({
-        where,
-        relations: ["servidor", "red", "ups", "baseDatos", "vpn", "vpn.reglas", "movil"],
-        order: { actualizadoEn: "DESC" },
-        skip,
-        take: limit,
-      }),
-      assetRepository.count({ where }),
-    ]);
+    if (tipo === "VPN") {
+      if (vpnPrincipalesIds.length > 0) {
+        qb.andWhere("vpn.id IN (:...vpnIds)", { vpnIds: vpnPrincipalesIds });
+      } else {
+        qb.andWhere("1 = 0");
+      }
+    }
+
+    const [assets, total] = await qb
+      .orderBy("asset.actualizadoEn", "DESC")
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
 
     return {
       assets,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   }
 
   async getAssetById(id: string) {
     const assetRepository = AppDataSource.getRepository(Asset);
     const bitacoraRepository = AppDataSource.getRepository(Bitacora);
-    
+    const vpnRepository = AppDataSource.getRepository(Vpn);
 
-    const asset = await assetRepository.findOne({
-      where: { id },
-      relations: ["servidor", "red", "ups", "baseDatos", "vpn", "vpn.reglas", "movil"],
-    });
+    // Usar QueryBuilder para cargar todas las relaciones correctamente
+    const asset = await assetRepository
+      .createQueryBuilder("asset")
+      .leftJoinAndSelect("asset.servidor", "servidor")
+      .leftJoinAndSelect("asset.red", "red")
+      .leftJoinAndSelect("asset.ups", "ups")
+      .leftJoinAndSelect("asset.baseDatos", "baseDatos")
+      .leftJoinAndSelect("asset.vpn", "vpn")
+      .leftJoinAndSelect("vpn.reglas", "reglas")
+      .leftJoinAndSelect("asset.movil", "movil")
+      .where("asset.id = :id", { id })
+      .getOne();
 
     if (!asset) throw new Error("Asset no encontrado");
+    
+    // ════════════════════════════════════════════════════════════════
+    // SI ES VPN: CARGAR TAMBIÉN LAS REGLAS HISTÓRICAS (VPNs hermanas)
+    // ════════════════════════════════════════════════════════════════
+    if (asset.vpn && asset.vpn.conexion) {
+      // Buscar todas las VPNs con el mismo conexion (reglas históricas)
+      const vpnRelacionadas = await vpnRepository.find({
+        where: { conexion: asset.vpn.conexion },
+      });
+      
+      // Filtrar: excluir la VPN principal (la del asset), el resto son históricas
+      const reglasHistoricas = vpnRelacionadas.filter((v: Vpn) => v.id !== asset.vpn!.id);
+      
+      // Guardar en un campo adicional (compatible con frontend)
+      (asset.vpn as any).reglasHistoricas = reglasHistoricas;
+    }
     
     // Get last 50 bitacora entries from DB (same as original Prisma logic)
     const bitacora = await bitacoraRepository.find({
@@ -135,7 +189,7 @@ export class AssetsService {
       sim, numeroLinea, fechaEntrega, observacionesEntrega,
     } = data;
 
-    // ✅ VALIDACIÓN: nuevas entradas SIEMPRE se validan
+    // Siempre se validan nuevas entradas no lo que ya hay
     const { valid, errors } = validateAssetData(tipo, data, true);
     if (!valid) {
       throw new Error(`Validación fallida: ${errors.join(", ")}`);
@@ -148,6 +202,7 @@ export class AssetsService {
     const upsRepository = AppDataSource.getRepository(Ups);
     const baseDatosRepository = AppDataSource.getRepository(BaseDatos);
     const vpnRepository = AppDataSource.getRepository(Vpn);
+    const vpnRuleRepository = AppDataSource.getRepository(VpnRule);
     const movilRepository = AppDataSource.getRepository(Movil);
 
     // ======================
@@ -190,7 +245,30 @@ export class AssetsService {
     if (vpn) {
       const vpnToSave = { ...vpn, asset: savedAsset };
       if (!vpnToSave.id) vpnToSave.id = uuidv4();
-      await vpnRepository.save(vpnToSave);
+      
+      // Separar reglas del objeto VPN
+      const reglas = vpnToSave.reglas || [];
+      delete vpnToSave.reglas; // Remover reglas del objeto principal
+      
+      // Guardar VPN principal
+      const savedVpn = await vpnRepository.save(vpnToSave);
+      
+      // Guardar reglas como VpnRule separadas
+      if (reglas && Array.isArray(reglas) && reglas.length > 0) {
+        const vpnRulesToSave = reglas.map((regla: any) => {
+          const rule = vpnRuleRepository.create({
+            id: uuidv4(),
+            vpn: savedVpn, // ✅ TypeORM maneja el VPN_ID automáticamente
+            conexion: regla.conexion ?? null,
+            fases: regla.fases ?? null,
+            origen: regla.origen ?? null,
+            destino: regla.destino ?? null,
+          });
+          return rule;
+        });
+        
+        await vpnRuleRepository.save(vpnRulesToSave);
+      }
     }
 
     // ======================
@@ -284,10 +362,18 @@ export class AssetsService {
       })
     );
 
-    return assetRepository.findOne({
-      where: { id: savedAsset.id },
-      relations: ["servidor", "red", "ups", "baseDatos", "vpn", "vpn.reglas", "movil"],
-    });
+    // Retornar con QueryBuilder para cargar correctamente reglas VPN anidadas
+    return assetRepository
+      .createQueryBuilder("asset")
+      .leftJoinAndSelect("asset.servidor", "servidor")
+      .leftJoinAndSelect("asset.red", "red")
+      .leftJoinAndSelect("asset.ups", "ups")
+      .leftJoinAndSelect("asset.baseDatos", "baseDatos")
+      .leftJoinAndSelect("asset.vpn", "vpn")
+      .leftJoinAndSelect("vpn.reglas", "reglas")
+      .leftJoinAndSelect("asset.movil", "movil")
+      .where("asset.id = :id", { id: savedAsset.id })
+      .getOne();
   }
 
   
@@ -420,6 +506,7 @@ export class AssetsService {
     const upsRepository = AppDataSource.getRepository(Ups);
     const baseDatosRepository = AppDataSource.getRepository(BaseDatos);
     const vpnRepository = AppDataSource.getRepository(Vpn);
+    const vpnRuleRepository = AppDataSource.getRepository(VpnRule);
     const movilRepository = AppDataSource.getRepository(Movil);
     const bitacoraRepository = AppDataSource.getRepository(Bitacora);
 
@@ -431,7 +518,7 @@ export class AssetsService {
     if (!data || typeof data !== "object") throw new Error("Body inválido");
     if (!asset) throw new Error("Asset no encontrado");
 
-    // ✅ VALIDACIÓN: solo validar si es registro NUEVO (creado hoy)
+    //  Valida si el registro es nuevo , si es nuevo, agarra las funciones de validación
     const isNewRecord = isCreatedToday(asset.creadoEn);
     if (isNewRecord) {
       const { valid, errors } = validateAssetData(asset.tipo, data, false);
@@ -571,6 +658,8 @@ export class AssetsService {
       const vpn = asset.vpn;
 
       Object.keys(data.vpn).forEach((key) => {
+        if (key === "reglas") return; // Manejar reglas por separado
+        
         const oldVal = (vpn as any)[key];
         const newVal = data.vpn[key];
         if (newVal !== undefined && newVal !== oldVal) {
@@ -581,6 +670,40 @@ export class AssetsService {
 
       if (Object.keys(detailUpdates).length > 0) {
         await vpnRepository.update({ asset: { id } }, detailUpdates);
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // MANEJAR REGLAS (VpnRule)
+      // ─────────────────────────────────────────────────────────────
+      if (data.vpn.reglas !== undefined) {
+        const newReglas = data.vpn.reglas || [];
+        const oldReglas = vpn.reglas || [];
+
+        // Eliminar reglas antiguas
+        if (oldReglas.length > 0) {
+          await vpnRuleRepository.delete({ vpn: { id: vpn.id } });
+        }
+
+        // Crear nuevas reglas
+        if (Array.isArray(newReglas) && newReglas.length > 0) {
+          const vpnRulesToSave = newReglas.map((regla: any) => {
+            return vpnRuleRepository.create({
+              id: uuidv4(),
+              vpn: vpn,
+              conexion: regla.conexion ?? null,
+              fases: regla.fases ?? null,
+              origen: regla.origen ?? null,
+              destino: regla.destino ?? null,
+            });
+          });
+
+          await vpnRuleRepository.save(vpnRulesToSave);
+          bitacoraEntries.push({ 
+            campoModificado: "vpnRules", 
+            valorAnterior: `${oldReglas.length} reglas`, 
+            valorNuevo: `${newReglas.length} reglas` 
+          });
+        }
       }
     }
 
@@ -601,6 +724,7 @@ export class AssetsService {
             campoModificado: key,
             valorAnterior: String(oldVal ?? ""),
             valorNuevo: String(newVal ?? ""),
+            
           });
         }
       });
@@ -621,7 +745,6 @@ export class AssetsService {
         await movilRepository.update({ asset: { id } }, detailUpdates);
       }
     }
-
     // ======================
     // BITÁCORA
     // ======================
@@ -671,24 +794,17 @@ export class AssetsService {
     const assetRepository = AppDataSource.getRepository(Asset);
 
     // ════════════════════════════════════════════════════════════════
-    // TOTAL: Contar Assets SIN VPN Reglas (solo VPN Principales)
+    // TOTAL: Contar Assets por Tipo
     // ════════════════════════════════════════════════════════════════
     const porTipo = await assetRepository
       .createQueryBuilder("asset")
-      .leftJoinAndSelect("asset.vpn", "vpn")
       .select("asset.tipo", "tipo")
       .addSelect("COUNT(DISTINCT asset.id)", "count")
       .where("asset.deletedAt IS NULL")
-      .andWhere(
-        new Brackets(qb => {
-          qb.where("asset.tipo != :vpnTipo", { vpnTipo: "VPN" })
-            .orWhere("vpn.vpnPrincipalId IS NULL");
-        })
-      )
       .groupBy("asset.tipo")
       .getRawMany();
 
-    // Calcular total sumando todos los tipos (sin reglas VPN)
+    // Calcular total sumando todos los tipos
     const total = porTipo.reduce((sum, t) => sum + parseInt(t.count, 10), 0);
 
     return {
@@ -696,6 +812,7 @@ export class AssetsService {
       porTipo: porTipo.map((t) => ({ tipo: t.tipo, count: parseInt(t.count, 10) })),
     };
   }
+  
 
   async getAssetsByTipoAndIds(opts: { tipo?: string; ids?: string[] }) {
     const assetRepository = AppDataSource.getRepository(Asset);

@@ -87,6 +87,10 @@ class AuthService {
             });
         });
         // Si llegó acá → credenciales correctas y nombre obtenido
+        // ✅ DETERMINAR ROL basado en lista ADMINS
+        const adminsStr = process.env.ADMINS ?? "";
+        const adminsList = adminsStr.split(",").map(a => a.trim().toLowerCase());
+        const rol = adminsList.includes(usuario.toLowerCase()) ? "ADMIN" : "AUDITOR";
         // ✅ REVOCAR token anterior de este usuario (sesión única)
         const tokenAnterior = AuthService.usuarioTokenMap.get(usuario);
         if (tokenAnterior) {
@@ -95,14 +99,16 @@ class AuthService {
         const payload = {
             usuario,
             nombre: nombreReal, // ✅ Nombre real del AD (displayName)
+            rol,
         };
         const nuevoToken = jsonwebtoken_1.default.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES });
         // ✅ Guardar el nuevo token como activo para este usuario
         AuthService.usuarioTokenMap.set(usuario, nuevoToken);
-        console.log("[LDAP-DEBUG] 📤 FINAL: usuario =", usuario, "| nombreReal =", nombreReal);
+        console.log("[LDAP-DEBUG] 📤 FINAL: usuario =", usuario, "| nombreReal =", nombreReal, "| rol =", rol);
         return {
             token: nuevoToken,
             nombre: nombreReal, // ✅ Devolver también el nombre
+            rol,
         };
     }
     /**

@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { getRol } from "../../api/auth";
 import { Field, Section } from "./DetailComponents";
 import {
   ServidorSections,
@@ -28,6 +29,8 @@ export default function AssetDetail() {
     handleSave,
     bitacoraFiltrada,
   } = state;
+
+  const rol = getRol();
 
   /* ── loading state ── */
   if (!asset)
@@ -208,68 +211,85 @@ export default function AssetDetail() {
             </>
           ) : (
             <>
-              <button
-                onClick={async () => {
-                  const motivo = window.prompt(`¿Por qué deshabilitas "${asset.nombre}"?\n(Escribe el motivo)`);
-                  if (motivo === null) return;
-                  if (!motivo.trim()) {
-                    alert("El motivo es obligatorio");
-                    return;
-                  }
-                  const { deleteAsset } = await import("../../api/client");
-                  await deleteAsset(asset.id, motivo);
-                  navigate(-1);
-                }}
-                style={{
-                  padding: "10px 22px",
-                  borderRadius: 8,
-                  border: "2px solid #f5c6c6",
-                  background: "#fff",
-                  color: "#c0392b",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  fontSize: 14,
-                }}
-              >
-                🗑️ Deshabilitar
-              </button>
-
               {asset.tipo === "MOVIL" && (
-  <button onClick={async () => {
-    const { descargarWordMovil } = await import("../../api/client");
-    await descargarWordMovil(asset.id);
-  }} style={{
-    padding: "10px 22px", borderRadius: 8, border: "none",
-    background: C.grad, color: "#fff", fontWeight: 700,
-    cursor: "pointer", fontSize: 14,
-  }}>
-    📄 Descargar Formato
-  </button>
-)}
+                <button
+                  onClick={async () => {
+                    const { descargarWordMovil } = await import(
+                      "../../api/client"
+                    );
+                    await descargarWordMovil(asset.id);
+                  }}
+                  style={{
+                    padding: "10px 22px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: C.grad,
+                    color: "#fff",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    fontSize: 14,
+                  }}
+                >
+                  📄 Descargar Formato
+                </button>
+              )}
 
-              <button
-                onClick={() => setEditing(true)}
-                style={{
-                  padding: "10px 22px",
-                  borderRadius: 8,
-                  border: "none",
-                  background: C.grad,
-                  color: "#fff",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  fontSize: 14,
-                  transition: "all .2s",
-                  boxShadow: "0 4px 12px rgba(183,49,44,.15)",
-                }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.transform = "translateY(-2px)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.transform = "translateY(0)")
-                }
-              >
-                ✏️ Editar
-              </button>
+              {rol === "ADMIN" && (
+                <>
+                  <button
+                    onClick={async () => {
+                      const motivo = window.prompt(
+                        `¿Por qué deshabilitas "${asset.nombre}"?\n(Escribe el motivo)`
+                      );
+                      if (motivo === null) return;
+                      if (!motivo.trim()) {
+                        alert("El motivo es obligatorio");
+                        return;
+                      }
+                      const { deleteAsset } = await import(
+                        "../../api/client"
+                      );
+                      await deleteAsset(asset.id, motivo);
+                      navigate(-1);
+                    }}
+                    style={{
+                      padding: "10px 22px",
+                      borderRadius: 8,
+                      border: "2px solid #f5c6c6",
+                      background: "#fff",
+                      color: "#c0392b",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      fontSize: 14,
+                    }}
+                  >
+                    🗑️ Deshabilitar
+                  </button>
+                  <button
+                    onClick={() => setEditing(true)}
+                    style={{
+                      padding: "10px 22px",
+                      borderRadius: 8,
+                      border: "none",
+                      background: C.grad,
+                      color: "#fff",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      fontSize: 14,
+                      transition: "all .2s",
+                      boxShadow: "0 4px 12px rgba(183,49,44,.15)",
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.transform = "translateY(-2px)")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.transform = "translateY(0)")
+                    }
+                  >
+                    ✏️ Editar
+                  </button>
+                </>
+              )}
             </>
           )}
         </div>

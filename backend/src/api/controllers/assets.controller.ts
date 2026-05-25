@@ -479,8 +479,80 @@ async firmarMovil(req: Request, res: Response) {
       });
     }
   }
- 
-  
+
+  // DEBUG: GET /assets/debug/vpn-test
+  async debugVpnTest(req: Request, res: Response) {
+    try {
+      const { AppDataSource } = await import("../../config/database");
+      const { Asset } = await import("../../entities/Asset");
+      const { Vpn } = await import("../../entities/Vpn");
+      const { VpnRule } = await import("../../entities/VpnRule");
+
+      const assetRepo = AppDataSource.getRepository(Asset);
+      const vpnRepo = AppDataSource.getRepository(Vpn);
+      const ruleRepo = AppDataSource.getRepository(VpnRule);
+
+      // Búsqueda del asset "test"
+      const testAsset = await assetRepo.findOne({
+        where: { nombre: "test", tipo: "VPN" } as any,
+      });
+
+      const totalVpns = await vpnRepo.count();
+      const totalRules = await ruleRepo.count();
+
+      if (!testAsset) {
+        return res.json({
+          success: true,
+          data: {
+            message: 'Asset "test" NO encontrado',
+            totalVpns,
+            totalRules,
+            testAssetFound: false,
+          },
+        });
+      }
+
+      const testVpn = await vpnRepo.findOne({
+        where: { asset: { id: testAsset.id } } as any,
+        relations: ["reglas"],
+      });
+
+      const reglasDirect = testVpn 
+        ? await ruleRepo.find({ where: { vpn: { id: testVpn.id } } })
+        : [];
+
+      return res.json({
+        success: true,
+        data: {
+          totalVpns,
+          totalRules,
+          testAssetFound: true,
+          testAsset: { id: testAsset.id, nombre: testAsset.nombre, tipo: testAsset.tipo },
+          testVpn: testVpn ? {
+            id: testVpn.id,
+            conexion: testVpn.conexion,
+            fases: testVpn.fases,
+            origen: testVpn.origen,
+            destino: testVpn.destino,
+            reglasCount: testVpn.reglas?.length ?? 0,
+          } : null,
+          reglasDirect: reglasDirect.map(r => ({
+            id: r.id,
+            vpnId: r.vpn?.id,
+            conexion: r.conexion,
+            fases: r.fases,
+            origen: r.origen,
+            destino: r.destino,
+          })),
+        },
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        error: error.message,
+      });
+    }
+  }
 }
 
 export const assetsController = new AssetsController();

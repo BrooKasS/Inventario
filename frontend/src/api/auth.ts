@@ -10,26 +10,29 @@ import api from "./client";
 
 const TOKEN_KEY  = "inventario_token";
 const USER_KEY   = "inventario_usuario";
-const NOMBRE_KEY = "inventario_nombre"; // ✅ NUEVO: Guardar nombre real
+const NOMBRE_KEY = "inventario_nombre";
+const ROL_KEY    = "inventario_rol"; // ← NUEVO
 
 /**
- * Login — llama al backend, guarda token, usuario y nombre real.
+ * Login — llama al backend, guarda token, usuario, nombre real y rol.
  */
 export async function loginUser(usuario: string, password: string): Promise<void> {
   const res = await api.post("/auth/login", { usuario, password });
-  const { token, usuario: user, nombre } = res.data;
+  const { token, usuario: user, nombre, rol } = res.data;
   sessionStorage.setItem(TOKEN_KEY, token);
   sessionStorage.setItem(USER_KEY, user);
-  sessionStorage.setItem(NOMBRE_KEY, nombre || user); // ✅ Guardar nombre real (o fallback al user)
+  sessionStorage.setItem(NOMBRE_KEY, nombre || user);
+  sessionStorage.setItem(ROL_KEY, rol ?? "AUDITOR"); // ← NUEVO
 }
 
 /**
- * Logout — borra token, usuario y nombre, luego redirige a login.
+ * Logout — borra token, usuario, nombre y rol, luego redirige a login.
  */
 export function logoutUser(): void {
   sessionStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem(USER_KEY);
-  sessionStorage.removeItem(NOMBRE_KEY); // ✅ Limpiar también el nombre
+  sessionStorage.removeItem(NOMBRE_KEY);
+  sessionStorage.removeItem(ROL_KEY); // ← NUEVO
   window.location.href = "/login";
 }
 
@@ -59,4 +62,11 @@ export function getNombreReal(): string | null {
  */
 export function isAuthenticated(): boolean {
   return !!getToken();
+}
+
+/**
+ * Obtiene el rol del usuario (ADMIN o AUDITOR)
+ */
+export function getRol(): "ADMIN" | "AUDITOR" {
+  return (sessionStorage.getItem(ROL_KEY) as "ADMIN" | "AUDITOR") ?? "AUDITOR";
 }

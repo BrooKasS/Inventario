@@ -23,12 +23,13 @@ class AuthController {
             });
         }
         try {
-            const { token, nombre } = await auth_service_1.authService.login(usuario, password);
+            const { token, nombre, rol } = await auth_service_1.authService.login(usuario, password);
             return res.json({
                 success: true,
                 token,
                 usuario,
-                nombre, // ✅ NUEVO: Devolver el nombre completo
+                nombre,
+                rol,
             });
         }
         catch (error) {

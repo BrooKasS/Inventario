@@ -51,6 +51,7 @@ export function useAssetDetail(): UseAssetDetailReturn {
   const [changes, setChanges] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
 
+
   /* ── nueva observación ── */
   const [showObs, setShowObs] = useState(false);
   const [obsTipo, setObsTipo] = useState<TipoEvento>("NOTA");

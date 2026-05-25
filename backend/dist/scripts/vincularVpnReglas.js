@@ -84,18 +84,11 @@ async function main() {
                 continue;
             }
             console.log(`  📌 IP ${ip}: PRINCIPAL = "${principal.asset?.nombre}"`);
-            // Asignar vpnPrincipalId a todas las reglas
-            for (const vpn of vpns) {
-                if (vpn.id === principal.id)
-                    continue; // Saltar la principal
-                if (vpn.vpnPrincipalId !== principal.id) {
-                    vpn.vpnPrincipalId = principal.id;
-                    await vpnRepository.save(vpn);
-                    actualizadas++;
-                    console.log(`     ✓ "${vpn.asset?.nombre}" → vinculada`);
-                }
-            }
-            console.log("");
+            // [DEPRECATED] La lógica anterior asignaba vpnPrincipalId (ya removido)
+            // Ahora, el nuevo modelo VpnRule maneja "reglas" como tabla separada
+            // Se puede extender esta función en el futuro si se necesita agregar
+            // registros automáticos a VPN_RULES basado en patrones de nombre
+            console.log(`     ℹ️  VpnRule es ahora una tabla separada - revisar si necesita lógica adicional\n`);
         }
         // 5. Resumen
         console.log("═".repeat(70));

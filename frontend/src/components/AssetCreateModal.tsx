@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createAsset } from "../api/client";
-import type { TipoActivo } from "../types";
+import type { TipoActivo, VpnRule } from "../types";
 /* ─── Design tokens — mismo sistema que el resto de la app ─── */
 const C = {
   grad:    "linear-gradient(135deg, #FA8200 0%, #861F41 35%, #B7312C 70%, #D86018 100%)",
@@ -226,14 +226,244 @@ function FormBaseDatos({ data, onChange }: { data: any; onChange: (f: string, v:
   );
 }
 
-function FormVpn({ data, onChange }: { data: any; onChange: (f: string, v: string) => void }) {
+function FormVpn({ 
+  data, 
+  onChange, 
+  vpnRules, 
+  currentRule, 
+  onAddRule, 
+  onRemoveRule, 
+  onRuleFieldChange 
+}: { 
+  data: any; 
+  onChange: (f: string, v: string) => void;
+  vpnRules: Partial<VpnRule>[];
+  currentRule: Partial<VpnRule>;
+  onAddRule: () => void;
+  onRemoveRule: (index: number) => void;
+  onRuleFieldChange: (field: keyof VpnRule, value: string) => void;
+}) {
   return (
-    <FormSection title="VPN S2S" icon="🔒">
-      <Field label="Conexión" field="conexion" value={data.conexion ?? ""} onChange={onChange} placeholder="Ej: 190.60.242.196" />
-      <Field label="Fases"    field="fases"    value={data.fases    ?? ""} onChange={onChange} placeholder="Ej: Phase 2" />
-      <Field label="Origen"   field="origen"   value={data.origen   ?? ""} onChange={onChange} placeholder="Ej: 172.16.0.50 255.255.255.255" />
-      <Field label="Destino"  field="destino"  value={data.destino  ?? ""} onChange={onChange} placeholder="Ej: 172.18.140.0 255.255.255.0" />
-    </FormSection>
+    <>
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {/* Sección: Datos Principales de VPN                            */}
+      {/* ══════════════════════════════════════════════════════════════ */}
+      <FormSection title="VPN S2S - Datos Principales" icon="🔒">
+        <Field label="Conexión" field="conexion" value={data.conexion ?? ""} onChange={onChange} placeholder="Ej: 190.60.242.196" required />
+        <Field label="Fases"    field="fases"    value={data.fases    ?? ""} onChange={onChange} placeholder="Ej: Phase 2" />
+        <Field label="Origen"   field="origen"   value={data.origen   ?? ""} onChange={onChange} placeholder="Ej: 172.16.0.50 255.255.255.255" />
+        <Field label="Destino"  field="destino"  value={data.destino  ?? ""} onChange={onChange} placeholder="Ej: 172.18.140.0 255.255.255.0" />
+      </FormSection>
+
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {/* Sección: Reglas VPN (NUEVO)                                  */}
+      {/* ══════════════════════════════════════════════════════════════ */}
+      <div style={{ marginBottom: 26 }}>
+        <div style={{
+          display: "flex", alignItems: "center", gap: 10,
+          marginBottom: 14, paddingBottom: 10,
+          borderBottom: `1px solid #f0e8e3`,
+        }}>
+          <span style={{ fontSize: 16 }}>📋</span>
+          <span style={{
+            fontSize: 11, fontWeight: 800, letterSpacing: "0.12em",
+            textTransform: "uppercase", color: "#5a4a45",
+            fontFamily: "Calibri, sans-serif",
+          }}>Reglas VPN</span>
+          {vpnRules.length > 0 && (
+            <span style={{
+              marginLeft: "auto",
+              fontSize: 10, fontWeight: 700, 
+              background: "#B7312C", color: "#fff",
+              padding: "3px 8px", borderRadius: 4,
+              fontFamily: "Calibri, sans-serif",
+            }}>
+              {vpnRules.length} regla{vpnRules.length !== 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
+
+        {/* ──────────────────────────────────────────────────────────────── */}
+        {/* Lista de Reglas Agregadas                                       */}
+        {/* ──────────────────────────────────────────────────────────────── */}
+        {vpnRules.length > 0 && (
+          <div style={{ marginBottom: 18 }}>
+            <div style={{
+              fontSize: 10, fontWeight: 700, color: "#5a4a45",
+              marginBottom: 8, textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              fontFamily: "Calibri, sans-serif",
+            }}>
+              Reglas Agregadas
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {vpnRules.map((rule, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    justifyContent: "space-between",
+                    background: "#fefcfa",
+                    padding: "14px 15px",
+                    borderRadius: 8,
+                    border: "1px solid #e5ddd8",
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  <div style={{ flex: 1, fontSize: 12, color: "#1A1A1A" }}>
+                    <div style={{ marginBottom: 6 }}>
+                      <span style={{ fontWeight: 700, color: "#5a4a45" }}>Conexión:</span>{" "}
+                      <span style={{ color: "#666" }}>{rule.conexion || "—"}</span>
+                    </div>
+                    <div style={{ marginBottom: 6 }}>
+                      <span style={{ fontWeight: 700, color: "#5a4a45" }}>Fases:</span>{" "}
+                      <span style={{ color: "#666" }}>{rule.fases || "—"}</span>
+                    </div>
+                    <div style={{ marginBottom: 6 }}>
+                      <span style={{ fontWeight: 700, color: "#5a4a45" }}>Origen:</span>{" "}
+                      <span style={{ color: "#666" }}>{rule.origen || "—"}</span>
+                    </div>
+                    <div>
+                      <span style={{ fontWeight: 700, color: "#5a4a45" }}>Destino:</span>{" "}
+                      <span style={{ color: "#666" }}>{rule.destino || "—"}</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => onRemoveRule(idx)}
+                    style={{
+                      marginLeft: 12,
+                      flexShrink: 0,
+                      padding: "8px 12px",
+                      background: "#ffebeb",
+                      border: "1px solid #f08080",
+                      color: "#c0392b",
+                      borderRadius: 6,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                      fontFamily: "Calibri, sans-serif",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.02em",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "#ff9999";
+                      e.currentTarget.style.color = "#fff";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "#ffebeb";
+                      e.currentTarget.style.color = "#c0392b";
+                    }}
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ──────────────────────────────────────────────────────────────── */}
+        {/* Formulario para Nueva Regla                                      */}
+        {/* ──────────────────────────────────────────────────────────────── */}
+        <div style={{
+          background: "#fefcfa",
+          border: "1px solid #e5ddd8",
+          borderRadius: 8,
+          padding: "16px 15px",
+          boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
+        }}>
+          <div style={{
+            fontSize: 10, fontWeight: 700, color: "#5a4a45",
+            marginBottom: 12, textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            fontFamily: "Calibri, sans-serif",
+          }}>
+            📝 Nueva Regla
+          </div>
+
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))",
+            gap: "12px 14px",
+            marginBottom: 12,
+          }}>
+            <div>
+              <label style={labelStyle}>Conexión</label>
+              <input
+                type="text"
+                placeholder="Ej: IPSec, BGP..."
+                value={currentRule.conexion ?? ""}
+                onChange={(e) => onRuleFieldChange("conexion", e.target.value)}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Fases</label>
+              <input
+                type="text"
+                placeholder="Ej: IKEv2 P1 y P2..."
+                value={currentRule.fases ?? ""}
+                onChange={(e) => onRuleFieldChange("fases", e.target.value)}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Origen</label>
+              <input
+                type="text"
+                placeholder="Ej: AS 65001..."
+                value={currentRule.origen ?? ""}
+                onChange={(e) => onRuleFieldChange("origen", e.target.value)}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Destino</label>
+              <input
+                type="text"
+                placeholder="Ej: AS 65002..."
+                value={currentRule.destino ?? ""}
+                onChange={(e) => onRuleFieldChange("destino", e.target.value)}
+                style={inputStyle}
+              />
+            </div>
+          </div>
+
+          <button
+            onClick={onAddRule}
+            style={{
+              width: "100%",
+              padding: "11px 15px",
+              background: C.grad,
+              border: "none",
+              color: "#fff",
+              borderRadius: 6,
+              fontSize: 12,
+              fontWeight: 800,
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+              letterSpacing: "0.02em",
+              textTransform: "uppercase",
+              boxShadow: "0 4px 12px rgba(183, 49, 44, 0.2)",
+              fontFamily: "Calibri, sans-serif",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.boxShadow = "0 6px 16px rgba(183, 49, 44, 0.3)";
+              e.currentTarget.style.transform = "translateY(-1px)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.boxShadow = "0 4px 12px rgba(183, 49, 44, 0.2)";
+              e.currentTarget.style.transform = "translateY(0)";
+            }}
+          >
+            + Agregar Regla
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -301,6 +531,17 @@ export default function AssetCreateModal({
   const [saving,  setSaving]  = useState(false);
   const [error,   setError]   = useState<string | null>(null);
 
+  // ══════════════════════════════════════════════════════════════
+  // NUEVO: Estado para Reglas VPN (SOLO se usa cuando tipo === "VPN")
+  // ══════════════════════════════════════════════════════════════
+  const [vpnRules, setVpnRules] = useState<Partial<VpnRule>[]>([]);
+  const [currentRule, setCurrentRule] = useState<Partial<VpnRule>>({
+    conexion: "",
+    fases: "",
+    origen: "",
+    destino: "",
+  });
+
   if (!open) return null;
 
   const handleGeneral = (field: string, val: string) => {
@@ -313,10 +554,49 @@ export default function AssetCreateModal({
     setError(null);
   };
 
+  // ══════════════════════════════════════════════════════════════
+  // NUEVO: Funciones para Reglas VPN
+  // ══════════════════════════════════════════════════════════════
+  const handleAddRule = () => {
+    // No agregar si todos los campos están vacíos
+    if (!currentRule.conexion && !currentRule.fases && 
+        !currentRule.origen && !currentRule.destino) {
+      return;
+    }
+    
+    // Agregar regla a la lista
+    setVpnRules([...vpnRules, { ...currentRule }]);
+    
+    // Limpiar formulario
+    setCurrentRule({
+      conexion: "",
+      fases: "",
+      origen: "",
+      destino: "",
+    });
+    
+    setError(null);
+  };
+
+  const handleRemoveRule = (index: number) => {
+    setVpnRules(vpnRules.filter((_, i) => i !== index));
+    setError(null);
+  };
+
+  const handleRuleFieldChange = (field: keyof VpnRule, value: string) => {
+    setCurrentRule({
+      ...currentRule,
+      [field]: value || null,
+    });
+    setError(null);
+  };
+
   /* ── Limpiar al cerrar ── */
   const handleClose = () => {
     setGeneral({ nombre: "", ubicacion: "", propietario: "", custodio: "", codigoServicio: "" });
     setDetalle({});
+    setVpnRules([]); // NUEVO: Limpiar reglas
+    setCurrentRule({ conexion: "", fases: "", origen: "", destino: "" }); // NUEVO: Limpiar formulario actual
     setError(null);
     onClose();
   };
@@ -327,6 +607,13 @@ export default function AssetCreateModal({
       setError("El nombre es obligatorio.");
       return;
     }
+
+    // ✅ Validación específica para VPN: Conexión es obligatoria
+    if (tipo === "VPN" && !detalle.conexion?.trim()) {
+      setError("Para VPN, la Conexión (IP) es obligatoria.");
+      return;
+    }
+
     setSaving(true);
     setError(null);
     try {
@@ -364,6 +651,17 @@ if (tipoKey && Object.keys(detalleConvertido).length > 0) {
   if (tipo === "MOVIL") {
     // El backend espera los campos móvil en el root, no en payload.movil
     Object.assign(payload, detalleConvertido);
+  } else if (tipo === "VPN") {
+    // NUEVO: Para VPN, agregar las reglas al payload
+    payload[tipoKey] = {
+      ...detalleConvertido,
+      reglas: vpnRules.map(rule => ({
+        conexion: rule.conexion ?? null,
+        fases: rule.fases ?? null,
+        origen: rule.origen ?? null,
+        destino: rule.destino ?? null,
+      }))
+    };
   } else {
     payload[tipoKey] = detalleConvertido;
   }
@@ -564,7 +862,7 @@ if (tipoKey && Object.keys(detalleConvertido).length > 0) {
           {tipo === "RED"        && <FormRed        data={detalle} onChange={handleDetalle} />}
           {tipo === "UPS"        && <FormUps        data={detalle} onChange={handleDetalle} />}
           {tipo === "BASE_DATOS" && <FormBaseDatos  data={detalle} onChange={handleDetalle} />}
-          {tipo === "VPN"        && <FormVpn        data={detalle} onChange={handleDetalle} />}
+          {tipo === "VPN"        && <FormVpn        data={detalle} onChange={handleDetalle} vpnRules={vpnRules} currentRule={currentRule} onAddRule={handleAddRule} onRemoveRule={handleRemoveRule} onRuleFieldChange={handleRuleFieldChange} />}
           {tipo === "MOVIL"      && <FormMovil      data={detalle} onChange={handleDetalle} />}
         </div>
 

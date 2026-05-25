@@ -1,4 +1,5 @@
 import "dotenv/config";
+console.log("[STARTUP] 🔍 .env loaded. ADMINS=", process.env.ADMINS, "| JWT_SECRET=", process.env.JWT_SECRET ? "✅" : "❌");
 import { app } from "./app";
 import { AppDataSource } from "./config/database";
 

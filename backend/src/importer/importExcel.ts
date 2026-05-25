@@ -479,40 +479,17 @@ async function importarBD(workbook: XLSX.WorkBook, autor: string, resumen: Resum
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Identifica si una VPN es REGLA de otra y la vincula automáticamente
+ * [DEPRECATED] Esta función fue reemplazada por el nuevo modelo VpnRule
  * 
- * LÓGICA:
- *   1. Si existen otras VPNs con la misma CONEXIÓN (IP)
- *   2. Busca la que NO tiene sufijos numéricos (principal)
- *   3. Asigna vpnPrincipalId a la actual si es regla
+ * NOTA: La arquitectura anterior vinculaba VPNs entre sí usando vpnPrincipalId.
+ * Ahora, VpnRule es una tabla separada con características específicas de cada VPN.
+ * Las "reglas" ya no son otras VPNs, sino registros en VPN_RULES.
+ * 
+ * Si se necesita vincular VPNs por IP en el futuro, crear lógica separada.
  */
-async function vincularVpnRegla(vpnId: string, conexion: string | null) {
-  if (!conexion) return; // Sin IP, no hay vinculación
-  
-  // Buscar todas las VPNs con la misma conexión
-  const vpnsConMismaConexion = await vpnRepo.find({
-    where: { conexion } as any,
-    relations: ["asset"],
-  });
-
-  if (vpnsConMismaConexion.length < 2) return; // Solo una VPN, es principal
-
-  // Encontrar la principal (sin sufijos numéricos)
-  const principal = vpnsConMismaConexion.find((v) => {
-    const nombre = v.asset?.nombre || "";
-    // Si NO termina con _N (donde N es número), es principal
-    return !/(_\d+$|_[a-zA-Z]+\d+$)/.test(nombre);
-  });
-
-  if (!principal) return; // No se encontró principal clara
-
-  // Actualizar la VPN actual si es diferente de la principal
-  const vpnActual = vpnsConMismaConexion.find((v) => v.id === vpnId);
-  if (vpnActual && vpnActual.id !== principal.id && vpnActual.vpnPrincipalId !== principal.id) {
-    vpnActual.vpnPrincipalId = principal.id;
-    await vpnRepo.save(vpnActual);
-  }
-}
+// async function vincularVpnRegla(vpnId: string, conexion: string | null) {
+//   // DEPRECATED - Ver comentario arriba
+// }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // VPN — llave: nombre (único en el Excel)
@@ -644,8 +621,8 @@ async function importarVPN(workbook: XLSX.WorkBook, autor: string, resumen: Resu
         });
         const savedVpn = await vpnRepo.save(vpn);
         
-        // ✅ NUEVO: Vincular automáticamente con VPN principal si es regla
-        await vincularVpnRegla(savedVpn.id, conexion);
+        // NOTA: Vinculación de VPN principal ahora se maneja vía VpnRule (tabla separada)
+        // La lógica anterior de vpnPrincipalId ha sido deprecada
         
         const bitacora = bitacoraRepo.create({
           asset:     { id: savedAsset.id } as any,
@@ -660,14 +637,12 @@ async function importarVPN(workbook: XLSX.WorkBook, autor: string, resumen: Resu
         if (vpn) {
           await vpnRepo.update({ asset: { id: existing.id } } as any, datosVpn);
           
-          // ✅ NUEVO: Re-vincular en caso de que haya cambio de IP
-          await vincularVpnRegla(vpn.id, conexion);
+          // NOTA: Vinculación de VPN principal ahora se maneja vía VpnRule
         } else {
           const newVpn = vpnRepo.create({ asset: { id: existing.id } as any, ...datosVpn });
           const savedVpn = await vpnRepo.save(newVpn);
           
-          // ✅ NUEVO: Vincular automáticamente
-          await vincularVpnRegla(savedVpn.id, conexion);
+          // NOTA: Vinculación de VPN principal ahora se maneja vía VpnRule
         }
         
         const bitacora = bitacoraRepo.create({

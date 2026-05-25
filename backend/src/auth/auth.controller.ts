@@ -26,13 +26,14 @@ export class AuthController {
     }
 
     try {
-      const { token, nombre } = await authService.login(usuario, password);
+      const { token, nombre, rol } = await authService.login(usuario, password);
 
       return res.json({
         success: true,
         token,
         usuario,
-        nombre, // ✅ NUEVO: Devolver el nombre completo
+        nombre,
+        rol,
       });
 
     } catch (error: any) {

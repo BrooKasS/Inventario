@@ -7,7 +7,11 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "ts-node-dev src/server.ts",
     "build": "tsc",
-    "start": "node dist/src/server.js"
+    "start": "node dist/src/server.js",
+    "migration:generate": "typeorm -d dist/data-source.js migration:generate",
+    "migration:run": "typeorm -d dist/data-source.js migration:run",
+    "migration:show": "typeorm -d dist/data-source.js migration:show",
+    "migration:revert": "typeorm -d dist/data-source.js migration:revert"
   },
   "keywords": [],
   "author": "",

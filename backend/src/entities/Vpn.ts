@@ -1,8 +1,9 @@
 import {
-  Entity, PrimaryColumn, Column, OneToOne, OneToMany, ManyToOne, JoinColumn, BeforeInsert,
+  Entity, PrimaryColumn, Column, OneToOne, OneToMany, JoinColumn, BeforeInsert,
 } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { Asset } from "./Asset";
+import { VpnRule } from "./VpnRule";
 
 @Entity("VPNS")
 export class Vpn {
@@ -31,16 +32,19 @@ export class Vpn {
   destino!: string | null;
 
   // ─────────────────────────────────────────────────────────────────────
-  // RELACIONES PARA REGLAS: VPN Principal + Reglas Asociadas
+  // CAMPO ORIGINAL: Diferencia VPNs principales de sus reglas
+  // ✅ name explícito para que TypeORM no genere "vpnPrincipalId" camelCase
+  //    y Oracle lo rechace con ORA-00904
   // ─────────────────────────────────────────────────────────────────────
-
   @Column({ name: "VPN_PRINCIPAL_ID", type: "varchar2", length: 36, nullable: true })
   vpnPrincipalId!: string | null;
 
-  @ManyToOne(() => Vpn, (v) => v.reglas, { onDelete: "SET NULL" })
-  @JoinColumn({ name: "VPN_PRINCIPAL_ID" })
-  vpnPrincipal!: Vpn | null;
-
-  @OneToMany(() => Vpn, (v) => v.vpnPrincipal, { cascade: true, eager: false })
-  reglas!: Vpn[];
+  // ─────────────────────────────────────────────────────────────────────
+  // RELACIÓN A VPN_RULES (Reglas Asociadas)
+  // ─────────────────────────────────────────────────────────────────────
+  @OneToMany(() => VpnRule, (rule) => rule.vpn, { 
+    cascade: true, 
+    eager: false,
+  })
+  reglas!: VpnRule[];
 }
