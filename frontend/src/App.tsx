@@ -6,6 +6,7 @@ import AssetDetail from "./pages/AssetDetail/index";
 import Papelera from "./pages/Papelera";
 import Login from "./pages/Login";
 import FirmaMovil from "./pages/FirmaMovil";
+import FirmaDevolucion from "./pages/FirmaDevolucion";
 import { isAuthenticated } from "./api/auth";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -13,7 +14,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />;
   }
   return <>{children}</>;
-  
 }
 
 export default function App() {
@@ -23,6 +23,7 @@ export default function App() {
         {/* Rutas públicas */}
         <Route path="/login" element={<Login />} />
         <Route path="/firmar/:assetId" element={<FirmaMovil />} />
+        <Route path="/firmar-devolucion/:assetId" element={<FirmaDevolucion />} />
 
         {/* Rutas protegidas */}
         <Route
@@ -31,7 +32,6 @@ export default function App() {
             <ProtectedRoute>
               <Layout />
             </ProtectedRoute>
-            
           }
         >
           <Route index element={<Navigate to="/dashboard" replace />} />

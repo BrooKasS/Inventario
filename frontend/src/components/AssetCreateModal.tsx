@@ -89,7 +89,7 @@ const labelStyle: React.CSSProperties = {
 
 /* ─── Componente Field ─── */
 function Field({
-  label, field, value, onChange, type = "text", placeholder, required,
+  label, field, value, onChange, type = "text", placeholder, required, readOnly
 }: {
   label: string;
   field: string;
@@ -98,6 +98,7 @@ function Field({
   type?: string;
   placeholder?: string;
   required?: boolean;
+  readOnly?:boolean;
 }) {
   const [focused, setFocused] = useState(false);
 
@@ -109,6 +110,7 @@ function Field({
       <input
         type={type}
         value={value}
+        readOnly={readOnly}
         onChange={e => onChange(field, e.target.value)}
         placeholder={placeholder ?? `Ej: ${label.toLowerCase()}...`}
         style={{
@@ -480,7 +482,7 @@ function FormMovil({ data, onChange }: { data: any; onChange: (f: string, v: str
         <Field label="Correo Responsable"   field="correoResponsable"  value={data.correoResponsable  ?? ""} onChange={onChange} placeholder="Ej: jperez@empresa.com" type="email" />
       </FormSection>
       <FormSection title="Datos del Equipo" icon="📱">
-        <Field label="UNI"            field="uni"         value={data.uni         ?? ""} onChange={onChange} placeholder="Ej: UNI-001" />
+        <Field label="UNI"            field="uni"         value={"1"} onChange={onChange} readOnly />
         <Field label="Marca"          field="marca"       value={data.marca       ?? ""} onChange={onChange} placeholder="Ej: Samsung" />
         <Field label="Modelo"         field="modelo"      value={data.modelo      ?? ""} onChange={onChange} placeholder="Ej: Galaxy A54" />
         <Field label="Serial"         field="serial"      value={data.serial      ?? ""} onChange={onChange} placeholder="Ej: R58N123ABC" />

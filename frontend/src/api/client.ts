@@ -1,5 +1,6 @@
 import axios from "axios";
 import { getToken, logoutUser } from "./auth";
+import publicApi from "./publicClient";
 
 const api = axios.create({
   baseURL: "http://localhost:3000/api",
@@ -37,7 +38,7 @@ export const getAssets = (params?: Record<string, any>) =>
   api.get("/assets", { params }).then(r => r.data.data);
 
 export const getAssetById = (id: string) =>
-  api.get(`/assets/${id}`).then(r => r.data.data);
+  api.get(`/assets/activo/${id}`).then(r => r.data.data);
 
 export const getStats = () =>
   api.get("/assets/stats").then(r => r.data.data);
@@ -89,21 +90,39 @@ export const getDeleted = () =>
 
 
 
-export const firmarMovil = (
+
+
+/* =========================
+   ✅ FUNCIONES PÚBLICAS
+   ========================= */
+
+/* Obtener asset para firma (sin login) */
+export const getAssetByIdPublic = (id: string) =>
+  publicApi.get(`/assets/public/${id}`).then(r => r.data.data);
+
+/* Firmar móvil (sin login) */
+export const firmarMovilPublic = (
   assetId: string,
   payload: {
     firmaBase64: string;
     observacionesEntrega?: string;
   }
-) => {
-  return axios.post(
-    `http://localhost:3000/api/assets/${assetId}/firmar`,
-    payload,
-    { headers: { "Content-Type": "application/json" } }
-  ).then(r => r.data);
-};
+) =>
+  publicApi.post(`/assets/${assetId}/firmar`, payload)
+    .then(r => r.data);
+
+  export const firmarDevolucionPublic = (
+    assetId: string,
+    payload: { firmaBase64: string }
+  ) =>
+    publicApi.post(`/assets/${assetId}/firmar-devolucion`, payload)
+      .then(r => r.data);
 
 
+export const cambiarEstadoMovil = (id: string) =>
+  api.post(`/assets/${id}/estado`).then(r => r.data.data);
+
+  
 
 
 

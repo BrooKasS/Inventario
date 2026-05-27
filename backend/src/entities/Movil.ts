@@ -7,6 +7,12 @@ import {
 } from "typeorm";
 import { Asset } from "./Asset";
 
+export type EstadoMovil =
+  | "ENTREGADO"
+  | "DEVOLUCION"
+  | "PENDIENTE"
+  | "DEVUELTO";
+
 @Entity("MOVILES")
 export class Movil {
 
@@ -80,4 +86,9 @@ export class Movil {
 
   @Column({ type: "timestamp", nullable: true })
   fechaFirma!: Date | null;
+
+
+  @Column({ type:"varchar2", length:50, nullable:true })
+  estados!: EstadoMovil | null;
+
 }

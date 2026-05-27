@@ -10,6 +10,8 @@ router.get("/", asyncHandler(assetsController.getAssets.bind(assetsController)))
 router.get("/debug/vpn-test", asyncHandler(assetsController.debugVpnTest.bind(assetsController)));
 router.get("/stats", asyncHandler(assetsController.getStats.bind(assetsController)));
 router.get("/deleted", asyncHandler(assetsController.getDeleted.bind(assetsController)));
+router.get("/public/:id", asyncHandler(assetsController.getAssetById.bind(assetsController)));
+router.get("/activo/:id", asyncHandler(assetsController.getAssetById.bind(assetsController)));
 router.get("/:id", asyncHandler(assetsController.getAssetById.bind(assetsController)));
 router.get("/:id/word", assetsController.generarWord.bind(assetsController));
 router.get("/:id/bitacora", asyncHandler(assetsController.getBitacora.bind(assetsController)));
@@ -18,8 +20,10 @@ router.get("/:id/bitacora", asyncHandler(assetsController.getBitacora.bind(asset
 router.post("/export-excel", assetsController.exportExcel.bind(assetsController));
 router.post("/export-observaciones", assetsController.exportObservaciones.bind(assetsController));
 
-// ── Firma — TODOS (es pública por diseño) ──────────────────────────
+// ── Firma y estado — TODOS (acciones del usuario final) ────────────
 router.post("/:id/firmar", asyncHandler(assetsController.firmarMovil.bind(assetsController)));
+router.post("/:id/firmar-devolucion", asyncHandler(assetsController.firmarDevolucion.bind(assetsController)));
+router.post("/:id/estado",requireAdmin, asyncHandler(assetsController.cambiarEstadoMovil.bind(assetsController)));
 
 // ── Escritura — SOLO ADMIN ──────────────────────────────────────────
 router.post("/", requireAdmin, asyncHandler(assetsController.createAsset.bind(assetsController)));
@@ -30,19 +34,3 @@ router.post("/:id/bitacora", requireAdmin, asyncHandler(assetsController.addBita
 router.post("/sync-excel", requireAdmin, asyncHandler(assetsController.syncExcel.bind(assetsController)));
 
 export default router;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -96,6 +96,7 @@ export interface Movil {
   observacionesEntrega: string | null;
   fechaDevolucion: string | null;
   observacionesDevolucion: string | null;
+  estados?: "ENTREGADO" | "DEVOLUCION" | "PENDIENTE" | "DEVUELTO" | null;
 }
 
 export interface BitacoraEntry {
