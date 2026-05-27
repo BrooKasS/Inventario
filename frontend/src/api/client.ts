@@ -122,7 +122,10 @@ export const firmarMovilPublic = (
 export const cambiarEstadoMovil = (id: string) =>
   api.post(`/assets/${id}/estado`).then(r => r.data.data);
 
-  
+
+export const generarSoftware = () =>
+  api.get("/assets/export/ocs").then(r => r.data);
+
 
 
 

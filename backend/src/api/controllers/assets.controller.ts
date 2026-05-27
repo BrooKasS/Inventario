@@ -8,7 +8,10 @@ import { sanitizePayloadForFlow } from "../utils/flowSanitizer";
 import { generarWordMovil } from "../utils/generarMovilDocx";
 import { generarExcelInventario } from "../utils/ExportInventario";
 import { generarExcelObservaciones } from "../utils/exportObservaciones";
-
+import { ocsService } from "../services/ocs.service";
+import { generarExcelOCS } from "../utils/exportOCSInventario";
+import { sendMovilEmail } from "../utils/sendMovilEmail";
+import { validateAssetData } from "../utils/validationRules";
 
 const r = Router();
 
@@ -73,14 +76,24 @@ export class AssetsController {
       });
     }
 
-    const autor = (req as any).usuario ?? "Sistema";
-    const asset = await assetsService.createAsset(data, autor);
+    try {
+      const autor = (req as any).usuario ?? "Sistema";
+      const asset = await assetsService.createAsset(data, autor);
 
-    res.status(201).json({
-      success: true,
-      data: asset,
-      message: "Activo creado correctamente",
-    });
+      res.status(201).json({
+        success: true,
+        data: asset,
+        message: "Activo creado correctamente",
+      });
+    } catch (error: any) {
+      if (error.message && error.message.includes("Validación fallida")) {
+        return res.status(400).json({
+          success: false,
+          error: error.message,
+        });
+      }
+      throw error;
+    }
   }
 
   // PATCH /assets/:id
@@ -407,6 +420,107 @@ async firmarMovil(req: Request, res: Response) {
   }
 }
 
+  // TEST: Enviar gmail sin que se cree un activo necesariamente
+  async testEmail(req: Request, res: Response) {
+    try {
+      const { correo, nombreActivo, linkFirma } = req.body;
+
+      if (!correo) {
+        return res.status(400).json({
+          success: false,
+          error: "Correo es requerido",
+        });
+      }
+
+      console.log("🧪 TEST EMAIL - Enviando a:", correo);
+      
+      await sendMovilEmail({
+        correo,
+        nombreActivo: nombreActivo || "TEST",
+        assetId: "test-" + Date.now(),
+        linkFirma: linkFirma || "http://localhost:5173/firmar/test",
+      });
+
+      return res.json({
+        success: true,
+        message: "Email de prueba enviado exitosamente",
+        data: {
+          correo,
+          nombreActivo: nombreActivo || "TEST",
+          linkFirma: linkFirma || "http://localhost:5173/firmar/test",
+        },
+      });
+    } catch (error: any) {
+      console.error("❌ Error en test email:", error);
+      return res.status(500).json({
+        success: false,
+        error: error.message || "Error enviando email de prueba",
+      });
+    }
+  }
+
+  async exportOCS(req: Request,res:Response){
+    
+    const data = await ocsService.getInventario();
+
+    const archivos = generarExcelOCS(data);
+
+    res.json({
+      success: true,
+      message: "Excels generados correctamente",
+      total: archivos.length,
+      archivos,
+    });
+  }
+
+  
+
+  // 🧪 TEST: Enviar email de FIRMA de prueba (segundo flujo)
+  async testFirmaEmail(req: Request, res: Response) {
+    try {
+      const { correo, nombreActivo } = req.body;
+
+      if (!correo) {
+        return res.status(400).json({
+          success: false,
+          error: "Correo es requerido",
+        });
+      }
+
+      console.log("🧪 TEST FIRMA EMAIL - Enviando a:", correo);
+
+      const { sendToFlowFirmada } = await import("../utils/flowRaw");
+
+      // Simular un archivo Word en Base64 (Word vacío mínimo)
+      const wordBase64 = "UEsDBBQABgAIAAAAIQDfpq61XgEAAHoFAAATAAAAd29yZC9kb2N1bWVudC54bWxMjMHqwjAUhV8l5N4m7dSKY";
+
+      await sendToFlowFirmada({
+        correo,
+        nombreActivo: nombreActivo || "TEST",
+        assetId: "test-firma-" + Date.now(),
+        nombreArchivo: "Acta_Entrega_TEST.docx",
+        archivoBase64: wordBase64,
+        observacionesEntrega: "Test de envío - No es un documento real",
+      });
+
+      return res.json({
+        success: true,
+        message: "Email de prueba FIRMA enviado exitosamente",
+        data: {
+          correo,
+          nombreActivo: nombreActivo || "TEST",
+          assetId: "test-firma-" + Date.now(),
+          flujo: "FLOW_URL_FIRMADA",
+        },
+      });
+    } catch (error: any) {
+      console.error("❌ Error en test firma email:", error);
+      return res.status(500).json({
+        success: false,
+        error: error.message || "Error enviando email de firma",
+      });
+    }
+  }
  
   
 }

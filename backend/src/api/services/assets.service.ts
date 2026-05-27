@@ -9,19 +9,22 @@ import { BaseDatos } from "../../entities/BaseDatos";
 import { Vpn } from "../../entities/Vpn";
 import { Movil } from "../../entities/Movil";
 import { EstadoMovil } from "../../entities/Movil";
-import { FindOptionsWhere, In, IsNull, Not } from "typeorm";
 import { generarWordEntrega, generarWordDevolucion } from "../utils/generarMovilDocx";
+import { Db, FindOptionsWhere, In, IsNull, Not } from "typeorm";
+import { v4 as uuidv4 } from "uuid";
 import { sendMovilEmail } from "../utils/sendMovilEmail";
 import fs from "fs";
 import { sendToFlowRaw } from "../utils/flowRaw";
 import path from "path";
 import { sendToFlowFirmada } from "../utils/flowRaw";
 import { sendToFlowDevolucion, sendToFlowFirmarDevolucion, sendToFlowArchivoDevolucion } from "../utils/flowRaw";
+import { validateAssetData, isCreatedToday } from "../utils/validationRules";
 
 export class AssetsService {
   async getAssets(filters: AssetFilters) {
     const { tipo, q, page = 1, limit = 50 } = filters;
     const skip = (page - 1) * limit;
+    
 
     const assetRepository = AppDataSource.getRepository(Asset);
 
@@ -33,7 +36,7 @@ export class AssetsService {
         .leftJoinAndSelect("asset.ups", "ups")
         .leftJoinAndSelect("asset.baseDatos", "baseDatos")
         .leftJoinAndSelect("asset.vpn", "vpn")
-        .leftJoinAndSelect("asset.movil", "movil")
+        .leftJoinAndSelect("asset.movil", "movil")  
         .where("asset.deletedAt IS NULL")
         .andWhere(
           "(LOWER(asset.nombre) LIKE LOWER(:q) OR LOWER(asset.codigoServicio) LIKE LOWER(:q))",
@@ -79,6 +82,7 @@ export class AssetsService {
   async getAssetById(id: string) {
     const assetRepository = AppDataSource.getRepository(Asset);
     const bitacoraRepository = AppDataSource.getRepository(Bitacora);
+    
 
     const asset = await assetRepository.findOne({
       where: { id },
@@ -106,7 +110,13 @@ export class AssetsService {
       sim, numeroLinea, fechaEntrega, observacionesEntrega,
     } = data;
 
-    const assetRepository    = AppDataSource.getRepository(Asset);
+    // ✅ VALIDACIÓN: nuevas entradas SIEMPRE se validan
+    const { valid, errors } = validateAssetData(tipo, data, true);
+    if (!valid) {
+      throw new Error(`Validación fallida: ${errors.join(", ")}`);
+    }
+
+    const assetRepository = AppDataSource.getRepository(Asset);
     const bitacoraRepository = AppDataSource.getRepository(Bitacora);
     const servidorRepository = AppDataSource.getRepository(Servidor);
     const redRepository      = AppDataSource.getRepository(Red);
@@ -127,12 +137,34 @@ export class AssetsService {
 
     const savedAsset = await assetRepository.save(asset);
 
-    // ── Relaciones ──
-    if (servidor)  await servidorRepository.save({ ...servidor,  asset: savedAsset });
-    if (red)       await redRepository.save({ ...red,            asset: savedAsset });
-    if (ups)       await upsRepository.save({ ...ups,            asset: savedAsset });
-    if (baseDatos) await baseDatosRepository.save({ ...baseDatos, asset: savedAsset });
-    if (vpn)       await vpnRepository.save({ ...vpn,            asset: savedAsset });
+    // ======================
+    // RELACIONES
+    // ======================
+    if (servidor) {
+      const servidorToSave = { ...servidor, asset: savedAsset };
+      if (!servidorToSave.id) servidorToSave.id = uuidv4();
+      await servidorRepository.save(servidorToSave);
+    }
+    if (red) {
+      const redToSave = { ...red, asset: savedAsset };
+      if (!redToSave.id) redToSave.id = uuidv4();
+      await redRepository.save(redToSave);
+    }
+    if (ups) {
+      const upsToSave = { ...ups, asset: savedAsset };
+      if (!upsToSave.id) upsToSave.id = uuidv4();
+      await upsRepository.save(upsToSave);
+    }
+    if (baseDatos) {
+      const baseDatosToSave = { ...baseDatos, asset: savedAsset };
+      if (!baseDatosToSave.id) baseDatosToSave.id = uuidv4();
+      await baseDatosRepository.save(baseDatosToSave);
+    }
+    if (vpn) {
+      const vpnToSave = { ...vpn, asset: savedAsset };
+      if (!vpnToSave.id) vpnToSave.id = uuidv4();
+      await vpnRepository.save(vpnToSave);
+    }
 
     // ── MOVIL: genera solo el acta de ENTREGA ──
     if (tipo === "MOVIL") {
@@ -204,6 +236,7 @@ export class AssetsService {
               descripcion: `Acta de entrega enviada a ${correoResponsable}`,
             })
           );
+          
         } catch (error) {
           console.error("⚠️ Error enviando acta MOVIL:", error);
         }
@@ -360,6 +393,7 @@ export class AssetsService {
       const nombreArchivo  = `Acta_Entrega_${asset.nombre?.replace(/\s+/g, "_")}.docx`;
       const archivoBase64  = bufferEntrega.toString("base64");
 
+
       await sendToFlowFirmada({
         correo:              m.correoResponsable,
         nombreActivo:        asset.nombre,
@@ -368,6 +402,7 @@ export class AssetsService {
         observacionesEntrega,
         archivoBase64,
       });
+      
 
       await bitacoraRepo.save(
         bitacoraRepo.create({
@@ -494,6 +529,15 @@ export class AssetsService {
 
     if (!data || typeof data !== "object") throw new Error("Body inválido");
     if (!asset) throw new Error("Asset no encontrado");
+
+    // ✅ VALIDACIÓN: solo validar si es registro NUEVO (creado hoy)
+    const isNewRecord = isCreatedToday(asset.creadoEn);
+    if (isNewRecord) {
+      const { valid, errors } = validateAssetData(asset.tipo, data, false);
+      if (!valid) {
+        throw new Error(`Validación fallida: ${errors.join(", ")}`);
+      }
+    }
 
     const updates: Partial<Asset> = {};
     const bitacoraEntries: any[]  = [];
@@ -714,17 +758,16 @@ export class AssetsService {
 
     const asset = await assetRepository.findOne({ where: { id } });
     if (!asset) throw new Error("Asset no encontrado");
-
+    
     await assetRepository.update(id, { deletedAt: null });
-
-    await bitacoraRepository.save(
-      bitacoraRepository.create({
-        asset: { id },
-        autor,
-        tipoEvento:  "NOTA",
-        descripcion: "Activo restaurado desde papelera.",
-      })
-    );
+     
+    const bitacoraEntry = bitacoraRepository.create({
+      asset: { id },
+      autor,
+      tipoEvento: "NOTA",
+      descripcion: "Activo restaurado desde papelera.",
+    });
+    await bitacoraRepository.save(bitacoraEntry);
 
     return assetRepository.findOne({ where: { id } });
   }

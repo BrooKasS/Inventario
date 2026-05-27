@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { assetsController } from "../controllers/assets.controller";
+import { AssetsController, assetsController } from "../controllers/assets.controller";
 import { asyncHandler } from "../../middlewares/errorHandler";
 
 const router = Router();
@@ -39,8 +39,8 @@ router.post(
 
 router.get("/:id/word", assetsController.generarWord);
 
-
-
+//generacion de excel
+router.get("/export/ocs",asyncHandler(assetsController.exportOCS.bind(assetsController)))
 
 // PATCH /assets/:id - Actualizar asset
 router.patch("/:id", asyncHandler(assetsController.updateAsset.bind(assetsController)));
