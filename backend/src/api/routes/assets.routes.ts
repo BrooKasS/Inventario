@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { assetsController } from "../controllers/assets.controller";
+import { AssetsController, assetsController } from "../controllers/assets.controller";
 import { asyncHandler } from "../../middlewares/errorHandler";
 import { requireAdmin } from "../../middlewares/requireAdmin";
 
@@ -19,11 +19,12 @@ router.get("/:id/bitacora", asyncHandler(assetsController.getBitacora.bind(asset
 // ── Exportación — TODOS ─────────────────────────────────────────────
 router.post("/export-excel", assetsController.exportExcel.bind(assetsController));
 router.post("/export-observaciones", assetsController.exportObservaciones.bind(assetsController));
+router.get("/export/ocs", asyncHandler(assetsController.exportOCS.bind(assetsController)));
 
 // ── Firma y estado — TODOS (acciones del usuario final) ────────────
 router.post("/:id/firmar", asyncHandler(assetsController.firmarMovil.bind(assetsController)));
 router.post("/:id/firmar-devolucion", asyncHandler(assetsController.firmarDevolucion.bind(assetsController)));
-router.post("/:id/estado",requireAdmin, asyncHandler(assetsController.cambiarEstadoMovil.bind(assetsController)));
+router.post("/:id/estado", requireAdmin, asyncHandler(assetsController.cambiarEstadoMovil.bind(assetsController)));
 
 // ── Escritura — SOLO ADMIN ──────────────────────────────────────────
 router.post("/", requireAdmin, asyncHandler(assetsController.createAsset.bind(assetsController)));

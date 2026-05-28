@@ -9,6 +9,9 @@ import { generarWordMovil } from "../utils/generarMovilDocx";
 import { generarExcelInventario } from "../utils/ExportInventario";
 import { generarExcelObservaciones } from "../utils/exportObservaciones";
 import { sendMovilEmail } from "../utils/sendMovilEmail";
+import { ocsService } from "../services/ocs.service";
+import { generarExcelOCS } from "../utils/exportOCSInventario";
+import { validateAssetData } from "../utils/validationRules";
 
 const r = Router();
 
@@ -454,6 +457,17 @@ async firmarMovil(req: Request, res: Response) {
         error: error.message || "Error enviando email de prueba",
       });
     }
+  }
+
+  async exportOCS(req: Request, res: Response) {
+    const data = await ocsService.getInventario();
+    const archivos = generarExcelOCS(data);
+    res.json({
+      success: true,
+      message: "Excels generados correctamente",
+      total: archivos.length,
+      archivos,
+    });
   }
 
   // 🧪 TEST: Enviar email de FIRMA de prueba (segundo flujo)

@@ -11,7 +11,7 @@ import api from "./client";
 const TOKEN_KEY  = "inventario_token";
 const USER_KEY   = "inventario_usuario";
 const NOMBRE_KEY = "inventario_nombre";
-const ROL_KEY    = "inventario_rol"; // ← NUEVO
+const ROL_KEY    = "inventario_rol";
 
 /**
  * Login — llama al backend, guarda token, usuario, nombre real y rol.
@@ -22,7 +22,7 @@ export async function loginUser(usuario: string, password: string): Promise<void
   sessionStorage.setItem(TOKEN_KEY, token);
   sessionStorage.setItem(USER_KEY, user);
   sessionStorage.setItem(NOMBRE_KEY, nombre || user);
-  sessionStorage.setItem(ROL_KEY, rol ?? "AUDITOR"); // ← NUEVO
+  sessionStorage.setItem(ROL_KEY, rol ?? "AUDITOR");
 }
 
 /**
@@ -32,7 +32,7 @@ export function logoutUser(): void {
   sessionStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem(USER_KEY);
   sessionStorage.removeItem(NOMBRE_KEY);
-  sessionStorage.removeItem(ROL_KEY); // ← NUEVO
+  sessionStorage.removeItem(ROL_KEY);
   window.location.href = "/login";
 }
 

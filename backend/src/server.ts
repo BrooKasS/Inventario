@@ -2,6 +2,7 @@ import "dotenv/config";
 console.log("[STARTUP] 🔍 .env loaded. ADMINS=", process.env.ADMINS, "| JWT_SECRET=", process.env.JWT_SECRET ? "✅" : "❌");
 import { app } from "./app";
 import { AppDataSource } from "./config/database";
+import { OcsDataSource } from "./config/ocs.database";
 
 const PORT = process.env.PORT || 3000;
 
@@ -10,6 +11,9 @@ async function start() {
     // Inicializar conexión TypeORM (Oracle)
     await AppDataSource.initialize();
     console.log("✅ Conectado a Oracle");
+
+    await OcsDataSource.initialize();
+    console.log("✅ OCS DB conectada");
 
     app.listen(PORT, () => {
       console.log(`🚀 API corriendo en http://localhost:${PORT}`);

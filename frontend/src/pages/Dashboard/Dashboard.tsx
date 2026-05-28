@@ -12,6 +12,7 @@ import { getNombreReal, getUsuario } from "../../api/auth";
 import { useDashboardData } from "./hooks/useDashboardData";
 import { useDashboardFilters } from "./hooks/useDashboardFilters";
 import { useDashboardExport } from "./hooks/useDashboardExport";
+import { generarSoftware } from "../../api/client";
 
 import { buildObservationsChartData, filterAssets, getObservacionesPorTipoEvento } from "./utils/dashboardHelpers";
 import {
@@ -227,24 +228,60 @@ export default function Dashboard() {
           <p style={{ fontSize: 20, color: "rgb(255, 255, 255)", margin: "6px 0 12px" }}>
             Revisa y haz trazabilidad de los activos de infraestructura
           </p>
+          
+          <div style={{ display: "flex", gap: 10 }}>
+                    
+            {/* Botón Exportar */}
+            <button
+              onClick={() => setModalOpen(true)}
+              style={{
+                padding: "10px 20px",
+                borderRadius: 8,
+                border: "none",
+                background: MAIN_GRADIENT,
+                color: "#fff",
+                fontWeight: 700,
+                cursor: "pointer",
+                fontSize: 14,
+                boxShadow: "0 4px 12px rgba(0,0,0,.25)",
+              }}
+            >
+              📤 Exportar
+            </button>
+            
+            {/* Botón Generar Excel OCS */}
+            <button
+              onClick={async () => {
+                try {
+                  const res = await generarSoftware();
+                  alert(`✅ ${res.total} archivos generados`);
+                  console.log(res.archivos);
+                } catch (error) {
+                  alert("❌ Error al generar Excel de OCS");
+                }
+              }}
+              style={{
+                padding: "10px 20px",
+                borderRadius: 8,
+                border: "none",
+                background: MAIN_GRADIENT,
+                color: "#fff",
+                fontWeight: 700,
+                cursor: "pointer",
+                fontSize: 14,
+                boxShadow: "0 4px 12px rgba(0,0,0,.25)",
+              }}
+            >
+              📊 Generar Excel OCS
+            </button>
+            
+          </div>
 
-          <button
-            onClick={() => setModalOpen(true)}
-            style={{
-              padding: "10px 20px",
-              borderRadius: 8,
-              border: "none",
-              background: MAIN_GRADIENT,
-              color: "#fff",
-              fontWeight: 700,
-              cursor: "pointer",
-              fontSize: 14,
-              boxShadow: "0 4px 12px rgba(0,0,0,.25)",
-            }}
-          >
-            📤 Exportar
-          </button>
+  
         </div>
+        
+ 
+
 
         {/* ────── LOADING STATE ────── */}
         {loading ? (

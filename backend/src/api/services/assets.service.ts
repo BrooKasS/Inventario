@@ -25,6 +25,7 @@ export class AssetsService {
   async getAssets(filters: AssetFilters) {
     const { tipo, q, page = 1, limit = 50 } = filters;
     const skip = (page - 1) * limit;
+    
 
     const assetRepository = AppDataSource.getRepository(Asset);
     const vpnRepository = AppDataSource.getRepository(Vpn);
@@ -60,9 +61,18 @@ export class AssetsService {
         .leftJoinAndSelect("asset.ups", "ups")
         .leftJoinAndSelect("asset.baseDatos", "baseDatos")
         .leftJoinAndSelect("asset.vpn", "vpn")
+<<<<<<< HEAD
         .leftJoinAndSelect("vpn.reglas", "vpnRules")
         .leftJoinAndSelect("asset.movil", "movil")
         .where("asset.deletedAt IS NULL");
+=======
+        .leftJoinAndSelect("asset.movil", "movil")  
+        .where("asset.deletedAt IS NULL")
+        .andWhere(
+          "(LOWER(asset.nombre) LIKE LOWER(:q) OR LOWER(asset.codigoServicio) LIKE LOWER(:q))",
+          { q: `%${q}%` }
+        );
+>>>>>>> d25d44e15ff308652b3840ebbb904ae5ff746568
 
       if (tipo) {
         qb.andWhere("asset.tipo = :tipo", { tipo });
@@ -134,7 +144,11 @@ export class AssetsService {
   async getAssetById(id: string) {
     const assetRepository = AppDataSource.getRepository(Asset);
     const bitacoraRepository = AppDataSource.getRepository(Bitacora);
+<<<<<<< HEAD
     const vpnRepository = AppDataSource.getRepository(Vpn);
+=======
+    
+>>>>>>> d25d44e15ff308652b3840ebbb904ae5ff746568
 
     // Usar QueryBuilder para cargar todas las relaciones correctamente
     const asset = await assetRepository
@@ -187,6 +201,7 @@ export class AssetsService {
       sim, numeroLinea, fechaEntrega, observacionesEntrega,
     } = data;
 
+<<<<<<< HEAD
     const assetRepository     = AppDataSource.getRepository(Asset);
     const bitacoraRepository  = AppDataSource.getRepository(Bitacora);
     const servidorRepository  = AppDataSource.getRepository(Servidor);
@@ -196,6 +211,22 @@ export class AssetsService {
     const vpnRepository       = AppDataSource.getRepository(Vpn);
     const vpnRuleRepository   = AppDataSource.getRepository(VpnRule);
     const movilRepository     = AppDataSource.getRepository(Movil);
+=======
+    // ✅ VALIDACIÓN: nuevas entradas SIEMPRE se validan
+    const { valid, errors } = validateAssetData(tipo, data, true);
+    if (!valid) {
+      throw new Error(`Validación fallida: ${errors.join(", ")}`);
+    }
+
+    const assetRepository = AppDataSource.getRepository(Asset);
+    const bitacoraRepository = AppDataSource.getRepository(Bitacora);
+    const servidorRepository = AppDataSource.getRepository(Servidor);
+    const redRepository      = AppDataSource.getRepository(Red);
+    const upsRepository      = AppDataSource.getRepository(Ups);
+    const baseDatosRepository= AppDataSource.getRepository(BaseDatos);
+    const vpnRepository      = AppDataSource.getRepository(Vpn);
+    const movilRepository    = AppDataSource.getRepository(Movil);
+>>>>>>> d25d44e15ff308652b3840ebbb904ae5ff746568
 
     // ── Crear Asset base ──
     const asset = assetRepository.create({
@@ -235,6 +266,7 @@ export class AssetsService {
     if (vpn) {
       const vpnToSave = { ...vpn, asset: savedAsset };
       if (!vpnToSave.id) vpnToSave.id = uuidv4();
+<<<<<<< HEAD
       
       // Separar reglas del objeto VPN
       const reglas = vpnToSave.reglas || [];
@@ -259,6 +291,9 @@ export class AssetsService {
         
         await vpnRuleRepository.save(vpnRulesToSave);
       }
+=======
+      await vpnRepository.save(vpnToSave);
+>>>>>>> d25d44e15ff308652b3840ebbb904ae5ff746568
     }
 
     // ── MOVIL: genera solo el acta de ENTREGA ──
@@ -634,7 +669,11 @@ export class AssetsService {
     if (!data || typeof data !== "object") throw new Error("Body inválido");
     if (!asset) throw new Error("Asset no encontrado");
 
+<<<<<<< HEAD
     //  Valida si el registro es nuevo , si es nuevo, agarra las funciones de validación
+=======
+    // ✅ VALIDACIÓN: solo validar si es registro NUEVO (creado hoy)
+>>>>>>> d25d44e15ff308652b3840ebbb904ae5ff746568
     const isNewRecord = isCreatedToday(asset.creadoEn);
     if (isNewRecord) {
       const { valid, errors } = validateAssetData(asset.tipo, data, false);
@@ -910,15 +949,14 @@ export class AssetsService {
     if (!asset) throw new Error("Asset no encontrado");
     
     await assetRepository.update(id, { deletedAt: null });
-
-    await bitacoraRepository.save(
-      bitacoraRepository.create({
-        asset: { id },
-        autor,
-        tipoEvento:  "NOTA",
-        descripcion: "Activo restaurado desde papelera.",
-      })
-    );
+     
+    const bitacoraEntry = bitacoraRepository.create({
+      asset: { id },
+      autor,
+      tipoEvento: "NOTA",
+      descripcion: "Activo restaurado desde papelera.",
+    });
+    await bitacoraRepository.save(bitacoraEntry);
 
     return assetRepository.findOne({ where: { id } });
   }
