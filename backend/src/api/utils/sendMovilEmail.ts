@@ -1,5 +1,5 @@
 import axios from "axios";
-
+import https from "https";
 
 export interface SendMovilEmailParams {
   correo: string;
@@ -25,6 +25,7 @@ export async function sendMovilEmail(params: SendMovilEmailParams) {
   await axios.post(process.env.FLOW_URL2, params, {
     headers: { "Content-Type": "application/json" },
     timeout: 20000,
+    httpsAgent: new https.Agent({ rejectUnauthorized: false }),
   });
 }
 ``

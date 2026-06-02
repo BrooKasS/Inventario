@@ -7,12 +7,11 @@ import Papelera from "./pages/Papelera";
 import Login from "./pages/Login";
 import FirmaMovil from "./pages/FirmaMovil";
 import FirmaDevolucion from "./pages/FirmaDevolucion";
+import SoftwareInventario from "./pages/SoftwareInventario";
 import { isAuthenticated } from "./api/auth";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  if (!isAuthenticated()) {
-    return <Navigate to="/login" replace />;
-  }
+  if (!isAuthenticated()) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
@@ -20,12 +19,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Rutas públicas */}
         <Route path="/login" element={<Login />} />
         <Route path="/firmar/:assetId" element={<FirmaMovil />} />
         <Route path="/firmar-devolucion/:assetId" element={<FirmaDevolucion />} />
-
-        {/* Rutas protegidas */}
         <Route
           path="/"
           element={
@@ -35,13 +31,12 @@ export default function App() {
           }
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard"        element={<Dashboard />} />
-          <Route path="inventario/:tipo" element={<AssetList />} />
-          <Route path="activo/:id"       element={<AssetDetail />} />
-          <Route path="/papelera"        element={<Papelera />} />
+          <Route path="dashboard"              element={<Dashboard />} />
+          <Route path="inventario/:tipo"       element={<AssetList />} />
+          <Route path="activo/:id"             element={<AssetDetail />} />
+          <Route path="/papelera"              element={<Papelera />} />
+          <Route path="/inventario/software"   element={<SoftwareInventario />} /> {/* ← NUEVO */}
         </Route>
-
-        {/* Cualquier ruta desconocida */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>

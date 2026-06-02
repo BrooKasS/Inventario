@@ -79,17 +79,21 @@ export const importExcel = (file: File) => {
   }).then(r => r.data);
 };
 
-export const deleteAsset = (id: string, motivo: string = "Sin motivo") =>
-  api.delete(`/assets/${id}`, { data: { motivo } }).then(r => r.data);
 
-export const restoreAsset = (id: string, autor: string = "Sistema") =>
-  api.post(`/assets/${id}/restore`, { autor }).then(r => r.data);
+export const deleteAsset = (id: string, motivo: string = "Sin motivo") =>
+  api.delete(`/assets/${id}`, { data: { motivo } }).then((r) => r.data);
+
+export const hardDeleteAsset = (id: string) =>
+  api.delete(`/assets/${id}/hard`).then((r) => r.data);
+
+export const hardDeleteAllAssets = () =>
+  api.delete("/assets/hard-all").then((r) => r.data);
+
+export const restoreAsset = (id: string) =>
+  api.post(`/assets/${id}/restore`).then((r) => r.data);
 
 export const getDeleted = () =>
-  api.get("/assets/deleted").then(r => r.data.data);
-
-
-
+  api.get("/assets/deleted").then((r) => r.data.data);
 
 
 /* =========================
@@ -126,7 +130,20 @@ export const cambiarEstadoMovil = (id: string) =>
 export const generarSoftware = () =>
   api.get("/assets/export/ocs").then(r => r.data);
 
+export const getOcsSoftware = (assetId: string) =>
+  api.get(`/ocs/software/${assetId}`).then(r => r.data);
+
+export const getOcsStatus = () =>
+  api.get("/ocs/status").then(r => r.data);
+export const getOcsUnmatched = () =>
+  api.get("/ocs/unmatched").then(r => r.data.data);
+
+export const getAllSoftware = (params?: { q?: string; publisher?: string; servidor?: string }) =>
+  api.get("/ocs/software/all", { params }).then(r => r.data.data);
+
+
 
 
 
 export default api;
+

@@ -512,151 +512,154 @@ export function MovilSection({
 
   if (!m) return null;
 
-  const tieneEntrega = !!m.fechaEntrega;
+  const estado = m.estados;
+  const procesoCerrado = estado === "DEVUELTO";
+  const actaEntregaFirmada = !!m.firmaPath;
+  const puedeEditarCorreo = editing && !procesoCerrado;
+  const puedeEditarActaEntrega = editing && !procesoCerrado && !actaEntregaFirmada;
+  const puedeEditarDevolucion =
+    editing && !procesoCerrado && (estado === "DEVOLUCION" || estado === "PENDIENTE_DEVOLUCION");
 
   return (
     <>
-      {/* ── Datos del usuario ── */}
-      <Section title="Datos del Usuario" icon="👤">
+      <Section title="Datos del Usuario" icon="Usuario">
         <Field
           label="# Caso"
           value={m.numeroCaso}
-          editing={editing}
+          editing={puedeEditarActaEntrega}
           field="numeroCaso"
           onChange={(f, v) => handleChange("movil", f, v)}
         />
         <Field
-          label="Región/Departamento"
+          label="Region/Departamento"
           value={m.region}
-          editing={editing}
+          editing={puedeEditarActaEntrega}
           field="region"
           onChange={(f, v) => handleChange("movil", f, v)}
         />
         <Field
-          label="Dependencia/Área"
+          label="Dependencia/Area"
           value={m.dependencia}
-          editing={editing}
+          editing={puedeEditarActaEntrega}
           field="dependencia"
           onChange={(f, v) => handleChange("movil", f, v)}
         />
         <Field
           label="Sede"
           value={m.sede}
-          editing={editing}
+          editing={puedeEditarActaEntrega}
           field="sede"
           onChange={(f, v) => handleChange("movil", f, v)}
         />
         <Field
           label="C.C."
           value={m.cedula}
-          editing={editing}
+          editing={puedeEditarActaEntrega}
           field="cedula"
           onChange={(f, v) => handleChange("movil", f, v)}
         />
         <Field
           label="Usuario de Red"
           value={m.usuarioRed}
-          editing={editing}
+          editing={puedeEditarActaEntrega}
           field="usuarioRed"
           onChange={(f, v) => handleChange("movil", f, v)}
         />
         <Field
           label="Correo Responsable"
           value={m.correoResponsable}
-          editing={editing}
+          editing={puedeEditarCorreo}
           field="correoResponsable"
           onChange={(f, v) => handleChange("movil", f, v)}
         />
       </Section>
 
-      {/* ── Datos del equipo entregado ── */}
-      <Section title="Datos del Equipo Entregado" icon="📱">
+      <Section title="Datos del Equipo Entregado" icon="Movil">
         <Field
           label="UNI"
           value={m.uni}
-          editing={editing}
+          editing={puedeEditarActaEntrega}
           field="uni"
           onChange={(f, v) => handleChange("movil", f, v)}
         />
         <Field
           label="Marca"
           value={m.marca}
-          editing={editing}
+          editing={puedeEditarActaEntrega}
           field="marca"
           onChange={(f, v) => handleChange("movil", f, v)}
         />
         <Field
           label="Modelo"
           value={m.modelo}
-          editing={editing}
+          editing={puedeEditarActaEntrega}
           field="modelo"
           onChange={(f, v) => handleChange("movil", f, v)}
         />
         <Field
           label="Serial"
           value={m.serial}
-          editing={editing}
+          editing={puedeEditarActaEntrega}
           field="serial"
           onChange={(f, v) => handleChange("movil", f, v)}
         />
         <Field
           label="IMEI 1"
           value={m.imei1}
-          editing={editing}
+          editing={puedeEditarActaEntrega}
           field="imei1"
           onChange={(f, v) => handleChange("movil", f, v)}
         />
         <Field
           label="IMEI 2"
           value={m.imei2}
-          editing={editing}
+          editing={puedeEditarActaEntrega}
           field="imei2"
           onChange={(f, v) => handleChange("movil", f, v)}
         />
         <Field
           label="SIM"
           value={m.sim}
-          editing={editing}
+          editing={puedeEditarActaEntrega}
           field="sim"
           onChange={(f, v) => handleChange("movil", f, v)}
         />
         <Field
-          label="Número de Línea"
+          label="Numero de Linea"
           value={m.numeroLinea}
-          editing={editing}
+          editing={puedeEditarActaEntrega}
           field="numeroLinea"
           onChange={(f, v) => handleChange("movil", f, v)}
         />
         <Field
           label="Fecha de Entrega"
           value={m.fechaEntrega}
-          editing={editing}
+          editing={puedeEditarActaEntrega}
           field="fechaEntrega"
           onChange={(f, v) => handleChange("movil", f, v)}
         />
         <Field
           label="Observaciones Entrega"
           value={m.observacionesEntrega}
-          editing={editing}
+          editing={puedeEditarActaEntrega}
           field="observacionesEntrega"
           onChange={(f, v) => handleChange("movil", f, v)}
         />
       </Section>
 
-      {/* ── Devolución — solo si ya fue entregado o se está editando ── */}
-      {(tieneEntrega || editing) && (
-        <Section title="Datos de Devolución" icon="↩️">
+      {(estado === "DEVOLUCION" || estado === "PENDIENTE_DEVOLUCION" || estado === "DEVUELTO" || editing) && (
+        <Section title="Datos de Devolucion" icon="Devolucion">
           <Field
-            label="Fecha de Devolución"
+            label="Fecha de Devolucion"
             value={m.fechaDevolucion}
-            editing={editing}
+            editing={false}
             field="fechaDevolucion"
             onChange={(f, v) => handleChange("movil", f, v)}
           />
           <Field
-            label="Observaciones Devolución"
+            label="Observaciones Devolucion"
             value={m.observacionesDevolucion}
-            editing={editing}
+            editing={puedeEditarDevolucion}
             field="observacionesDevolucion"
             onChange={(f, v) => handleChange("movil", f, v)}
           />

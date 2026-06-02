@@ -24,16 +24,18 @@ export default function FirmaMovil() {
   useEffect(() => {
     if (!assetId) return;
 
-    const loadAsset = async () => {
-      try {
-        const data = await getAssetByIdPublic(assetId);
-        setAsset(data);
-      } catch {
-        setMensaje("❌ No se pudo cargar la información del activo");
-      } finally {
-        setLoading(false);
-      }
-    };
+   const loadAsset = async () => {
+  try {
+    const data = await getAssetByIdPublic(assetId);
+    console.log("DATA RECIBIDA:", data); // ← AGREGAR
+    setAsset(data);
+  } catch (err) {
+    console.error("ERROR CARGANDO:", err); // ← AGREGAR
+    setMensaje("❌ No se pudo cargar la información del activo");
+  } finally {
+    setLoading(false);
+  }
+};
 
     loadAsset();
   }, [assetId]);
@@ -80,6 +82,7 @@ export default function FirmaMovil() {
       alert("Debe firmar dibujando o subiendo una imagen");
       return;
     }
+    
 
     try {
       setEnviando(true);
@@ -95,10 +98,12 @@ export default function FirmaMovil() {
         error?.response?.data?.error ??
           "❌ Error registrando la firma"
       );
+      
     } finally {
       setEnviando(false);
     }
   };
+  
 
   /* ────────────── estados ────────────── */
   if (loading) {

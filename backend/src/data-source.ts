@@ -11,6 +11,8 @@ import { Vpn } from "./entities/Vpn";
 import { VpnRule } from "./entities/VpnRule";
 import { Movil } from "./entities/Movil";
 import { Bitacora } from "./entities/Bitacora";
+import { OcsServerMapping } from "./entities/OcsServerMapping";
+import { SoftwareInstalado } from "./entities/SoftwareInstalado";
 
 export const AppDataSource = new DataSource({
   type: "oracle",
@@ -20,7 +22,7 @@ export const AppDataSource = new DataSource({
   username: process.env.DB_USER!,
   password: process.env.DB_PASSWORD!,
 
-  synchronize: process.env.NODE_ENV !== "production",  // true en desarrollo, false en producción
+  synchronize: process.env.NODE_ENV !== "production",
   logging: false,
 
   entities: [
@@ -33,6 +35,8 @@ export const AppDataSource = new DataSource({
     VpnRule,
     Movil,
     Bitacora,
+    OcsServerMapping,
+    SoftwareInstalado,
   ],
 
   migrationsRun: process.env.NODE_ENV === "production",

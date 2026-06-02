@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createAsset } from "../api/client";
 import type { TipoActivo, VpnRule } from "../types";
 /* ─── Design tokens — mismo sistema que el resto de la app ─── */
@@ -178,7 +178,7 @@ function FormServidor({ data, onChange }: { data: any; onChange: (f: string, v: 
         <Field label="Tipo de Servidor"       field="tipoServidor"       value={data.tipoServidor       ?? ""} onChange={onChange} placeholder="Ej: Virtual" />
         <Field label="Aplicación que soporta" field="appSoporta"         value={data.appSoporta         ?? ""} onChange={onChange} placeholder="Ej: Oracle EBS" />
         <Field label="Monitoreo"              field="monitoreo"          value={data.monitoreo          ?? ""} onChange={onChange} placeholder="Ej: Zabbix" />
-        <Field label="Backup"                 field="backup"             value={data.backup             ?? ""} onChange={onChange} placeholder="Ej: Veeam" />
+        <Field label="Backup"                 field="backup"             value={data.backup             ?? ""} onChange={onChange} placeholder="Ej: SI/NO" />
         <Field label="Rutas de Backup"        field="rutasBackup"        value={data.rutasBackup        ?? ""} onChange={onChange} placeholder="Ej: /backup/srv" />
         <Field label="Fecha Fin Soporte"      field="fechaFinSoporte"    value={data.fechaFinSoporte    ?? ""} onChange={onChange} type="date" />
         <Field label="Contrato que lo soporta" field="contratoQueSoporta" value={data.contratoQueSoporta ?? ""} onChange={onChange} placeholder="Ej: CTR-2024-001" />
@@ -520,16 +520,28 @@ interface AssetCreateModalProps {
   onClose: () => void;
   tipo: TipoActivo;
   onCreated: () => void;
+  initialData?: {
+    nombre?: string;
+    ipInterna?: string;
+    sistemaOperativo?: string;
+    vramMb?: string;
+    vcpu?: string;
+  };
 }
 
 export default function AssetCreateModal({
-  open, onClose, tipo, onCreated,
+  open, onClose, tipo, onCreated, initialData,
 }: AssetCreateModalProps) {
   /* ── Estado del formulario ── */
   const [general, setGeneral] = useState({
-    nombre: "", ubicacion: "", propietario: "", custodio: "", codigoServicio: "",
+    nombre: initialData?.nombre ?? "", ubicacion: "", propietario: "", custodio: "", codigoServicio: "",
   });
-  const [detalle, setDetalle] = useState<Record<string, string>>({});
+ const [detalle, setDetalle] = useState<Record<string, string>>({
+    ipInterna:        initialData?.ipInterna        ?? "",
+    sistemaOperativo: initialData?.sistemaOperativo ?? "",
+    vramMb:           initialData?.vramMb           ?? "",
+    vcpu:             initialData?.vcpu             ?? "",
+  });
   const [saving,  setSaving]  = useState(false);
   const [error,   setError]   = useState<string | null>(null);
 
@@ -543,6 +555,19 @@ export default function AssetCreateModal({
     origen: "",
     destino: "",
   });
+
+  useEffect(() => {
+    if (open) {
+      setGeneral(prev => ({ ...prev, nombre: initialData?.nombre ?? "" }));
+      setDetalle(prev => ({
+        ...prev,
+        ipInterna:        initialData?.ipInterna        ?? "",
+        sistemaOperativo: initialData?.sistemaOperativo ?? "",
+        vramMb:           initialData?.vramMb           ?? "",
+        vcpu:             initialData?.vcpu             ?? "",
+      }));
+    }
+  }, [open, initialData]);
 
   if (!open) return null;
 
@@ -596,7 +621,7 @@ export default function AssetCreateModal({
   /* ── Limpiar al cerrar ── */
   const handleClose = () => {
     setGeneral({ nombre: "", ubicacion: "", propietario: "", custodio: "", codigoServicio: "" });
-    setDetalle({});
+    setDetalle({ ipInterna: "", sistemaOperativo: "", vramMb: "", vcpu: "" });
     setVpnRules([]); // NUEVO: Limpiar reglas
     setCurrentRule({ conexion: "", fases: "", origen: "", destino: "" }); // NUEVO: Limpiar formulario actual
     setError(null);
@@ -928,3 +953,4 @@ if (tipoKey && Object.keys(detalleConvertido).length > 0) {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-import { AppDataSource } from "../../config/database";
+﻿import { AppDataSource } from "../../config/database";
 import { AssetFilters } from "../../types/api.types";
 import { Asset } from "../../entities/Asset";
 import { Bitacora } from "../../entities/Bitacora";
@@ -20,6 +20,9 @@ import path from "path";
 import { sendToFlowFirmada } from "../utils/flowRaw";
 import { sendToFlowDevolucion, sendToFlowFirmarDevolucion, sendToFlowArchivoDevolucion } from "../utils/flowRaw";
 import { validateAssetData, isCreatedToday } from "../utils/validationRules";
+import { OcsServerMapping } from "../../entities/OcsServerMapping";
+import { SoftwareInstalado } from "../../entities/SoftwareInstalado";
+
 
 export class AssetsService {
   async getAssets(filters: AssetFilters) {
@@ -61,18 +64,9 @@ export class AssetsService {
         .leftJoinAndSelect("asset.ups", "ups")
         .leftJoinAndSelect("asset.baseDatos", "baseDatos")
         .leftJoinAndSelect("asset.vpn", "vpn")
-<<<<<<< HEAD
         .leftJoinAndSelect("vpn.reglas", "vpnRules")
         .leftJoinAndSelect("asset.movil", "movil")
         .where("asset.deletedAt IS NULL");
-=======
-        .leftJoinAndSelect("asset.movil", "movil")  
-        .where("asset.deletedAt IS NULL")
-        .andWhere(
-          "(LOWER(asset.nombre) LIKE LOWER(:q) OR LOWER(asset.codigoServicio) LIKE LOWER(:q))",
-          { q: `%${q}%` }
-        );
->>>>>>> d25d44e15ff308652b3840ebbb904ae5ff746568
 
       if (tipo) {
         qb.andWhere("asset.tipo = :tipo", { tipo });
@@ -144,11 +138,7 @@ export class AssetsService {
   async getAssetById(id: string) {
     const assetRepository = AppDataSource.getRepository(Asset);
     const bitacoraRepository = AppDataSource.getRepository(Bitacora);
-<<<<<<< HEAD
     const vpnRepository = AppDataSource.getRepository(Vpn);
-=======
-    
->>>>>>> d25d44e15ff308652b3840ebbb904ae5ff746568
 
     // Usar QueryBuilder para cargar todas las relaciones correctamente
     const asset = await assetRepository
@@ -201,7 +191,12 @@ export class AssetsService {
       sim, numeroLinea, fechaEntrega, observacionesEntrega,
     } = data;
 
-<<<<<<< HEAD
+    // ✅ VALIDACIÓN: nuevas entradas SIEMPRE se validan
+    const { valid, errors } = validateAssetData(tipo, data, true);
+    if (!valid) {
+      throw new Error(`Validación fallida: ${errors.join(", ")}`);
+    }
+
     const assetRepository     = AppDataSource.getRepository(Asset);
     const bitacoraRepository  = AppDataSource.getRepository(Bitacora);
     const servidorRepository  = AppDataSource.getRepository(Servidor);
@@ -211,22 +206,6 @@ export class AssetsService {
     const vpnRepository       = AppDataSource.getRepository(Vpn);
     const vpnRuleRepository   = AppDataSource.getRepository(VpnRule);
     const movilRepository     = AppDataSource.getRepository(Movil);
-=======
-    // ✅ VALIDACIÓN: nuevas entradas SIEMPRE se validan
-    const { valid, errors } = validateAssetData(tipo, data, true);
-    if (!valid) {
-      throw new Error(`Validación fallida: ${errors.join(", ")}`);
-    }
-
-    const assetRepository = AppDataSource.getRepository(Asset);
-    const bitacoraRepository = AppDataSource.getRepository(Bitacora);
-    const servidorRepository = AppDataSource.getRepository(Servidor);
-    const redRepository      = AppDataSource.getRepository(Red);
-    const upsRepository      = AppDataSource.getRepository(Ups);
-    const baseDatosRepository= AppDataSource.getRepository(BaseDatos);
-    const vpnRepository      = AppDataSource.getRepository(Vpn);
-    const movilRepository    = AppDataSource.getRepository(Movil);
->>>>>>> d25d44e15ff308652b3840ebbb904ae5ff746568
 
     // ── Crear Asset base ──
     const asset = assetRepository.create({
@@ -266,7 +245,6 @@ export class AssetsService {
     if (vpn) {
       const vpnToSave = { ...vpn, asset: savedAsset };
       if (!vpnToSave.id) vpnToSave.id = uuidv4();
-<<<<<<< HEAD
       
       // Separar reglas del objeto VPN
       const reglas = vpnToSave.reglas || [];
@@ -291,12 +269,9 @@ export class AssetsService {
         
         await vpnRuleRepository.save(vpnRulesToSave);
       }
-=======
-      await vpnRepository.save(vpnToSave);
->>>>>>> d25d44e15ff308652b3840ebbb904ae5ff746568
     }
 
-    // ── MOVIL: genera solo el acta de ENTREGA ──
+      // ── MOVIL: genera solo el acta de ENTREGA ──
     if (tipo === "MOVIL") {
       const movilData = movilRepository.create({
         id:                  savedAsset.id,
@@ -318,7 +293,7 @@ export class AssetsService {
         numeroLinea:         numeroLinea         ?? null,
         fechaEntrega:        fechaEntrega ? new Date(fechaEntrega) : null,
         observacionesEntrega: observacionesEntrega ?? null,
-        estados:             "ENTREGADO",
+        estados:             "PENDIENTE_ENTREGA",
       });
 
       await movilRepository.save(movilData);
@@ -416,9 +391,8 @@ export class AssetsService {
 
     switch (movil.estados) {
       case "ENTREGADO":  nuevoEstado = "DEVOLUCION"; break;
-      case "DEVOLUCION": nuevoEstado = "PENDIENTE";  break;
-      case "PENDIENTE":  nuevoEstado = "DEVUELTO";   break;
-      default: throw new Error("Estado no válido");
+      case "DEVOLUCION": nuevoEstado = "PENDIENTE_DEVOLUCION"; break;
+      default: throw new Error("Estado no permite cambio manual");
     }
 
     await movilRepo.update({ id: assetId }, { estados: nuevoEstado });
@@ -432,7 +406,7 @@ export class AssetsService {
         });
       }
 
-      if (nuevoEstado === "PENDIENTE" && movil.correoResponsable) {
+      if (nuevoEstado === "PENDIENTE_DEVOLUCION" && movil.correoResponsable) {
         await sendToFlowFirmarDevolucion({
           correo:       movil.correoResponsable,
           nombreActivo: movil.asset?.nombre || "Activo",
@@ -495,6 +469,7 @@ export class AssetsService {
       {
         firmaPath,
         fechaFirma,
+        estados: "ENTREGADO",
         observacionesEntrega: observacionesEntrega ?? asset.movil.observacionesEntrega,
       }
     );
@@ -583,8 +558,9 @@ export class AssetsService {
         throw new Error("Este activo ya fue devuelto");
       }
 
-      if (movil.estados !== "PENDIENTE") {
-        throw new Error("El activo no está listo para devolución");
+      const estadoActual = movil.estados as EstadoMovil | "PENDIENTE" | null;
+      if (estadoActual !== "PENDIENTE_DEVOLUCION" && estadoActual !== "PENDIENTE") {
+        throw new Error("El activo no está listo para firma de devolución");
       }
 
       // Guardar firma de devolución
@@ -669,14 +645,33 @@ export class AssetsService {
     if (!data || typeof data !== "object") throw new Error("Body inválido");
     if (!asset) throw new Error("Asset no encontrado");
 
-<<<<<<< HEAD
-    //  Valida si el registro es nuevo , si es nuevo, agarra las funciones de validación
-=======
-    // ✅ VALIDACIÓN: solo validar si es registro NUEVO (creado hoy)
->>>>>>> d25d44e15ff308652b3840ebbb904ae5ff746568
+    // ✅ VALIDACIÓN PATCH-SAFE:
+    // Si el registro fue creado hoy, se valida el resultado final (actual + cambios),
+    // no solo el body parcial. Así editar un solo campo no dispara falsos obligatorios.
     const isNewRecord = isCreatedToday(asset.creadoEn);
     if (isNewRecord) {
-      const { valid, errors } = validateAssetData(asset.tipo, data, false);
+      const dataToValidate: any = { ...asset, ...data };
+
+      if (asset.servidor || data.servidor) {
+        dataToValidate.servidor = { ...(asset.servidor ?? {}), ...(data.servidor ?? {}) };
+      }
+      if (asset.red || data.red) {
+        dataToValidate.red = { ...(asset.red ?? {}), ...(data.red ?? {}) };
+      }
+      if (asset.ups || data.ups) {
+        dataToValidate.ups = { ...(asset.ups ?? {}), ...(data.ups ?? {}) };
+      }
+      if (asset.baseDatos || data.baseDatos) {
+        dataToValidate.baseDatos = { ...(asset.baseDatos ?? {}), ...(data.baseDatos ?? {}) };
+      }
+      if (asset.vpn || data.vpn) {
+        dataToValidate.vpn = { ...(asset.vpn ?? {}), ...(data.vpn ?? {}) };
+      }
+      if (asset.movil || data.movil) {
+        dataToValidate.movil = { ...(asset.movil ?? {}), ...(data.movil ?? {}) };
+      }
+
+      const { valid, errors } = validateAssetData(asset.tipo, dataToValidate, true);
       if (!valid) {
         throw new Error(`Validación fallida: ${errors.join(", ")}`);
       }
@@ -820,14 +815,39 @@ export class AssetsService {
     if (asset.tipo === "MOVIL" && asset.movil && data.movil) {
       const detailUpdates: any = {};
       const movil = asset.movil;
+
+      const camposBloqueadosConFirma = new Set([
+        "numeroCaso", "region", "dependencia", "sede", "cedula", "usuarioRed", "uni",
+        "marca", "modelo", "serial", "imei1", "imei2", "sim", "numeroLinea",
+        "fechaEntrega", "observacionesEntrega",
+      ]);
+
       Object.keys(data.movil).forEach((key) => {
         const oldVal = (movil as any)[key];
         const newVal = data.movil[key];
+
+        // El estado solo cambia por los endpoints del flujo, nunca por edición general.
+        if (key === "estados") {
+          if (newVal !== undefined && newVal !== oldVal) {
+            throw new Error("El estado del móvil no se puede editar manualmente desde el formulario. Usa el flujo de entrega/devolución.");
+          }
+          return;
+        }
+
+        if (movil.estados === "DEVUELTO" && newVal !== undefined && newVal !== oldVal) {
+          throw new Error("No puedes editar los datos del móvil porque el proceso ya está cerrado como DEVUELTO.");
+        }
+
+        if (movil.firmaPath && camposBloqueadosConFirma.has(key) && newVal !== undefined && newVal !== oldVal) {
+          throw new Error(`No puedes modificar ${key} porque el acta de entrega ya fue firmada.`);
+        }
+
         if (newVal !== undefined && newVal !== oldVal) {
           detailUpdates[key] = newVal;
           bitacoraEntries.push({ campoModificado: key, valorAnterior: String(oldVal ?? ""), valorNuevo: String(newVal ?? "") });
         }
       });
+
       if (detailUpdates.fechaEntrega !== undefined) {
         detailUpdates.fechaEntrega = detailUpdates.fechaEntrega ? new Date(detailUpdates.fechaEntrega) : null;
       }
@@ -884,13 +904,37 @@ export class AssetsService {
     // ════════════════════════════════════════════════════════════════
     // TOTAL: Contar Assets por Tipo
     // ════════════════════════════════════════════════════════════════
-    const porTipo = await assetRepository
-      .createQueryBuilder("asset")
-      .select("asset.tipo", "tipo")
-      .addSelect("COUNT(DISTINCT asset.id)", "count")
-      .where("asset.deletedAt IS NULL")
-      .groupBy("asset.tipo")
-      .getRawMany();
+    const vpnRepository = AppDataSource.getRepository(Vpn);
+
+// Contar VPNs principales (1 por conexión única)
+const vpnPrincipalesCount = await vpnRepository
+  .createQueryBuilder("vpn")
+  .select("COUNT(DISTINCT vpn.conexion)", "cnt")
+  .where("vpn.conexion IS NOT NULL")
+  .getRawOne();
+
+const porTipoRaw = await assetRepository
+  .createQueryBuilder("asset")
+  .select("asset.tipo", "tipo")
+  .addSelect("COUNT(DISTINCT asset.id)", "count")
+  .where("asset.deletedAt IS NULL")
+  .andWhere("asset.tipo != :vpn", { vpn: "VPN" })
+  .groupBy("asset.tipo")
+  .getRawMany();
+
+// Agregar VPN con conteo correcto
+const vpnCount = parseInt(vpnPrincipalesCount?.cnt ?? "0");
+if (vpnCount > 0) {
+  porTipoRaw.push({ tipo: "VPN", count: String(vpnCount) });
+}
+
+const porTipo = porTipoRaw;
+const totalAssets = porTipo.reduce((sum, t) => sum + parseInt(t.count, 10), 0);
+
+return {
+  total: totalAssets,
+  porTipo: porTipo.map(t => ({ tipo: t.tipo, count: parseInt(t.count, 10) })),
+};
 
     // Calcular total sumando todos los tipos
     const total = porTipo.reduce((sum, t) => sum + parseInt(t.count, 10), 0);
@@ -920,8 +964,19 @@ export class AssetsService {
     const assetRepository    = AppDataSource.getRepository(Asset);
     const bitacoraRepository = AppDataSource.getRepository(Bitacora);
 
-    const asset = await assetRepository.findOne({ where: { id } });
+    const asset = await assetRepository.findOne({
+      where: { id },
+      relations: ["movil"],
+    });
     if (!asset) throw new Error("Asset no encontrado");
+
+    if (asset.tipo === "MOVIL" && asset.movil) {
+      if (asset.movil.estados !== "DEVUELTO" && asset.movil.estados !== null) {
+        throw new Error(
+          "No puedes deshabilitar este activo porque el equipo aún está en manos del empleado. Completa el proceso de devolución primero."
+        );
+      }
+    }
 
     await assetRepository.update(id, {
       deletedAt:             new Date(),
@@ -969,6 +1024,108 @@ export class AssetsService {
       order: { deletedAt: "DESC" },
     });
   }
+
+  async hardDelete(id: string): Promise<void> {
+    const assetRepository     = AppDataSource.getRepository(Asset);
+    const bitacoraRepository  = AppDataSource.getRepository(Bitacora);
+    const servidorRepository  = AppDataSource.getRepository(Servidor);
+    const redRepository       = AppDataSource.getRepository(Red);
+    const upsRepository       = AppDataSource.getRepository(Ups);
+    const baseDatosRepository = AppDataSource.getRepository(BaseDatos);
+    const vpnRepository       = AppDataSource.getRepository(Vpn);
+    const vpnRuleRepository   = AppDataSource.getRepository(VpnRule);
+    const movilRepository     = AppDataSource.getRepository(Movil);    const asset = await assetRepository.findOne({
+      where: { id },
+      relations: ["vpn"],
+    });
+
+    if (!asset) throw new Error("Asset no encontrado");
+
+    // 1. Borrar archivos de firma del disco (si es MOVIL)
+    try {
+      const firmaPath     = path.join(process.cwd(), "storage/firmas", `${id}.png`);
+      const firmaDevPath  = path.join(process.cwd(), "storage/firmas", `${id}_devolucion.png`);
+      
+      if (fs.existsSync(firmaPath))    fs.unlinkSync(firmaPath);
+      if (fs.existsSync(firmaDevPath)) fs.unlinkSync(firmaDevPath);
+    } catch (e) {
+      console.warn("⚠️ No se pudo borrar firma del disco:", e);
+    }
+
+    // 2. Borrar vpn_rules si tiene VPN
+    if (asset.vpn) {
+      await vpnRuleRepository.delete({ vpn: { id: asset.vpn.id } });
+    }
+
+    // 3. Borrar bitácora
+    await bitacoraRepository.delete({ asset: { id } });
+
+    // 4. Borrar relaciones específicas por tipo
+    await servidorRepository.delete({ asset: { id } });
+    await redRepository.delete({ asset: { id } });
+    await upsRepository.delete({ asset: { id } });
+    await baseDatosRepository.delete({ asset: { id } });
+    await vpnRepository.delete({ asset: { id } });
+    await movilRepository.delete({ id });
+
+    // 5. Borrar el asset
+    await assetRepository.delete({ id });
+  }
+
+  async hardDeleteAll(): Promise<number> {
+    const assetRepository     = AppDataSource.getRepository(Asset);
+    const bitacoraRepository  = AppDataSource.getRepository(Bitacora);
+    const servidorRepository  = AppDataSource.getRepository(Servidor);
+    const redRepository       = AppDataSource.getRepository(Red);
+    const upsRepository       = AppDataSource.getRepository(Ups);
+    const baseDatosRepository = AppDataSource.getRepository(BaseDatos);
+    const vpnRepository       = AppDataSource.getRepository(Vpn);
+    const vpnRuleRepository   = AppDataSource.getRepository(VpnRule);
+    const movilRepository     = AppDataSource.getRepository(Movil);
+
+    // Obtener todos los eliminados
+    const deleted = await assetRepository.find({
+      where: { deletedAt: Not(IsNull()) },
+      relations: ["vpn"],
+    });
+
+    if (deleted.length === 0) return 0;
+
+    for (const asset of deleted) {
+      try {
+        // Borrar firmas del disco
+        const firmaPath    = path.join(process.cwd(), "storage/firmas", `${asset.id}.png`);
+        const firmaDevPath = path.join(process.cwd(), "storage/firmas", `${asset.id}_devolucion.png`);
+        if (fs.existsSync(firmaPath))    fs.unlinkSync(firmaPath);
+        if (fs.existsSync(firmaDevPath)) fs.unlinkSync(firmaDevPath);
+      } catch (e) {
+        console.warn("⚠️ No se pudo borrar firma:", e);
+      }
+
+      if (asset.vpn) {
+        await vpnRuleRepository.delete({ vpn: { id: asset.vpn.id } });
+      }
+    }
+
+    const ids = deleted.map(a => a.id);
+
+    await bitacoraRepository.delete({ asset: { id: In(ids) } });
+    await servidorRepository.delete({ asset: { id: In(ids) } });
+    await redRepository.delete({ asset: { id: In(ids) } });
+    await upsRepository.delete({ asset: { id: In(ids) } });
+    await baseDatosRepository.delete({ asset: { id: In(ids) } });
+    await vpnRepository.delete({ asset: { id: In(ids) } });
+
+    // Movil usa id directo
+    await movilRepository.delete({ id: In(ids) });
+
+    await assetRepository.delete({ id: In(ids) });
+
+    return deleted.length;
+  }
 }
 
 export const assetsService = new AssetsService();
+
+
+

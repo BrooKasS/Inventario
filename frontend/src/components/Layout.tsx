@@ -10,6 +10,7 @@ const nav = [
   { label: "Red",            path: "/inventario/RED",       icon: "🌐" },
   { label: "VPN",            path: "/inventario/VPN",       icon: "🔒" },
   { label: "Móviles",        path: "/inventario/MOVIL",     icon: "📱" },
+  { label: "Software",       path: "/inventario/software", icon: "💾" }, 
   { label: "Histórico",      path: "/papelera",             icon: "🗑" },
 ];
 
@@ -70,7 +71,7 @@ export default function Layout() {
             textTransform: "uppercase", color: "rgba(255,255,255,.68)",
             marginBottom: 6,
           }}>
-            Sistema de
+            VAULTIS
           </div>
           <div style={{
             fontSize: 18, fontWeight: 800, color: "#fff",

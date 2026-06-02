@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import {
   getAssetById,
@@ -42,49 +42,74 @@ export interface UseAssetDetailReturn {
   limpiarFiltros: () => void;
 }
 
+function getApiErrorMessage(error: any, fallback: string) {
+  return error?.response?.data?.error || error?.response?.data?.message || error?.message || fallback;
+}
+
+function mergeAssetWithChanges(asset: Asset, changes: Record<string, any>): Asset {
+  return {
+    ...asset,
+    ...changes,
+    servidor: asset.servidor || changes.servidor ? { ...(asset.servidor ?? {}), ...(changes.servidor ?? {}) } as any : asset.servidor,
+    red: asset.red || changes.red ? { ...(asset.red ?? {}), ...(changes.red ?? {}) } as any : asset.red,
+    ups: asset.ups || changes.ups ? { ...(asset.ups ?? {}), ...(changes.ups ?? {}) } as any : asset.ups,
+    baseDatos: asset.baseDatos || changes.baseDatos ? { ...(asset.baseDatos ?? {}), ...(changes.baseDatos ?? {}) } as any : asset.baseDatos,
+    vpn: asset.vpn || changes.vpn ? { ...(asset.vpn ?? {}), ...(changes.vpn ?? {}) } as any : asset.vpn,
+    movil: asset.movil || changes.movil ? { ...(asset.movil ?? {}), ...(changes.movil ?? {}) } as any : asset.movil,
+  };
+}
+
 export function useAssetDetail(): UseAssetDetailReturn {
   const { id } = useParams<{ id: string }>();
 
-  /* ── asset state ── */
   const [asset, setAsset] = useState<Asset | null>(null);
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditingState] = useState(false);
   const [changes, setChanges] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
 
-
-  /* ── nueva observación ── */
   const [showObs, setShowObs] = useState(false);
   const [obsTipo, setObsTipo] = useState<TipoEvento>("NOTA");
   const [obsDesc, setObsDesc] = useState("");
   const [obsLoading, setObsLoading] = useState(false);
 
-  /* ── filtros de bitácora ── */
   const [fTipo, setFTipo] = useState<string>("");
   const [fAutor, setFAutor] = useState("");
   const [fDesde, setFDesde] = useState("");
   const [fHasta, setFHasta] = useState("");
 
-  /* ── export loading ── */
   const [exporting, setExporting] = useState<"excel" | "pdf" | null>(null);
 
-  const load = () => {
-    if (id) getAssetById(id).then(setAsset);
-  };
+  const load = useCallback(async () => {
+    if (!id) return;
+    try {
+      const data = await getAssetById(id);
+      setAsset(data);
+    } catch (error) {
+      console.error("Error cargando activo:", error);
+      alert(getApiErrorMessage(error, "No se pudo cargar el activo"));
+    }
+  }, [id]);
 
   useEffect(() => {
     load();
-  }, [id]);
+  }, [load]);
 
-  /* ── bitácora filtrada (memo para no recalcular en cada render) ── */
+  const setEditing = (v: boolean) => {
+    setEditingState(v);
+    if (!v) setChanges({});
+  };
+
+  const visibleAsset = useMemo(() => {
+    if (!asset) return null;
+    return mergeAssetWithChanges(asset, changes);
+  }, [asset, changes]);
+
   const bitacoraFiltrada = useMemo(() => {
     const entries = asset?.bitacora ?? [];
     return entries.filter((e) => {
-      /* tipo */
       if (fTipo && e.tipoEvento !== fTipo) return false;
-      /* autor (case-insensitive, parcial) */
-      if (fAutor && !e.autor.toLowerCase().includes(fAutor.toLowerCase()))
-        return false;
-      /* rango de fechas */
+      if (fAutor && !e.autor.toLowerCase().includes(fAutor.toLowerCase())) return false;
+
       const fecha = new Date(e.creadoEn);
       if (fDesde) {
         const desde = new Date(fDesde);
@@ -102,10 +127,8 @@ export function useAssetDetail(): UseAssetDetailReturn {
 
   const hayFiltros = !!(fTipo || fAutor || fDesde || fHasta);
 
-  /* ── autores únicos para el datalist (memoizado) ── */
   const autoresUnicos = useMemo(
-    () =>
-      Array.from(new Set((asset?.bitacora ?? []).map((e) => e.autor))).sort(),
+    () => Array.from(new Set((asset?.bitacora ?? []).map((e) => e.autor))).sort(),
     [asset?.bitacora]
   );
 
@@ -116,7 +139,6 @@ export function useAssetDetail(): UseAssetDetailReturn {
     setFHasta("");
   };
 
-  /* ── handlers ── */
   const handleChange = (section: string | null, field: string, val: string) => {
     if (section) {
       setChanges((prev) => ({
@@ -130,44 +152,56 @@ export function useAssetDetail(): UseAssetDetailReturn {
 
   const handleSave = async () => {
     if (!id) return;
+
+    if (Object.keys(changes).length === 0) {
+      setEditing(false);
+      return;
+    }
+
     setSaving(true);
     try {
-      await updateAsset(id, changes);
-      setEditing(false);
+      const updated = await updateAsset(id, changes);
+      setAsset(updated);
+      setEditingState(false);
       setChanges({});
-      load();
+    } catch (error) {
+      console.error("Error guardando activo:", error);
+      alert(getApiErrorMessage(error, "No se pudo guardar el activo"));
     } finally {
       setSaving(false);
     }
   };
 
   const handleAddObs = async () => {
-    if (!id || !obsDesc) return;
+    if (!id || !obsDesc.trim()) return;
+
     setObsLoading(true);
     const autor = getUsuario() ?? "Sistema";
     try {
       await addObservacion(id, {
         autor,
         tipoEvento: obsTipo,
-        descripcion: obsDesc,
+        descripcion: obsDesc.trim(),
       });
       setShowObs(false);
       setObsDesc("");
       setObsTipo("NOTA");
-      load();
+      await load();
+    } catch (error) {
+      console.error("Error agregando observacion:", error);
+      alert(getApiErrorMessage(error, "No se pudo agregar la observacion"));
     } finally {
       setObsLoading(false);
     }
   };
 
-  /* ── export handlers ── */
   const handleExportExcel = async () => {
     if (!asset) return;
     setExporting("excel");
     try {
       await exportarExcel(bitacoraFiltrada, asset.nombre ?? "Activo");
-    } catch (err) {
-      console.error("Error exportando Excel:", err);
+    } catch (error) {
+      console.error("Error exportando Excel:", error);
       alert("Error al generar Excel");
     } finally {
       setExporting(null);
@@ -179,8 +213,8 @@ export function useAssetDetail(): UseAssetDetailReturn {
     setExporting("pdf");
     try {
       await exportarPDF(bitacoraFiltrada, asset);
-    } catch (err) {
-      console.error("Error exportando PDF:", err);
+    } catch (error) {
+      console.error("Error exportando PDF:", error);
       alert("Error al generar PDF");
     } finally {
       setExporting(null);
@@ -188,7 +222,7 @@ export function useAssetDetail(): UseAssetDetailReturn {
   };
 
   return {
-    asset,
+    asset: visibleAsset,
     editing,
     setEditing,
     changes,

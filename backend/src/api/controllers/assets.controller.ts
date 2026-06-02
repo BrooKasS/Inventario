@@ -15,6 +15,7 @@ import { validateAssetData } from "../utils/validationRules";
 
 const r = Router();
 
+
 export class AssetsController {
 
   // GET /assets
@@ -383,19 +384,33 @@ export class AssetsController {
     const id = req.params.id;
     const { firmaBase64 } = req.body;
 
+    if (!firmaBase64) {
+      return res.status(400).json({
+        success: false,
+        error: "El campo 'firmaBase64' es requerido",
+      });
+    }
+
     const result = await assetsService.firmarDevolucion(id, firmaBase64);
 
-    res.json({
+    if (result && result.ok === false) {
+      return res.status(400).json({
+        success: false,
+        error: result.error || "Error firmando devolución",
+      });
+    }
+
+    return res.json({
       success: true,
       data: result,
     });
   }
   // POST /assets/:id/firmar
-async firmarMovil(req: Request, res: Response) {
-  const id = req.params.id as string;
-  const { firmaBase64 } = req.body;
+  async firmarMovil(req: Request, res: Response) {
+    const id = req.params.id as string;
+  const { firmaBase64, observacionesEntrega } = req.body;
 
-  if (!firmaBase64) {
+    if (!firmaBase64) {
     return res.status(400).json({
       success: false,
       error: "El campo 'firmaBase64' es requerido",
@@ -403,7 +418,7 @@ async firmarMovil(req: Request, res: Response) {
   }
 
   try {
-    const result = await assetsService.firmarMovil(id, firmaBase64);
+    const result = await assetsService.firmarMovil(id, firmaBase64, observacionesEntrega);
 
     return res.json({
       success: true,
@@ -590,6 +605,23 @@ async firmarMovil(req: Request, res: Response) {
       });
     }
   }
+
+  async hardDelete(req: Request, res: Response) {
+    const id = req.params.id as string;
+    await assetsService.hardDelete(id);
+    res.json({ success: true, message: "Activo eliminado permanentemente." });
+  }
+
+  async hardDeleteAll(req: Request, res: Response) {
+    const count = await assetsService.hardDeleteAll();
+    res.json({ 
+      success: true, 
+      message: `${count} activos eliminados permanentemente del histórico.` 
+    });
+  }
 }
 
 export const assetsController = new AssetsController();
+
+
+

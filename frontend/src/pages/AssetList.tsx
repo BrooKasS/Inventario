@@ -4,6 +4,7 @@ import { getAssets } from "../api/client";
 import { getRol } from "../api/auth";
 import type { Asset, Pagination, TipoActivo } from "../types";
 import AssetCreateModal from "../components/AssetCreateModal";
+import OcsImportModal from "../components/OcsImportModal";
 
 const GRAD    = "linear-gradient(135deg, #fa8e00 , #89183e 25%, 35% #861F41 35%, #B7312C 70%, #D86018 100%)";
 const PRIMARY = "hsl(32, 94%, 56%)";
@@ -309,7 +310,16 @@ export default function AssetList() {
   const [filtroUbicacion, setFiltroUbicacion] = useState("");
   const [filtroExtra,     setFiltroExtra]     = useState<Record<string, string>>({});
   const [showCreate, setShowCreate] = useState(false);
+  const [showOcsImport, setShowOcsImport]   = useState(false);
+ const [ocsInitialData, setOcsInitialData] = useState<{
+    nombre: string;
+    ipInterna: string;
+    sistemaOperativo: string;
+    vramMb: string;
+    vcpu: string;
+  } | undefined>(undefined);
 
+  
   const tipoKey     = tipo as TipoActivo;
   const rol         = getRol();
   const headers     = HEADERS[tipoKey] ?? [];
@@ -385,6 +395,18 @@ export default function AssetList() {
     setAssets(allAssetsForFiltering); setShowFilters(false);
   }
 
+ const handleOcsSelect = (equipo: any) => {
+    setOcsInitialData({
+      nombre:           equipo.NAME,
+      ipInterna:        equipo.IPADDR,
+      sistemaOperativo: equipo.OSNAME  ?? "",
+      vramMb:           equipo.MEMORY  ? String(equipo.MEMORY) : "",
+      vcpu:             equipo.VCPU    ? String(equipo.VCPU)   : "",
+    });
+    setShowOcsImport(false);
+    setShowCreate(true);
+  };
+
   /* ── ocultar campos según tipo ── */
   const mostrarCodigo    = tipoKey !== "UPS" && tipoKey !== "BASE_DATOS" && tipoKey !== "VPN" && tipoKey !== "MOVIL";
   const mostrarUbicacion = tipoKey !== "BASE_DATOS" && tipoKey !== "VPN" && tipoKey !== "MOVIL";
@@ -441,8 +463,17 @@ export default function AssetList() {
               cursor: "pointer", fontSize: 14, fontFamily: "Calibri, sans-serif",
               boxShadow: "0 4px 12px rgba(0,0,0,.15)",
             }}>🔍 Filtros</button>
+            {rol === "ADMIN" && tipoKey === "SERVIDOR" && (
+              <button onClick={() => setShowOcsImport(true)} style={{
+                padding: "10px 20px", borderRadius: 8,
+                background: "#fff", color: "#B7312C", fontWeight: 700,
+                cursor: "pointer", fontSize: 14, fontFamily: "Calibri, sans-serif",
+                boxShadow: "0 4px 12px rgba(0,0,0,.15)",
+                border: "2px solid #B7312C",
+              }}>🖥️ Desde OCS</button>
+            )}
             {rol === "ADMIN" && (
-              <button onClick={() => setShowCreate(true)} style={{
+              <button onClick={() => { setOcsInitialData(undefined); setShowCreate(true); }} style={{
                 padding: "10px 20px", borderRadius: 8, border: "none",
                 background: "#B7312C", color: "#fff", fontWeight: 700,
                 cursor: "pointer", fontSize: 14, fontFamily: "Calibri, sans-serif",
@@ -535,12 +566,20 @@ export default function AssetList() {
 
       {/* ── Modal Crear ── */}
       {rol === "ADMIN" && (
-        <AssetCreateModal
-          open={showCreate}
-          onClose={() => setShowCreate(false)}
-          tipo={tipoKey}
-          onCreated={() => { setShowCreate(false); load(); }}
-        />
+        <>
+          <OcsImportModal
+            open={showOcsImport}
+            onClose={() => setShowOcsImport(false)}
+            onSelect={handleOcsSelect}
+          />
+          <AssetCreateModal
+            open={showCreate}
+            onClose={() => { setShowCreate(false); setOcsInitialData(undefined); }}
+            tipo={tipoKey}
+            onCreated={() => { setShowCreate(false); setOcsInitialData(undefined); load(); }}
+            initialData={ocsInitialData}
+          />
+        </>
       )}
 
       {/* ══════════════ Modal de Filtros ══════════════ */}

@@ -8,11 +8,12 @@ import {
 import { Asset } from "./Asset";
 
 export type EstadoMovil =
+  | "PENDIENTE_ENTREGA"
   | "ENTREGADO"
   | "DEVOLUCION"
-  | "PENDIENTE"
+  | "PENDIENTE_DEVOLUCION"
   | "DEVUELTO";
-
+  
 @Entity("MOVILES")
 export class Movil {
 

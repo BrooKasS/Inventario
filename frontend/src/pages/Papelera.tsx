@@ -80,6 +80,7 @@ export default function Papelera() {
   const [buscar,    setBuscar]    = useState("");
   const [tipoFiltro, setTipoFiltro] = useState<string>("");
   const [restoring, setRestoring] = useState<string | null>(null);
+  const [vaciando, setVaciando] = useState(false);
 
   const cargar = async () => {
     setLoading(true);
@@ -112,13 +113,32 @@ export default function Papelera() {
     if (!window.confirm(`¿Habilitar "${asset.nombre}" y devolverlo al  inventario?`)) return;
     setRestoring(asset.id);
     try {
-      await restoreAsset(asset.id, "Sistema");
+      await restoreAsset(asset.id);
       await cargar();
     } catch (e) {
       console.error("Error restaurando:", e);
       alert("Error al restaurar el activo.");
     } finally {
       setRestoring(null);
+    }
+  };
+
+  /* ── Vaciar papelera ── */
+  const handleVaciarPapelera = async () => {
+    const confirmar = window.confirm(
+      `¿Eliminar PERMANENTEMENTE los ${assets.length} activos del histórico? Esta acción NO se puede deshacer.`
+    );
+    if (!confirmar) return;
+
+    try {
+      setVaciando(true);
+      const { hardDeleteAllAssets } = await import("../api/client");
+await hardDeleteAllAssets();
+window.location.reload();
+    } catch (err) {
+      alert("Error vaciando papelera");
+    } finally {
+      setVaciando(false);
     }
   };
 
@@ -163,21 +183,46 @@ export default function Papelera() {
             </p>
           </div>
 
-          <button
-            onClick={() => navigate(-1)}
-            style={{
-              padding: "11px 20px", borderRadius: 12,
-              border: "1.5px solid rgba(255,255,255,.3)",
-              background: "rgba(255,255,255,.1)", color: "#fff",
-              fontWeight: 700, fontSize: 13, cursor: "pointer",
-              fontFamily: "Calibri, sans-serif",
-              transition: "all .25s cubic-bezier(0.4, 0, 0.2, 1)",
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,.15)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,.1)"; e.currentTarget.style.transform = "translateY(0)"; }}
-          >
-            ← Volver
-          </button>
+          <div style={{ display: "flex", gap: 10 }}>
+            {assets.length > 0 && (
+              <button
+                onClick={handleVaciarPapelera}
+                disabled={vaciando}
+                style={{
+                  padding: "10px 20px",
+                  borderRadius: 8,
+                  border: "2px solid rgba(255,255,255,.4)",
+                  background: vaciando ? "rgba(255,255,255,.1)" : "rgba(255,255,255,.15)",
+                  color: "#fff",
+                  fontWeight: 700,
+                  cursor: vaciando ? "not-allowed" : "pointer",
+                  fontSize: 13,
+                  fontFamily: "Calibri, sans-serif",
+                  opacity: vaciando ? 0.6 : 1,
+                  transition: "all .25s cubic-bezier(0.4, 0, 0.2, 1)",
+                }}
+                onMouseEnter={e => { if (!vaciando) { e.currentTarget.style.background = "rgba(255,255,255,.25)"; e.currentTarget.style.transform = "translateY(-2px)"; } }}
+                onMouseLeave={e => { if (!vaciando) { e.currentTarget.style.background = "rgba(255,255,255,.15)"; e.currentTarget.style.transform = "translateY(0)"; } }}
+              >
+                {vaciando ? "Eliminando..." : "🗑️ Vaciar papelera"}
+              </button>
+            )}
+            <button
+              onClick={() => navigate(-1)}
+              style={{
+                padding: "11px 20px", borderRadius: 12,
+                border: "1.5px solid rgba(255,255,255,.3)",
+                background: "rgba(255,255,255,.1)", color: "#fff",
+                fontWeight: 700, fontSize: 13, cursor: "pointer",
+                fontFamily: "Calibri, sans-serif",
+                transition: "all .25s cubic-bezier(0.4, 0, 0.2, 1)",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,.15)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,.1)"; e.currentTarget.style.transform = "translateY(0)"; }}
+            >
+              ← Volver
+            </button>
+          </div>
         </div>
 
         {/* ── Filtros ── */}

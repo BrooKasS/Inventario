@@ -96,7 +96,10 @@ export interface Movil {
   observacionesEntrega: string | null;
   fechaDevolucion: string | null;
   observacionesDevolucion: string | null;
-  estados?: "ENTREGADO" | "DEVOLUCION" | "PENDIENTE" | "DEVUELTO" | null;
+  estados?: "PENDIENTE_ENTREGA" | "ENTREGADO" | "DEVOLUCION" | "PENDIENTE_DEVOLUCION" | "DEVUELTO";
+  
+  firmaPath?: string | null;       // ← AGREGAR esta línea
+  fechaFirma?: string | null;      // ← verificar si existe, si no agregar también
 }
 
 export interface BitacoraEntry {

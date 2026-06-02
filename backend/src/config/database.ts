@@ -10,6 +10,8 @@ import { Vpn } from "../entities/Vpn";
 import { VpnRule } from "../entities/VpnRule";
 import { Movil } from "../entities/Movil";
 import { Bitacora } from "../entities/Bitacora";
+import { OcsServerMapping} from "../entities/OcsServerMapping";
+import { SoftwareInstalado } from "../entities/SoftwareInstalado";
 
 //agarra el .env del backend
 export const AppDataSource = new DataSource({
@@ -19,7 +21,7 @@ export const AppDataSource = new DataSource({
 
   // para que en el env sea service name
   serviceName: process.env.DB_SERVICE!,
-
+  
   // user de la app
   username: process.env.DB_USER!,
   password: process.env.DB_PASSWORD!,
@@ -37,6 +39,8 @@ export const AppDataSource = new DataSource({
     VpnRule,
     Movil,
     Bitacora,
+    OcsServerMapping,
+    SoftwareInstalado,
   ],
 
   // Migraciones automáticas SOLO en producción
