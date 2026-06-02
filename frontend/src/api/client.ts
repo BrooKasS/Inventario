@@ -3,7 +3,7 @@ import { getToken, logoutUser } from "./auth";
 import publicApi from "./publicClient";
 
 const api = axios.create({
-  baseURL: "http://localhost:3000/api",
+  baseURL: "/api",
   headers: { "Content-Type": "application/json" },
 });
 

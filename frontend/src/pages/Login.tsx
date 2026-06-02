@@ -3,9 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { loginUser } from "../api/auth";
 
 const C = {
-  grad: "linear-gradient(135deg, #FA8200 0%, #861F41 35%, #B7312C 70%, #D86018 100%)",
+  grad: "linear-gradient(135deg, #FF9A1F 0%, #8A1A40 32%, #B7312C 66%, #D86018 100%)",
+  gradSoft: "linear-gradient(135deg, rgba(255,154,31,.22), rgba(183,49,44,.18))",
   primary: "#B7312C",
   border: "#F0E8E8",
+  ink: "#1b1b1d",
+  muted: "#6b6b72",
 };
 
 export default function Login() {
@@ -40,32 +43,75 @@ export default function Login() {
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      fontFamily: "Calibri, sans-serif",
-      padding: 16,
+      fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif",
+      padding: 18,
+      position: "relative",
+      overflow: "hidden",
     }}>
       <div style={{
-        background: "#fff",
-        borderRadius: 16,
-        padding: "40px 36px",
+        position: "absolute",
+        inset: "-20% -10% auto auto",
+        width: 420,
+        height: 420,
+        background: "radial-gradient(circle at 30% 30%, rgba(255,255,255,.35), rgba(255,255,255,0) 60%)",
+        filter: "blur(6px)",
+        pointerEvents: "none",
+      }} />
+      <div style={{
+        position: "absolute",
+        inset: "auto auto -30% -10%",
+        width: 480,
+        height: 480,
+        background: "radial-gradient(circle at 70% 60%, rgba(255,255,255,.28), rgba(255,255,255,0) 62%)",
+        filter: "blur(4px)",
+        pointerEvents: "none",
+      }} />
+      <div style={{
+        background: "rgba(255,255,255,.96)",
+        borderRadius: 20,
+        padding: "36px 32px",
         width: "100%",
-        maxWidth: 400,
-        boxShadow: "0 20px 60px rgba(0,0,0,.3)",
+        maxWidth: 420,
+        boxShadow: "0 24px 70px rgba(0,0,0,.28)",
+        border: "1px solid rgba(255,255,255,.6)",
+        backdropFilter: "blur(6px)",
+        position: "relative",
       }}>
+        <div style={{
+          position: "absolute",
+          inset: "10px",
+          borderRadius: 18,
+          background: C.gradSoft,
+          opacity: 0.35,
+          pointerEvents: "none",
+        }} />
+        <div style={{ position: "relative" }}>
 
         {/* Logo / título */}
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
+        <div style={{ textAlign: "center", marginBottom: 30 }}>
           <div style={{
-            width: 56, height: 56, borderRadius: 14,
+            width: 66, height: 66, borderRadius: 18,
             background: C.grad,
             display: "flex", alignItems: "center",
-            justifyContent: "center", fontSize: 26,
+            justifyContent: "center", fontSize: 28,
             margin: "0 auto 14px",
+            boxShadow: "0 10px 22px rgba(183,49,44,.28)",
           }}>🖥️</div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>
+          <div style={{
+            fontSize: 30, letterSpacing: "0.18em",
+            fontWeight: 900, color: C.ink,
+          }}>
+            VAULTIS
+          </div>
+          <div style={{
+            fontSize: 11, fontWeight: 800, color: C.muted,
+            letterSpacing: "0.32em", textTransform: "uppercase",
+            marginTop: 4,
+          }}>
             Inventario TI
-          </h1>
-          <p style={{ color: "#888", fontSize: 13, marginTop: 6 }}>
-            Ingresa con tus credenciales asignadas
+          </div>
+          <p style={{ color: C.muted, fontSize: 13, marginTop: 10 }}>
+            Accede con tus credenciales corporativas
           </p>
         </div>
 
@@ -76,7 +122,8 @@ export default function Login() {
             borderRadius: 12, padding: "12px 16px", marginBottom: 18,
             fontSize: 13, color: "#d32f2f",
             display: "flex", alignItems: "center", gap: 8,
-            fontWeight: 600,
+            fontWeight: 700,
+            boxShadow: "0 6px 16px rgba(211,47,47,.15)",
             animation: "slideUp .3s cubic-bezier(0.34, 1.56, 0.64, 1)",
           }}>
             ⚠️ {error}
@@ -88,7 +135,7 @@ export default function Login() {
           <label style={{
             display: "block", fontSize: 11, fontWeight: 800,
             letterSpacing: "0.12em", textTransform: "uppercase",
-            color: "#333", marginBottom: 8, opacity: 0.85,
+            color: C.ink, marginBottom: 8, opacity: 0.82,
           }}>
             Usuario
           </label>
@@ -100,14 +147,15 @@ export default function Login() {
             placeholder="Tu usuario de red"
             style={{
               width: "100%", padding: "12px 14px",
-              border: "1.5px solid #ddd", borderRadius: 12,
-              fontSize: 14, fontFamily: "Calibri, sans-serif",
+              border: "1.5px solid #e1d8d8", borderRadius: 12,
+              fontSize: 14, fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif",
               outline: "none", boxSizing: "border-box",
               background: "#fafbfc",
               transition: "all .25s cubic-bezier(0.4, 0, 0.2, 1)",
+              boxShadow: "inset 0 1px 2px rgba(0,0,0,.03)",
             }}
-            onFocus={e => { e.currentTarget.style.borderColor = C.primary; e.currentTarget.style.background = "#fff"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(183,49,44,.08)"; }}
-            onBlur={e => { e.currentTarget.style.borderColor = "#ddd"; e.currentTarget.style.background = "#fafbfc"; e.currentTarget.style.boxShadow = "none"; }}
+            onFocus={e => { e.currentTarget.style.borderColor = C.primary; e.currentTarget.style.background = "#fff"; e.currentTarget.style.boxShadow = "0 0 0 4px rgba(183,49,44,.12)"; }}
+            onBlur={e => { e.currentTarget.style.borderColor = "#e1d8d8"; e.currentTarget.style.background = "#fafbfc"; e.currentTarget.style.boxShadow = "inset 0 1px 2px rgba(0,0,0,.03)"; }}
           />
         </div>
 
@@ -116,7 +164,7 @@ export default function Login() {
           <label style={{
             display: "block", fontSize: 11, fontWeight: 800,
             letterSpacing: "0.12em", textTransform: "uppercase",
-            color: "#333", marginBottom: 8, opacity: 0.85,
+            color: C.ink, marginBottom: 8, opacity: 0.82,
           }}>
             Contraseña
           </label>
@@ -128,14 +176,15 @@ export default function Login() {
             placeholder="Tu contraseña de Windows"
             style={{
               width: "100%", padding: "12px 14px",
-              border: "1.5px solid #ddd", borderRadius: 12,
-              fontSize: 14, fontFamily: "Calibri, sans-serif",
+              border: "1.5px solid #e1d8d8", borderRadius: 12,
+              fontSize: 14, fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif",
               outline: "none", boxSizing: "border-box",
               background: "#fafbfc",
               transition: "all .25s cubic-bezier(0.4, 0, 0.2, 1)",
+              boxShadow: "inset 0 1px 2px rgba(0,0,0,.03)",
             }}
-            onFocus={e => { e.currentTarget.style.borderColor = C.primary; e.currentTarget.style.background = "#fff"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(183,49,44,.08)"; }}
-            onBlur={e => { e.currentTarget.style.borderColor = "#ddd"; e.currentTarget.style.background = "#fafbfc"; e.currentTarget.style.boxShadow = "none"; }}
+            onFocus={e => { e.currentTarget.style.borderColor = C.primary; e.currentTarget.style.background = "#fff"; e.currentTarget.style.boxShadow = "0 0 0 4px rgba(183,49,44,.12)"; }}
+            onBlur={e => { e.currentTarget.style.borderColor = "#e1d8d8"; e.currentTarget.style.background = "#fafbfc"; e.currentTarget.style.boxShadow = "inset 0 1px 2px rgba(0,0,0,.03)"; }}
           />
         </div>
 
@@ -146,22 +195,23 @@ export default function Login() {
           style={{
             width: "100%", padding: "13px 16px",
             border: "none", borderRadius: 12,
-            background: loading ? "#ccc" : C.grad,
+            background: loading ? "#cfc4c4" : C.grad,
             color: "#fff", fontWeight: 800, fontSize: 15,
             cursor: loading ? "not-allowed" : "pointer",
-            fontFamily: "Calibri, sans-serif",
+            fontFamily: "'Sora', 'Space Grotesk', 'Segoe UI', sans-serif",
             display: "flex", alignItems: "center",
             justifyContent: "center", gap: 8,
             transition: "all .3s cubic-bezier(0.4, 0, 0.2, 1)",
-            boxShadow: loading ? "0 2px 6px rgba(0,0,0,.1)" : "0 8px 20px rgba(183,49,44,.25)",
+            boxShadow: loading ? "0 2px 6px rgba(0,0,0,.1)" : "0 10px 26px rgba(183,49,44,.3)",
             transform: "translateY(0)",
             letterSpacing: "0.03em",
           }}
-          onMouseEnter={e => { if (!loading) { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 12px 28px rgba(183,49,44,.35)"; } }}
-          onMouseLeave={e => { if (!loading) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 20px rgba(183,49,44,.25)"; } }}
+          onMouseEnter={e => { if (!loading) { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 14px 30px rgba(183,49,44,.38)"; } }}
+          onMouseLeave={e => { if (!loading) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 10px 26px rgba(183,49,44,.3)"; } }}
         >
           {loading ? "Verificando..." : "Ingresar"}
         </button>
+        </div>
 
       </div>
     </div>
