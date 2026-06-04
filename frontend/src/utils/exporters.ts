@@ -111,7 +111,7 @@ export async function exportarActivosExcel(assets: Asset[], nombre: string): Pro
   const tipos = [...new Set(assets.map(a => a.tipo))];
   const fecha = new Date().toISOString().slice(0, 10);
 
- const res = await fetch("http://localhost:3000/api/assets/export-excel", {
+ const res = await fetch(`${import.meta.env.VITE_API_URL}/assets/export-excel`, {
   method: "POST",
   headers: {
     "Content-Type": "application/json",
@@ -225,7 +225,7 @@ export async function exportarObservacionesExcel(
  
   const fecha = new Date().toISOString().slice(0, 10);
  
- const res = await fetch("http://localhost:3000/api/assets/export-observaciones", {
+ const res = await fetch(`${import.meta.env.VITE_API_URL}/assets/export-observaciones`, {
   method: "POST",
   headers: {
     "Content-Type": "application/json",

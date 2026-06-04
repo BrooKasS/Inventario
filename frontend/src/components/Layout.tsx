@@ -30,7 +30,7 @@ export default function Layout() {
     try {
       const form = new FormData();
       form.append("file", file);
-      const res  = await fetch("http://localhost:3000/api/import", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/import`, {
         method: "POST",
         body: form,
         headers: {
