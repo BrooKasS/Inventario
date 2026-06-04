@@ -14,7 +14,6 @@ async function runSync(trigger: "cron" | "manual" = "cron"): Promise<void> {
 
   jobRunning = true;
   console.log(`\n🕒 [OCS-JOB] Sync iniciado — trigger: ${trigger} — ${new Date().toISOString()}`);
-
   try {
     const result = await ocsSyncService.syncOcsToOracle();
     console.log(
@@ -36,7 +35,7 @@ async function runSync(trigger: "cron" | "manual" = "cron"): Promise<void> {
 // ─────────────────────────────────────────────────────────────────────────────
 export function initOcsSyncJob(): void {
   // Se ejecuta todos los días a las 3:00am
-  cron.schedule("05 12 * * *", () => {
+  cron.schedule("39 11 * * *", () => {
     runSync("cron");
   }, {
     timezone: "America/Bogota", // ← ajusta a tu zona horaria

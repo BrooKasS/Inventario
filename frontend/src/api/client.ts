@@ -3,7 +3,7 @@ import { getToken, logoutUser } from "./auth";
 import publicApi from "./publicClient";
 
 const api = axios.create({
-  baseURL: "/api",
+  baseURL: import.meta.env.VITE_API_URL,
   headers: { "Content-Type": "application/json" },
 });
 
@@ -51,7 +51,7 @@ export const updateAsset = (id: string, data: any) =>
 
 export async function descargarWordMovil(id: string) {
   const token = getToken();
-  const res = await fetch(`http://localhost:3000/api/assets/${id}/word`, {
+  const res = await fetch(`${import.meta.env.VITE_API_URL}/assets/${id}/word`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   const blob = await res.blob();
