@@ -12,6 +12,9 @@ import { sendMovilEmail } from "../utils/sendMovilEmail";
 import { ocsService } from "../services/ocs.service";
 import { generarExcelOCS } from "../utils/exportOCSInventario";
 import { validateAssetData } from "../utils/validationRules";
+import { Bitacora } from "../../entities/Bitacora";
+import { AppDataSource } from "../../config/database";
+
 
 const r = Router();
 
@@ -152,6 +155,12 @@ export class AssetsController {
       data: bitacora,
     } as ApiResponse<typeof bitacora>);
   }
+async deleteBitacoraEntry(req: Request, res: Response) {
+  const bitacoraId = req.params.bitacoraId as string;
+  const bitacoraRepository = AppDataSource.getRepository(Bitacora);
+  await bitacoraRepository.delete(bitacoraId);
+  res.json({ success: true, message: "Eliminado" });
+}
 
   // POST /assets/:id/bitacora
   async addBitacoraEntry(req: Request, res: Response) {

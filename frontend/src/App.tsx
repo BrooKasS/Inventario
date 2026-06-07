@@ -9,6 +9,7 @@ import FirmaMovil from "./pages/FirmaMovil";
 import FirmaDevolucion from "./pages/FirmaDevolucion";
 import SoftwareInventario from "./pages/SoftwareInventario";
 import { isAuthenticated } from "./api/auth";
+import MobileStagingPage from "./pages/MobileStating";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated()) return <Navigate to="/login" replace />;
@@ -34,6 +35,7 @@ export default function App() {
           <Route path="dashboard"              element={<Dashboard />} />
           <Route path="inventario/:tipo"       element={<AssetList />} />
           <Route path="activo/:id"             element={<AssetDetail />} />
+          <Route path="mobile-staging" element={<MobileStagingPage />} />
           <Route path="/papelera"              element={<Papelera />} />
           <Route path="/inventario/software"   element={<SoftwareInventario />} /> {/* ← NUEVO */}
         </Route>

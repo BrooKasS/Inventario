@@ -35,7 +35,7 @@ async function runSync(trigger: "cron" | "manual" = "cron"): Promise<void> {
 // ─────────────────────────────────────────────────────────────────────────────
 export function initOcsSyncJob(): void {
   // Se ejecuta todos los días a las 3:00am
-  cron.schedule("39 11 * * *", () => {
+  cron.schedule("50 11 * * *", () => {
     runSync("cron");
   }, {
     timezone: "America/Bogota", // ← ajusta a tu zona horaria

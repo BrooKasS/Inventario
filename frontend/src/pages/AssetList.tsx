@@ -472,12 +472,35 @@ export default function AssetList() {
                 border: "2px solid #B7312C",
               }}>🖥️ Desde OCS</button>
             )}
+            
+{/* ✅ BOTÓN PRE-ESCANEO (solo móviles) */}
+{rol === "ADMIN" && tipoKey === "MOVIL" && (
+  <button
+    onClick={() => navigate("/mobile-staging")}
+    style={{
+      padding: "10px 18px",
+      borderRadius: 8,
+      background: "#fff",
+      color: "#B7312C",
+      fontWeight: 700,
+      cursor: "pointer",
+      fontSize: 14,
+      fontFamily: "Calibri, sans-serif",
+      border: "2px solid #B7312C",
+      boxShadow: "0 4px 12px rgba(0,0,0,.15)",
+    }}
+  >
+    📡 Pre-escaneo
+  </button>
+)}
+
             {rol === "ADMIN" && (
               <button onClick={() => { setOcsInitialData(undefined); setShowCreate(true); }} style={{
                 padding: "10px 20px", borderRadius: 8, border: "none",
                 background: "#B7312C", color: "#fff", fontWeight: 700,
                 cursor: "pointer", fontSize: 14, fontFamily: "Calibri, sans-serif",
                 boxShadow: "0 4px 12px rgba(0,0,0,.15)",
+                
               }}>➕ Crear</button>
             )}
           </div>

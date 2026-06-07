@@ -5,6 +5,9 @@ import { errorHandler } from "./middlewares/errorHandler";
 import { authMiddleware } from "./middlewares/authMiddleware";
 import { assetsController } from "./api/controllers/assets.controller";
 import { asyncHandler } from "./middlewares/errorHandler";
+import externalRoutes from "./api/routes/external.routes";
+import { apiKeyMiddleware } from "./middlewares/apiKeyMiddleware";
+import { importController } from "./api/controllers/import.controller";
 
 export const app = express();
 
@@ -19,6 +22,7 @@ app.use(express.urlencoded({ extended: true }));
 app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
+app.use("/api/external", apiKeyMiddleware, externalRoutes);
 
 // ── Rutas públicas — ANTES del authMiddleware ──────────────────
 app.get(
@@ -37,6 +41,10 @@ app.post(
 // ── Test endpoints — sin auth ──
 app.post("/api/assets/test-email", assetsController.testEmail.bind(assetsController));
 app.post("/api/assets/test-firma-email", assetsController.testFirmaEmail.bind(assetsController));
+import multer from "multer";
+const upload = multer({ dest: "uploads/" });
+app.post("/api/import", upload.single("file"), asyncHandler(importController.importExcel.bind(importController)));
+
 
 // ── Auth global — aplica a todo lo demás ──
 app.use(authMiddleware);

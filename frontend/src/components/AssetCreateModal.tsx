@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createAsset } from "../api/client";
 import type { TipoActivo, VpnRule } from "../types";
 /* ─── Design tokens — mismo sistema que el resto de la app ─── */
@@ -182,6 +182,7 @@ function FormServidor({ data, onChange }: { data: any; onChange: (f: string, v: 
         <Field label="Rutas de Backup"        field="rutasBackup"        value={data.rutasBackup        ?? ""} onChange={onChange} placeholder="Ej: /backup/srv" />
         <Field label="Fecha Fin Soporte"      field="fechaFinSoporte"    value={data.fechaFinSoporte    ?? ""} onChange={onChange} type="date" />
         <Field label="Contrato que lo soporta" field="contratoQueSoporta" value={data.contratoQueSoporta ?? ""} onChange={onChange} placeholder="Ej: CTR-2024-001" />
+     
       </FormSection>
     </>
   );
@@ -470,41 +471,109 @@ function FormVpn({
 }
 
 function FormMovil({ data, onChange }: { data: any; onChange: (f: string, v: string) => void }) {
+
+  const [sugerencias, setSugerencias] = useState<any[]>([]);
+  const [mostrarDrop, setMostrarDrop] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const buscarSerial = (valor: string) => {
+    onChange("serial", valor);
+    onChange("imei1", "");
+    onChange("imei2", "");
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (valor.length < 2) {
+      setSugerencias([]);
+      setMostrarDrop(false);
+      return;
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      const token = sessionStorage.getItem("inventario_token");
+
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/mobile-staging/search?q=${encodeURIComponent(valor)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const data = await res.json();
+      setSugerencias(data);
+      setMostrarDrop(data.length > 0);
+    }, 300);
+  };
+
+  const seleccionarSerial = (item: any) => {
+    onChange("serial", item.serial);
+    onChange("imei1", item.imei1 || "");
+    onChange("imei2", item.imei2 || "");
+    setSugerencias([]);
+    setMostrarDrop(false);
+  };
+
   return (
     <>
       <FormSection title="Datos del Usuario" icon="👤">
-        <Field label="# Caso"               field="numeroCaso"         value={data.numeroCaso         ?? ""} onChange={onChange} placeholder="Ej: 12345" />
-        <Field label="Región/Departamento"  field="region"             value={data.region             ?? ""} onChange={onChange} placeholder="Ej: Cundinamarca" />
-        <Field label="Dependencia/Área"     field="dependencia"        value={data.dependencia        ?? ""} onChange={onChange} placeholder="Ej: Gerencia TI" />
-        <Field label="Sede"                 field="sede"               value={data.sede               ?? ""} onChange={onChange} placeholder="Ej: Bogotá" />
-        <Field label="C.C."                 field="cedula"             value={data.cedula             ?? ""} onChange={onChange} placeholder="Ej: 1000123456" />
-        <Field label="Usuario de Red"       field="usuarioRed"         value={data.usuarioRed         ?? ""} onChange={onChange} placeholder="Ej: jperez" />
-        <Field label="Correo Responsable"   field="correoResponsable"  value={data.correoResponsable  ?? ""} onChange={onChange} placeholder="Ej: jperez@empresa.com" type="email" />
+        <Field label="# Caso" field="numeroCaso" value={data.numeroCaso ?? ""} onChange={onChange} />
+        <Field label="Región/Departamento" field="region" value={data.region ?? ""} onChange={onChange} />
+        <Field label="Dependencia/Área" field="dependencia" value={data.dependencia ?? ""} onChange={onChange} />
+        <Field label="Sede" field="sede" value={data.sede ?? ""} onChange={onChange} />
+        <Field label="C.C." field="cedula" value={data.cedula ?? ""} onChange={onChange} />
+        <Field label="Usuario de Red" field="usuarioRed" value={data.usuarioRed ?? ""} onChange={onChange} />
+        <Field label="Correo Responsable" field="correoResponsable" value={data.correoResponsable ?? ""} onChange={onChange} />
       </FormSection>
+
       <FormSection title="Datos del Equipo" icon="📱">
-        <Field label="UNI"            field="uni"         value={"1"} onChange={onChange} readOnly />
-        <Field label="Marca"          field="marca"       value={data.marca       ?? ""} onChange={onChange} placeholder="Ej: Samsung" />
-        <Field label="Modelo"         field="modelo"      value={data.modelo      ?? ""} onChange={onChange} placeholder="Ej: Galaxy A54" />
-        <Field label="Serial"         field="serial"      value={data.serial      ?? ""} onChange={onChange} placeholder="Ej: R58N123ABC" />
-        <Field label="IMEI 1"         field="imei1"       value={data.imei1       ?? ""} onChange={onChange} placeholder="Ej: 357123456789012" />
-        <Field label="IMEI 2"         field="imei2"       value={data.imei2       ?? ""} onChange={onChange} placeholder="Ej: 357123456789013" />
-        <Field label="SIM"            field="sim"         value={data.sim         ?? ""} onChange={onChange} placeholder="Ej: 8957010001234567890" />
-        <Field label="Número de Línea" field="numeroLinea" value={data.numeroLinea ?? ""} onChange={onChange} placeholder="Ej: 3001234567" />
+        <Field label="UNI" field="uni" value={"1"} onChange={onChange} readOnly />
+        <Field label="Marca" field="marca" value={data.marca ?? ""} onChange={onChange} />
+        <Field label="Modelo" field="modelo" value={data.modelo ?? ""} onChange={onChange} />
+
+        {/* ✅ SERIAL CON AUTOCOMPLETE */}
+        <div style={{ position: "relative" }}>
+          <label style={labelStyle}>Serial</label>
+          <input
+            value={data.serial ?? ""}
+            onChange={e => buscarSerial(e.target.value)}
+            style={inputStyle}
+          />
+
+          {mostrarDrop && (
+            <div style={{
+              position: "absolute",
+              zIndex: 999,
+              background: "#fff",
+              border: "1px solid #d1d5db",
+              borderRadius: 6,
+              width: "100%"
+            }}>
+              {sugerencias.map((s: any) => (
+                <div
+                  key={s.id}
+                  onClick={() => seleccionarSerial(s)}
+                  style={{ padding: 8, cursor: "pointer" }}
+                >
+                  <strong>{s.serial}</strong>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <Field label="IMEI 1" field="imei1" value={data.imei1 ?? ""} onChange={onChange} readOnly />
+        <Field label="IMEI 2" field="imei2" value={data.imei2 ?? ""} onChange={onChange} readOnly />
+
+        <Field label="SIM" field="sim" value={data.sim ?? ""} onChange={onChange} />
+        <Field label="Número de Línea" field="numeroLinea" value={data.numeroLinea ?? ""} onChange={onChange} />
         <Field label="Fecha de Entrega" field="fechaEntrega" value={data.fechaEntrega ?? ""} onChange={onChange} type="date" />
       </FormSection>
+
       <FormSection title="Observaciones de Entrega" icon="📝">
         <div style={{ gridColumn: "1 / -1" }}>
           <label style={labelStyle}>Observaciones</label>
           <textarea
             value={data.observacionesEntrega ?? ""}
             onChange={e => onChange("observacionesEntrega", e.target.value)}
-            placeholder="Observaciones al momento de la entrega..."
             rows={3}
-            style={{
-              ...inputStyle,
-              resize: "vertical",
-              minHeight: 72,
-            }}
+            style={{ ...inputStyle }}
           />
         </div>
       </FormSection>
@@ -694,9 +763,22 @@ if (tipoKey && Object.keys(detalleConvertido).length > 0) {
   }
 }
 
-      await createAsset(payload);
-      onCreated();
-      handleClose();
+      
+await createAsset(payload);
+
+// ✅ AQUÍ
+if (tipo === "MOVIL" && payload.serial) {
+  await fetch(`${import.meta.env.VITE_API_URL}/mobile-staging/${payload.serial}/usado`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${sessionStorage.getItem("inventario_token")}`,
+    },
+  });
+}
+
+onCreated();
+handleClose();
+
     } catch (e: any) {
       setError(e?.response?.data?.error ?? "Error al crear el activo. Intenta de nuevo.");
     } finally {

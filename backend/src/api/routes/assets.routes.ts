@@ -37,6 +37,7 @@ router.get("/activo/:id",  asyncHandler(assetsController.getAssetById.bind(asset
 // Subrutas de un asset — prefijo fijo antes de /:id genérico
 router.get("/:id/word",     assetsController.generarWord.bind(assetsController));
 router.get("/:id/bitacora", asyncHandler(assetsController.getBitacora.bind(assetsController)));
+router.delete("/:id/bitacora/:bitacoraId", requireAdmin, asyncHandler(assetsController.deleteBitacoraEntry.bind(assetsController))); // ← AGREGAR
 
 // Firma y estado — acciones del usuario final
 router.post("/:id/firmar",            asyncHandler(assetsController.firmarMovil.bind(assetsController)));
@@ -48,6 +49,7 @@ router.post("/:id/restore",           requireAdmin, asyncHandler(assetsControlle
 // Escritura por ID — solo ADMIN
 router.patch("/:id",       requireAdmin, asyncHandler(assetsController.updateAsset.bind(assetsController)));
 router.delete("/:id/hard", requireAdmin, asyncHandler(assetsController.hardDelete.bind(assetsController)));
+
 router.delete("/:id",      requireAdmin, asyncHandler(assetsController.deleteAsset.bind(assetsController)));
 
 // ══════════════════════════════════════════════════════════════
