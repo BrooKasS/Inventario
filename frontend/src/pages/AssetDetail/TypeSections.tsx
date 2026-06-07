@@ -1,5 +1,6 @@
 import type { Asset, Vpn, VpnRule } from "../../types";
 import { Field, Section } from "./DetailComponents";
+import { useState } from "react";
 
 /* ═══════════════════════════════════════════
    SERVIDOR SECTIONS
@@ -9,7 +10,7 @@ export function ServidorSections({
   editing,
   handleChange,
 }: {
-  asset: Asset;
+  asset: Asset;//
   editing: boolean;
   handleChange: (section: string | null, field: string, val: string) => void;
 }) {
@@ -338,6 +339,127 @@ export function BaseDatosSection({
 /* ═══════════════════════════════════════════
    VPN SECTION
 ═══════════════════════════════════════════ */
+
+function ReglaHistorica({ regla, idx, editing, onEliminar }: { 
+  regla: Vpn; 
+  idx: number; 
+  editing: boolean;
+  onEliminar: () => void;
+}) {
+  const [editando, setEditando] = useState(false);
+  const [valores, setValores] = useState({
+    conexion: regla.conexion ?? "",
+    origen:   regla.origen   ?? "",
+    destino:  regla.destino  ?? "",
+    fases:    regla.fases    ?? "",
+  });
+  const [guardando, setGuardando] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
+
+  const guardarRegla = async () => {
+    setGuardando(true);
+    try {
+      const token = sessionStorage.getItem("inventario_token");
+      await fetch(`${import.meta.env.VITE_API_URL}/assets/${regla.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ vpn: valores }),
+      });
+      setEditando(false);
+    } catch {
+      alert("Error al guardar la regla");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const eliminarRegla = async () => {
+    if (!window.confirm("¿Eliminar esta regla permanentemente?")) return;
+    setEliminando(true);
+    try {
+      const token = sessionStorage.getItem("inventario_token");
+      await fetch(`${import.meta.env.VITE_API_URL}/assets/${regla.id}/hard`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      onEliminar();
+    } catch {
+      alert("Error al eliminar la regla");
+      setEliminando(false);
+    }
+  };
+
+  return (
+    <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-lg hover:shadow-md transition-all">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <span className="inline-block w-6 h-6 bg-amber-600 text-white rounded-full text-center text-xs font-bold leading-6">{idx + 1}</span>
+          <span className="font-bold text-amber-900">{valores.conexion || `Regla ${idx + 1}`}</span>
+        </div>
+        {editing && (
+          <div className="flex gap-2">
+            {editando ? (
+              <>
+                <button onClick={guardarRegla} disabled={guardando}
+                  style={{ padding:"4px 12px", background:"#22c55e", color:"#fff", border:"none", borderRadius:6, fontWeight:700, fontSize:12, cursor:"pointer" }}>
+                  {guardando ? "Guardando..." : "💾 Guardar"}
+                </button>
+                <button onClick={() => setEditando(false)}
+                  style={{ padding:"4px 12px", background:"#6b7280", color:"#fff", border:"none", borderRadius:6, fontWeight:700, fontSize:12, cursor:"pointer" }}>
+                  Cancelar
+                </button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => setEditando(true)}
+                  style={{ padding:"4px 12px", background:"#f59e0b", color:"#fff", border:"none", borderRadius:6, fontWeight:700, fontSize:12, cursor:"pointer" }}>
+                  ✏️ Editar
+                </button>
+                <button onClick={eliminarRegla} disabled={eliminando}
+                  style={{ padding:"4px 12px", background:"#ef4444", color:"#fff", border:"none", borderRadius:6, fontWeight:700, fontSize:12, cursor:"pointer" }}>
+                  {eliminando ? "..." : "✕"}
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="mb-2 p-2 bg-white rounded border-l-4 border-blue-400">
+        <div className="text-xs font-semibold text-gray-500 uppercase">🌐 Conexión</div>
+        {editando ? (
+          <input value={valores.conexion} onChange={e => setValores(v => ({ ...v, conexion: e.target.value }))}
+            style={{ width:"100%", padding:"4px 8px", border:"1px solid #d1d5db", borderRadius:4, fontSize:13, marginTop:4, boxSizing:"border-box" as any }} />
+        ) : (
+          <div className="text-sm font-mono text-blue-600 font-bold mt-1">{valores.conexion || "—"}</div>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <div className="flex-1 p-2 bg-white rounded border-l-4 border-green-400">
+          <div className="text-xs font-semibold text-gray-500">← Origen</div>
+          {editando ? (
+            <input value={valores.origen} onChange={e => setValores(v => ({ ...v, origen: e.target.value }))}
+              style={{ width:"100%", padding:"4px 8px", border:"1px solid #d1d5db", borderRadius:4, fontSize:13, marginTop:4, boxSizing:"border-box" as any }} />
+          ) : (
+            <div className="text-xs font-mono text-green-600 mt-1 break-all">{valores.origen || "—"}</div>
+          )}
+        </div>
+        <div className="flex-shrink-0 text-2xl text-amber-500 font-bold">→</div>
+        <div className="flex-1 p-2 bg-white rounded border-l-4 border-red-400">
+          <div className="text-xs font-semibold text-gray-500">Destino →</div>
+          {editando ? (
+            <input value={valores.destino} onChange={e => setValores(v => ({ ...v, destino: e.target.value }))}
+              style={{ width:"100%", padding:"4px 8px", border:"1px solid #d1d5db", borderRadius:4, fontSize:13, marginTop:4, boxSizing:"border-box" as any }} />
+          ) : (
+            <div className="text-xs font-mono text-red-600 mt-1 break-all">{valores.destino || "—"}</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function VpnSection({
   asset,
   editing,
@@ -345,156 +467,121 @@ export function VpnSection({
 }: {
   asset: Asset;
   editing: boolean;
-  handleChange: (section: string | null, field: string, val: string) => void;
+  handleChange: (section: string | null, field: string, val: any) => void;
 }) {
   const v = asset.vpn;
+  const [historicas, setHistoricas] = useState<Vpn[]>((v as any)?.reglasHistoricas ?? []);
+  const [nuevaRegla, setNuevaRegla] = useState({ conexion:"", fases:"", origen:"", destino:"" });
+  const [reglas, setReglas] = useState<Partial<VpnRule>[]>(v?.reglas ?? []);
 
   if (!v) return null;
+
+  const agregarRegla = () => {
+    if (!nuevaRegla.conexion && !nuevaRegla.origen && !nuevaRegla.destino) return;
+    const actualizadas = [...reglas, nuevaRegla];
+    setReglas(actualizadas);
+    setNuevaRegla({ conexion:"", fases:"", origen:"", destino:"" });
+    handleChange("vpn", "reglas", actualizadas as any);
+  };
+
+  const eliminarRegla = (idx: number) => {
+    const actualizadas = reglas.filter((_, i) => i !== idx);
+    setReglas(actualizadas);
+    handleChange("vpn", "reglas", actualizadas as any);
+  };
+
+  const totalReglas = reglas.length + historicas.length;
 
   return (
     <>
       <Section title="VPN" icon="🔒">
-        <Field
-          label="Conexión"
-          value={v.conexion}
-          editing={editing}
-          field="conexion"
-          onChange={(f, val) => handleChange("vpn", f, val)}
-        />
-        <Field
-          label="Fases"
-          value={v.fases}
-          editing={editing}
-          field="fases"
-          onChange={(f, val) => handleChange("vpn", f, val)}
-        />
-        <Field
-          label="Origen"
-          value={v.origen}
-          editing={editing}
-          field="origen"
-          onChange={(f, val) => handleChange("vpn", f, val)}
-        />
-        <Field
-          label="Destino"
-          value={v.destino}
-          editing={editing}
-          field="destino"
-          onChange={(f, val) => handleChange("vpn", f, val)}
-        />
+        <Field label="Conexión" value={v.conexion} editing={editing} field="conexion" onChange={(f, val) => handleChange("vpn", f, val)} />
+        <Field label="Fases"    value={v.fases}    editing={editing} field="fases"    onChange={(f, val) => handleChange("vpn", f, val)} />
+        <Field label="Origen"   value={v.origen}   editing={editing} field="origen"   onChange={(f, val) => handleChange("vpn", f, val)} />
+        <Field label="Destino"  value={v.destino}  editing={editing} field="destino"  onChange={(f, val) => handleChange("vpn", f, val)} />
       </Section>
 
-      {/* Reglas Asociadas */}
-      {(() => {
-        const reglasNuevas = v.reglas ?? [];
-        const reglasHistoricas = (v as any).reglasHistoricas ?? [];
-        const totalReglas = reglasNuevas.length + reglasHistoricas.length;
-        
-        if (totalReglas === 0) return null;
-        
-        return (
-          <Section title={`Reglas Asociadas (${totalReglas})`} icon="🔗">
-            <div className="space-y-3">
-              {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-              {/* NUEVAS REGLAS (VPN_RULES) */}
-              {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-              {reglasNuevas.length > 0 && (
-                <div className="mb-4">
-                  <div className="text-xs font-bold text-green-700 bg-green-50 px-3 py-1 rounded inline-block mb-2">
-                    ✨ Reglas Nuevas ({reglasNuevas.length})
+      {(totalReglas > 0 || editing) && (
+        <Section title={`Reglas Asociadas (${totalReglas})`} icon="🔗">
+          <div className="space-y-3">
+
+            {/* TODAS LAS REGLAS JUNTAS */}
+            {reglas.map((regla, idx) => (
+              <div key={idx} className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-lg hover:shadow-md transition-all">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block w-6 h-6 bg-green-600 text-white rounded-full text-center text-xs font-bold leading-6">{idx + 1}</span>
+                    <span className="font-bold text-green-900">{regla.conexion || `Regla #${idx + 1}`}</span>
                   </div>
-                  <div className="space-y-2">
-                    {reglasNuevas.map((regla: VpnRule, idx: number) => (
-                      <div
-                        key={idx}
-                        className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-lg hover:shadow-md transition-all"
-                      >
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="inline-block w-6 h-6 bg-green-600 text-white rounded-full text-center text-xs font-bold leading-6">
-                            {idx + 1}
-                          </span>
-                          <span className="font-bold text-green-900">Regla #{idx + 1}</span>
-                        </div>
-                        {regla.conexion && (
-                          <div className="mb-2 p-2 bg-white rounded border-l-4 border-blue-500">
-                            <div className="text-xs font-semibold text-gray-500 uppercase">🌐 Conexión</div>
-                            <div className="text-sm font-mono text-blue-700 font-bold mt-1">{regla.conexion}</div>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2">
-                          {regla.origen && (
-                            <div className="flex-1 p-2 bg-white rounded border-l-4 border-green-500">
-                              <div className="text-xs font-semibold text-gray-500">← Origen</div>
-                              <div className="text-xs font-mono text-green-700 mt-1 break-all">{regla.origen}</div>
-                            </div>
-                          )}
-                          <div className="flex-shrink-0 text-2xl text-green-500 font-bold">→</div>
-                          {regla.destino && (
-                            <div className="flex-1 p-2 bg-white rounded border-l-4 border-red-500">
-                              <div className="text-xs font-semibold text-gray-500">Destino →</div>
-                              <div className="text-xs font-mono text-red-700 mt-1 break-all">{regla.destino}</div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                  {editing && (
+                    <button onClick={() => eliminarRegla(idx)}
+                      style={{ padding:"4px 10px", background:"#ef4444", color:"#fff", border:"none", borderRadius:6, fontSize:12, fontWeight:700, cursor:"pointer" }}>
+                      ✕
+                    </button>
+                  )}
+                </div>
+                <div className="mb-2 p-2 bg-white rounded border-l-4 border-blue-500">
+                  <div className="text-xs font-semibold text-gray-500 uppercase">🌐 Conexión</div>
+                  <div className="text-sm font-mono text-blue-700 font-bold mt-1">{regla.conexion || "—"}</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 p-2 bg-white rounded border-l-4 border-green-500">
+                    <div className="text-xs font-semibold text-gray-500">← Origen</div>
+                    <div className="text-xs font-mono text-green-700 mt-1 break-all">{regla.origen || "—"}</div>
+                  </div>
+                  <div className="flex-shrink-0 text-2xl text-green-500 font-bold">→</div>
+                  <div className="flex-1 p-2 bg-white rounded border-l-4 border-red-500">
+                    <div className="text-xs font-semibold text-gray-500">Destino →</div>
+                    <div className="text-xs font-mono text-red-700 mt-1 break-all">{regla.destino || "—"}</div>
                   </div>
                 </div>
-              )}
-              
-              {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-              {/* REGLAS HISTÓRICAS (VPNS - existentes) */}
-              {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-              {reglasHistoricas.length > 0 && (
-                <div>
-                  <div className="text-xs font-bold text-amber-700 bg-amber-50 px-3 py-1 rounded inline-block mb-2">
-                    📋 Reglas Históricas ({reglasHistoricas.length})
-                  </div>
-                  <div className="space-y-2">
-                    {reglasHistoricas.map((regla: Vpn, idx: number) => (
-                      <div
-                        key={idx}
-                        className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-lg hover:shadow-md transition-all opacity-85"
-                      >
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="inline-block w-6 h-6 bg-amber-600 text-white rounded-full text-center text-xs font-bold leading-6">
-                            {idx + 1}
-                          </span>
-                          <span className="font-bold text-amber-900">{regla.conexion || `Regla ${idx + 1}`}</span>
-                        </div>
-                        {regla.conexion && (
-                          <div className="mb-2 p-2 bg-white rounded border-l-4 border-blue-400">
-                            <div className="text-xs font-semibold text-gray-500 uppercase">🌐 Conexión</div>
-                            <div className="text-sm font-mono text-blue-600 font-bold mt-1">{regla.conexion}</div>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2">
-                          {regla.origen && (
-                            <div className="flex-1 p-2 bg-white rounded border-l-4 border-green-400">
-                              <div className="text-xs font-semibold text-gray-500">← Origen</div>
-                              <div className="text-xs font-mono text-green-600 mt-1 break-all">{regla.origen}</div>
-                            </div>
-                          )}
-                          <div className="flex-shrink-0 text-2xl text-amber-500 font-bold">→</div>
-                          {regla.destino && (
-                            <div className="flex-1 p-2 bg-white rounded border-l-4 border-red-400">
-                              <div className="text-xs font-semibold text-gray-500">Destino →</div>
-                              <div className="text-xs font-mono text-red-600 mt-1 break-all">{regla.destino}</div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+              </div>
+            ))}
+
+            {historicas.map((regla, idx) => (
+              <ReglaHistorica
+                key={regla.id ?? idx}
+                regla={regla}
+                idx={reglas.length + idx}
+                editing={editing}
+                onEliminar={() => setHistoricas(h => h.filter(r => r.id !== regla.id))}
+              />
+            ))}
+
+            {/* FORMULARIO AGREGAR */}
+            {editing && (
+              <div style={{ marginTop:16, background:"#f8fafc", border:"1px solid #e2e8f0", borderRadius:8, padding:16 }}>
+                <div style={{ fontSize:11, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>
+                  📝 Agregar Nueva Regla
                 </div>
-              )}
-            </div>
-          </Section>
-        );
-      })()}
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
+                  {["conexion","fases","origen","destino"].map(campo => (
+                    <div key={campo}>
+                      <label style={{ fontSize:11, fontWeight:700, color:"#374151", display:"block", marginBottom:4, textTransform:"uppercase" as any }}>{campo}</label>
+                      <input
+                        value={(nuevaRegla as any)[campo]}
+                        onChange={e => setNuevaRegla(r => ({ ...r, [campo]: e.target.value }))}
+                        style={{ width:"100%", padding:"6px 10px", border:"1px solid #d1d5db", borderRadius:6, fontSize:13, boxSizing:"border-box" as any }}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <button onClick={agregarRegla}
+                  style={{ width:"100%", padding:"10px", background:"#6366f1", color:"#fff", border:"none", borderRadius:6, fontWeight:700, fontSize:13, cursor:"pointer" }}>
+                  + Agregar Regla
+                </button>
+              </div>
+            )}
+
+          </div>
+        </Section>
+      )}
     </>
   );
 }
+
+/* ═══════════════════════════════════════════
+   MOVIL
 
 /* ═══════════════════════════════════════════
    MOVIL SECTION

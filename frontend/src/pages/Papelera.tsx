@@ -80,7 +80,9 @@ export default function Papelera() {
   const [buscar,    setBuscar]    = useState("");
   const [tipoFiltro, setTipoFiltro] = useState<string>("");
   const [restoring, setRestoring] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [vaciando, setVaciando] = useState(false);
+  const isAdmin = JSON.parse(atob(sessionStorage.getItem("inventario_token")!.split(".")[1])).esAdmin;
 
   const cargar = async () => {
     setLoading(true);
@@ -125,22 +127,32 @@ export default function Papelera() {
 
   /* ── Vaciar papelera ── */
   const handleVaciarPapelera = async () => {
-    const confirmar = window.confirm(
-      `¿Eliminar PERMANENTEMENTE los ${assets.length} activos del histórico? Esta acción NO se puede deshacer.`
-    );
-    if (!confirmar) return;
+  if (!window.confirm(`¿Eliminar PERMANENTEMENTE los ${assets.length} activos del histórico? Esta acción NO se puede deshacer.`)) return;
+  try {
+    setVaciando(true);
+    const { hardDeleteAllAssets } = await import("../api/client");
+    await hardDeleteAllAssets();
+    window.location.reload();
+  } catch (err) {
+    alert("Error vaciando papelera");
+  } finally {
+    setVaciando(false);
+  }
+};
 
-    try {
-      setVaciando(true);
-      const { hardDeleteAllAssets } = await import("../api/client");
-await hardDeleteAllAssets();
-window.location.reload();
-    } catch (err) {
-      alert("Error vaciando papelera");
-    } finally {
-      setVaciando(false);
-    }
-  };
+  const handleHardDelete = async (asset: Asset) => {
+  if (!window.confirm(`¿Eliminar PERMANENTEMENTE "${asset.nombre}"? No se puede deshacer.`)) return;
+  setDeleting(asset.id);
+  try {
+    const { hardDeleteAsset } = await import("../api/client");
+    await hardDeleteAsset(asset.id);
+    await cargar();
+  } catch (e) {
+    alert("Error al eliminar el activo.");
+  } finally {
+    setDeleting(null);
+  }
+};
 
   const tiposDisponibles = [...new Set(assets.map(a => a.tipo))];
   const hayFiltros = !!(buscar || tipoFiltro);
@@ -184,7 +196,7 @@ window.location.reload();
           </div>
 
           <div style={{ display: "flex", gap: 10 }}>
-            {assets.length > 0 && (
+            {assets.length > 0 && isAdmin &&(
               <button
                 onClick={handleVaciarPapelera}
                 disabled={vaciando}
@@ -448,6 +460,7 @@ window.location.reload();
                               <>♻️ Habilitar</>
                             )}
                           </button>
+       
                         </td>
                       </tr>
                     ))}

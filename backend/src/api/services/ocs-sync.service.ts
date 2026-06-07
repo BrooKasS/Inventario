@@ -32,6 +32,7 @@ interface SyncResult {
 
 export class OcsSyncService {
 
+  // ─── FIX 1: procesa hardware en batches de 50, no todo junto ───────────────
   async syncOcsToOracle(): Promise<SyncResult> {
     const startTime = Date.now();
     const result: SyncResult = {
@@ -62,19 +63,32 @@ export class OcsSyncService {
         return result;
       }
 
-      const hardwareIds = hardwareList.map((h) => h.ID);
-      const softwareMap = await this.getOcsSoftwareGrouped(hardwareIds);
-      console.log(`[OCS-SYNC] Software cargado para ${Object.keys(softwareMap).length} equipos`);
-
       await this.limpiarTablas();
 
-      for (const hw of hardwareList) {
-        try {
-          await this.procesarHardware(hw, softwareMap[hw.ID] || [], result);
-        } catch (hwError: any) {
-          console.error(`[OCS-SYNC] Error procesando HW-${hw.ID} (${hw.NAME}): ${hwError.message}`);
-          result.errors++;
+      // Procesar en batches de 50 equipos — softwareMap nunca crece más de 50 a la vez
+      const HW_BATCH = 50;
+      for (let i = 0; i < hardwareList.length; i += HW_BATCH) {
+        const hwChunk = hardwareList.slice(i, i + HW_BATCH);
+        const ids = hwChunk.map((h) => h.ID);
+
+        // Solo carga software de estos 50 equipos — se libera al final del loop
+        const softwareMap = await this.getOcsSoftwareGrouped(ids);
+
+        for (const hw of hwChunk) {
+          try {
+            await this.procesarHardware(hw, softwareMap[hw.ID] || [], result);
+          } catch (hwError: any) {
+            console.error(`[OCS-SYNC] Error procesando HW-${hw.ID} (${hw.NAME}): ${hwError.message}`);
+            result.errors++;
+          }
         }
+
+        console.log(
+          `[OCS-SYNC] Progreso: ${Math.min(i + HW_BATCH, hardwareList.length)}/${hardwareList.length}`
+        );
+
+        // Cede el event loop entre batches para que GC pueda limpiar
+        await new Promise((resolve) => setImmediate(resolve));
       }
 
     } catch (error: any) {
@@ -92,6 +106,7 @@ export class OcsSyncService {
     return result;
   }
 
+  // sin cambios — igual que antes
   private async getOcsHardware(): Promise<OcsHardware[]> {
     const rows = await OcsDataSource.query(`
       SELECT
@@ -124,42 +139,52 @@ export class OcsSyncService {
     return rows as OcsHardware[];
   }
 
+  // ─── FIX 2: software en batches de 100 IDs, no todos de un golpe ───────────
   private async getOcsSoftwareGrouped(
     hardwareIds: number[]
   ): Promise<Record<number, OcsSoftware[]>> {
     if (hardwareIds.length === 0) return {};
 
-    const placeholders = hardwareIds.map(() => "?").join(",");
-
-    const rows = await OcsDataSource.query(
-      `SELECT
-        s.HARDWARE_ID,
-        s.NAME,
-        s.VERSION,
-        s.PUBLISHER
-      FROM softwares s
-      WHERE s.HARDWARE_ID IN (${placeholders})
-        AND s.NAME IS NOT NULL
-        AND s.NAME != ''
-      ORDER BY s.HARDWARE_ID, s.NAME`,
-      hardwareIds
-    );
-
+    const BATCH = 100;
     const grouped: Record<number, OcsSoftware[]> = {};
-    for (const row of rows) {
-      const hwId = Number(row.HARDWARE_ID);
-      if (!grouped[hwId]) grouped[hwId] = [];
-      grouped[hwId].push({
-        HARDWARE_ID: hwId,
-        NAME: row.NAME,
-        VERSION: row.VERSION ?? null,
-        PUBLISHER: row.PUBLISHER ?? null,
-      });
+
+    for (let i = 0; i < hardwareIds.length; i += BATCH) {
+      const chunk = hardwareIds.slice(i, i + BATCH);
+      const placeholders = chunk.map(() => "?").join(",");
+
+      const rows = await OcsDataSource.query(
+        `SELECT
+          s.HARDWARE_ID,
+          s.NAME,
+          s.VERSION,
+          s.PUBLISHER
+        FROM softwares s
+        WHERE s.HARDWARE_ID IN (${placeholders})
+          AND s.NAME IS NOT NULL
+          AND s.NAME != ''
+        ORDER BY s.HARDWARE_ID, s.NAME`,
+        chunk
+      );
+
+      for (const row of rows) {
+        const hwId = Number(row.HARDWARE_ID);
+        if (!grouped[hwId]) grouped[hwId] = [];
+        grouped[hwId].push({
+          HARDWARE_ID: hwId,
+          NAME: row.NAME,
+          VERSION: row.VERSION ?? null,
+          PUBLISHER: row.PUBLISHER ?? null,
+        });
+      }
+
+      // Cede el event loop entre batches
+      await new Promise((resolve) => setImmediate(resolve));
     }
 
     return grouped;
   }
 
+  // sin cambios — igual que antes
   private async limpiarTablas(): Promise<void> {
     console.log("[OCS-SYNC] Limpiando datos anteriores...");
     await AppDataSource.getRepository(SoftwareInstalado).clear();
@@ -167,6 +192,7 @@ export class OcsSyncService {
     console.log("[OCS-SYNC] Tablas limpias, insertando datos frescos...");
   }
 
+  // sin cambios — igual que antes
   private async procesarHardware(
     hw: OcsHardware,
     software: OcsSoftware[],
@@ -230,6 +256,7 @@ export class OcsSyncService {
     result.mapped++;
   }
 
+  // sin cambios — igual que antes
   private async actualizarServidorDesdeOcs(
     assetId: string,
     hw: OcsHardware
@@ -272,6 +299,7 @@ export class OcsSyncService {
     );
   }
 
+  // sin cambios — igual que antes
   private async findServidorByIp(
     ip: string
   ): Promise<{ assetId: string; ipField: string } | null> {
@@ -300,6 +328,7 @@ export class OcsSyncService {
     return { assetId: raw.assetId, ipField };
   }
 
+  // sin cambios — igual que antes
   private deduplicarSoftware(software: OcsSoftware[]): OcsSoftware[] {
     const vistos = new Set<string>();
     return software.filter((sw) => {
@@ -310,16 +339,25 @@ export class OcsSyncService {
     });
   }
 
+  // ─── FIX 3: insert() en lugar de save() — no hace SELECT previo ─────────────
   private async insertarEnChunks(
     repo: any,
     registros: any[],
     chunkSize: number
   ): Promise<void> {
     for (let i = 0; i < registros.length; i += chunkSize) {
-      await repo.save(registros.slice(i, i + chunkSize));
+      const chunk = registros.slice(i, i + chunkSize);
+
+      // insert() es INSERT puro — save() hacía SELECT+INSERT por cada fila
+      // Seguro porque limpiarTablas() ya borró todo antes del sync
+      await repo.insert(chunk);
+
+      // Cede el event loop entre chunks
+      await new Promise((resolve) => setImmediate(resolve));
     }
   }
 
+  // sin cambios — igual que antes
   private calcDuration(startTime: number): string {
     const ms = Date.now() - startTime;
     if (ms < 1000) return `${ms}ms`;
@@ -327,6 +365,7 @@ export class OcsSyncService {
     return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
   }
 
+  // sin cambios — igual que antes
   async getLastSyncInfo(): Promise<{
     lastSync: Date | null;
     totalMappings: number;
