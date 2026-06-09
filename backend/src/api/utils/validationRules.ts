@@ -29,12 +29,12 @@ function validateCedula(val: any): string | null {
 
 
 /**
- * Valida IMEI: máx 10 dígitos
+ * 
  */
 function validateIMEI(val: any): string | null {
   if (!val) return null;
   const str = String(val).trim();
-  if (str.length > 10) return "IMEI: máximo 10 dígitos";
+  if (str.length > 20) return "IMEI: máximo 20   dígitos";
   if (!/^\d+$/.test(str)) return "IMEI deben ser solo números";
   return null;
 }
