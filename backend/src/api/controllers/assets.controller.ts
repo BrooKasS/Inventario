@@ -628,6 +628,23 @@ async deleteBitacoraEntry(req: Request, res: Response) {
       message: `${count} activos eliminados permanentemente del histórico.` 
     });
   }
+
+  getSuggestions = async (req: Request, res: Response): Promise<void> => {
+  const { field, tipo, q } = req.query as Record<string, string>;
+
+  if (!field || !tipo) {
+    res.status(400).json({ success: false, error: "field y tipo son requeridos" });
+    return;
+  }
+
+  const suggestions = await assetsService.getSuggestions(
+    field,
+    tipo,
+    q ?? ""
+  );
+
+  res.json({ success: true, data: { suggestions } });
+};
 }
 
 export const assetsController = new AssetsController();

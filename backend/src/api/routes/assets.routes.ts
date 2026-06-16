@@ -33,6 +33,7 @@ router.get("/public/:id",  asyncHandler(assetsController.getAssetById.bind(asset
 
 // Ruta privada con prefijo fijo "activo"
 router.get("/activo/:id",  asyncHandler(assetsController.getAssetById.bind(assetsController)));
+router.get("/suggestions", asyncHandler(assetsController.getSuggestions.bind(assetsController)));
 
 // Subrutas de un asset — prefijo fijo antes de /:id genérico
 router.get("/:id/word",     assetsController.generarWord.bind(assetsController));

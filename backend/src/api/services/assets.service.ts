@@ -24,6 +24,7 @@ import { OcsServerMapping } from "../../entities/OcsServerMapping";
 import { SoftwareInstalado } from "../../entities/SoftwareInstalado";
 
 
+
 export class AssetsService {
   async getAssets(filters: AssetFilters) {
     const { tipo, q, page = 1, limit = 50 } = filters;
@@ -1123,6 +1124,102 @@ return {
 
     return deleted.length;
   }
+  async getSuggestions(field: string, tipo: string, q: string): Promise<string[]> {
+
+  const tableMap: Record<string, string> = {
+    SERVIDOR:   "SERVIDORES",
+    RED:        "REDES",
+    UPS:        "UPS",
+    BASE_DATOS: "BASE_DATOS",
+    MOVIL:      "MOVILES",
+    ASSET:       "ASSETS",
+  };
+
+  const fieldToColumn: Record<string, Record<string, string>> = {
+    SERVIDOR: {
+      ambiente:           "ambiente",
+      tipoServidor:       "tipoServidor",
+      sistemaOperativo:   "sistemaOperativo",
+      contratoQueSoporta: "contratoQueSoporta",
+      appSoporta:         "appSoporta",
+      monitoreo:          "monitoreo",
+      backup:             "backup",
+      vramMb:             "vramMb",
+      vcpu:               "vcpu",
+      rutasBackup:         "rutasBackup",
+      
+      
+    },
+    RED: {
+      estado:             "estado",
+      modelo:             "modelo",
+      contratoQueSoporta: "contratoQueSoporta",
+      ipGestion:          "ipGestion",
+    },
+    UPS: {
+      estado:             "estado",
+      modelo:             "modelo",
+    },
+    BASE_DATOS: {
+      ambiente:           "ambiente",
+      contratoQueSoporta: "contratoQueSoporta",
+      appSoporta:         "appSoporta",
+      contenedorFisico:   "contenedorFisico",
+    },
+    MOVIL: {
+      marca:              "marca",
+      modelo:             "modelo",
+      region:             "region",
+      dependencia:        "dependencia",
+      sede:               "sede",
+    },
+    ASSET: {
+      ubicacion:          "ubicacion",
+      propietario:        "propietario",
+      custodio:           "custodio",
+    },
+  };
+
+  const table  = tableMap[tipo];
+  const colMap = fieldToColumn[tipo];
+  if (!table || !colMap) return [];
+  const column = colMap[field];
+  if (!column) return [];
+
+  const qTrimmed  = (q ?? "").trim();
+  const likeParam = qTrimmed.length > 0
+    ? `%${qTrimmed.toLowerCase()}%`
+    : "%";
+
+  if (!/^[A-Za-z0-9_]+$/.test(column)) {
+    console.error(`[getSuggestions] Columna inválida: "${column}"`);
+    return [];
+  }
+
+  try {
+   const rows: Array<Record<string, unknown>> = await AppDataSource.query(
+  `SELECT * FROM (
+     SELECT DISTINCT TO_CHAR("${column}") AS SUGGESTION
+     FROM   "${table}"
+     WHERE  "${column}" IS NOT NULL
+       AND  LOWER(TO_CHAR("${column}")) LIKE :1
+   ) WHERE ROWNUM <= 10`,
+  [likeParam]
+);
+
+    return rows
+      .map((r) => {
+        const val = r["SUGGESTION"] ?? r["suggestion"] ?? Object.values(r)[0];
+        return typeof val === "string" ? val.trim() : null;
+      })
+      .filter((v): v is string => v !== null && v.length > 0);
+
+  } catch (err) {
+    console.error(`[getSuggestions] Error tipo=${tipo} field=${field} col=${column}:`, err);
+    return [];
+  }
+}
+
 }
 
 export const assetsService = new AssetsService();

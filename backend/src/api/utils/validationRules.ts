@@ -143,17 +143,30 @@ function validatePositiveNumber(val: any, fieldName: string): string | null {
  */
 function validateFecha(val: any, fieldName: string): string | null {
   if (!val) return null;
-  const date = new Date(val);
-  if (isNaN(date.getTime())) return `${fieldName}: fecha inválida`;
+
+  let date: Date;
+
+  // Manejar fechas tipo YYYY-MM-DD sin problemas de zona horaria
+  if (typeof val === "string" && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
+    const [year, month, day] = val.split("-").map(Number);
+    date = new Date(year, month - 1, day);
+  } else {
+    date = new Date(val);
+  }
+
+  if (isNaN(date.getTime())) {
+    return `${fieldName}: fecha inválida`;
+  }
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const dateOnly = new Date(date);
-  dateOnly.setHours(0, 0, 0, 0);
 
-  if (dateOnly < today) {
+  date.setHours(0, 0, 0, 0);
+
+  if (date.getTime() < today.getTime()) {
     return `${fieldName}: no puede ser anterior a hoy`;
   }
+
   return null;
 }
 
