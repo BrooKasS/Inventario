@@ -5,7 +5,7 @@ const API   = import.meta.env.VITE_API_URL;
 const token = () => sessionStorage.getItem("inventario_token");
 
 const MARCAS       = ["Samsung", "Motorola", "Xiaomi", "Huawei", "Apple"];
-const MODELOS_BASE = ["Galaxy S26", "Galaxy S26 Ultra", "Galaxy A54"];
+const MODELOS_BASE = ["Galaxy S26", "Galaxy S26 Ultra", "Galaxy A56"];
 
 interface StagingRow {
   id:       string;
@@ -38,7 +38,7 @@ export default function MobileStagingPage() {
   const [imei1,      setImei1]      = useState("");
   const [marca,      setMarca]      = useState("Samsung");
   const [marcaOtro,  setMarcaOtro]  = useState("");
-  const [modelo,     setModelo]     = useState("Galaxy S26");
+  const [modelo,     setModelo]     = useState("Galaxy S26 Ultra");
   const [modeloOtro, setModeloOtro] = useState("");
 
   // ─── Datos ───
@@ -103,7 +103,7 @@ export default function MobileStagingPage() {
     setExito(`✅ ${serial.trim().toUpperCase()} guardado`);
     setSerial(""); setImei1("");
     setMarca("Samsung"); setMarcaOtro("");
-    setModelo("Galaxy S26"); setModeloOtro("");
+    setModelo("Galaxy S26 Ultra"); setModeloOtro("");
     cargar();
     setTimeout(() => serialRef.current?.focus(), 50);
   };

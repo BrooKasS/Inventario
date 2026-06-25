@@ -1,5 +1,6 @@
 // frontend/src/components/AssetCreateModal.forms.tsx
-import { useState, useRef } from "react";
+import { useState, useRef} from "react";
+import { useEffect } from "react";
 import type { VpnRule } from "../types";
 import { C, Field, SelectField, AutocompleteField, SelectWithOtherField, inputStyle, labelStyle } from "./AssetCreateModal.fields";
 
@@ -34,9 +35,9 @@ const FIELD_MODE: Record<string, Record<string, "field" | "select" | "autocomple
     contenedorFisico:   "field",
   },
   MOVIL: {
-    marca:              "select-other",   // ← CAMBIO
+    marca:              "select-other",   
     region:             "select",
-    modelo:             "select-other",   // ← CAMBIO
+    modelo:             "select-other",   
     dependencia:        "field",
     sede:               "autocomplete",
   },
@@ -71,13 +72,13 @@ const SELECT_OPTIONS: Record<string, Record<string, string[]>> = {
       "Barranquilla", "Santa Marta", "Sincelejo", "Cartagena",
       "Montería", "Medellín", "Cali", "Pereira",
     ],
-    modelo: ["Galaxy S26", "Galaxy S26 Ultra", "Galaxy A54"],       // ← CAMBIO: sin "Otro", la agrega SelectWithOtherField
+    modelo: ["Galaxy S26", "Galaxy S26 Ultra", "Galaxy A56"],       
   },
 };
 
 /* ─── SmartField ─── */
 function SmartField({
-  tipo, field, label, value, onChange, placeholder, required, type,
+  tipo, field, label, value, onChange, placeholder, required, type, extraOptions, // ← CAMBIO
 }: {
   tipo: string;
   field: string;
@@ -87,22 +88,24 @@ function SmartField({
   placeholder?: string;
   required?: boolean;
   type?: string;
+  extraOptions?: string[]; // ← CAMBIO
 }) {
   const mode = FIELD_MODE[tipo]?.[field] ?? "field";
 
-  if (mode === "select-other") {                          // ← CAMBIO: nuevo caso
-    const options = SELECT_OPTIONS[tipo]?.[field] ?? [];
-    return (
-      <SelectWithOtherField
-        label={label}
-        field={field}
-        value={value}
-        onChange={onChange}
-        options={options}
-        required={required}
-      />
-    );
-  }
+  if (mode === "select-other") {
+  const baseOptions = SELECT_OPTIONS[tipo]?.[field] ?? [];
+  const options = Array.from(new Set([...baseOptions, ...(extraOptions ?? [])])); // se agrega extraoptions
+  return (
+    <SelectWithOtherField
+      label={label}
+      field={field}
+      value={value}
+      onChange={onChange}
+      options={options}
+      required={required}
+    />
+  );
+}
 
   if (mode === "select") {
     const options = SELECT_OPTIONS[tipo]?.[field] ?? [];
@@ -393,6 +396,23 @@ export function FormMovil({ data, onChange }: { data: any; onChange: (f: string,
   const [sugerencias, setSugerencias] = useState<any[]>([]);
   const [mostrarDrop, setMostrarDrop] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [marcasExtra, setMarcasExtra]   = useState<string[]>([]);
+  const [modelosExtra, setModelosExtra] = useState<string[]>([]);
+
+  // ← CAMBIO: cargar opciones reales guardadas en MobileStaging al montar el form
+  useEffect(() => {
+    (async () => {
+      const token = sessionStorage.getItem("inventario_token");
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/mobile-staging/opciones`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMarcasExtra(data.marcas  ?? []);
+        setModelosExtra(data.modelos ?? []);
+      }
+    })();
+  }, []);
 
   const buscarSerial = (valor: string) => {
     onChange("serial", valor);
@@ -446,13 +466,14 @@ export function FormMovil({ data, onChange }: { data: any; onChange: (f: string,
         <Field label="UNI" field="uni" value={"1"} onChange={onChange} readOnly />
 
         {/* Marca — select-other, autofillado desde staging */}
-        <SmartField tipo="MOVIL" field="marca"  label="Marca"  value={data.marca  ?? ""} onChange={onChange} />
+       
 
         {/* Modelo — select-other, autofillado desde staging.
             Si staging tiene un modelo fuera de la lista → SelectWithOtherField
             lo detecta automáticamente y activa el input con el valor ya escrito */}
-        <SmartField tipo="MOVIL" field="modelo" label="Modelo" value={data.modelo ?? ""} onChange={onChange} />
-
+        <SmartField tipo="MOVIL" field="marca"  label="Marca"  value={data.marca  ?? ""} onChange={onChange} extraOptions={marcasExtra} />
+        <SmartField tipo="MOVIL" field="modelo" label="Modelo" value={data.modelo ?? ""} onChange={onChange} extraOptions={modelosExtra} />
+ 
         {/* Serial con autocomplete MobileStaging */}
         <div style={{ position: "relative" }}>
           <label style={labelStyle}>Serial</label>

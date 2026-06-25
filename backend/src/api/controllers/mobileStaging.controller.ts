@@ -140,3 +140,16 @@ export const editarStaging = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Error interno" });
   }
 };
+export const obtenerOpciones = async (req: Request, res: Response) => {
+  const repo = AppDataSource.getRepository(MobileStaging); // ajusta el nombre de tu repo/import si es distinto al resto del archivo
+  const rows = await repo.find({ select: ["marca", "modelo"] });
+
+  const marcas = Array.from(new Set(
+    rows.map(r => r.marca).filter((m): m is string => !!m && m.trim() !== "")
+  ));
+  const modelos = Array.from(new Set(
+    rows.map(r => r.modelo).filter((m): m is string => !!m && m.trim() !== "")
+  ));
+
+  res.json({ marcas, modelos });
+};
