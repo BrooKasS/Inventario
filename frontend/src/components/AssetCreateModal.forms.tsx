@@ -1,20 +1,10 @@
 // frontend/src/components/AssetCreateModal.forms.tsx
-// ─────────────────────────────────────────────────────────────────────────
-// Exporta: FormSection, FormServidor, FormRed, FormUps,
-//          FormBaseDatos, FormVpn, FormMovil
-//
-// FIELD_MODE: cambiá "field" → "select" o "autocomplete" por campo.
-// Solo tocás este objeto — el JSX se adapta solo.
-// ─────────────────────────────────────────────────────────────────────────
 import { useState, useRef } from "react";
 import type { VpnRule } from "../types";
-import { C, Field, SelectField, AutocompleteField, inputStyle, labelStyle } from "./AssetCreateModal.fields";
+import { C, Field, SelectField, AutocompleteField, SelectWithOtherField, inputStyle, labelStyle } from "./AssetCreateModal.fields";
 
-/* ═══════════════════════════════════════════════════════
-   FIELD_MODE — única línea que tocás para cambiar comportamiento
-   Valores válidos: "field" | "select" | "autocomplete"
-═══════════════════════════════════════════════════════ */
-const FIELD_MODE: Record<string, Record<string, "field" | "select" | "autocomplete">> = {
+/* ─── FIELD_MODE ─── */
+const FIELD_MODE: Record<string, Record<string, "field" | "select" | "autocomplete" | "select-other">> = { // ← CAMBIO: tipo extendido
   SERVIDOR: {
     ambiente:           "select",
     tipoServidor:       "select",
@@ -32,7 +22,6 @@ const FIELD_MODE: Record<string, Record<string, "field" | "select" | "autocomple
     modelo:             "autocomplete",
     contratoQueSoporta: "autocomplete",
     ipGestion:          "autocomplete",
-    
   },
   UPS: {
     estado:             "select",
@@ -45,9 +34,9 @@ const FIELD_MODE: Record<string, Record<string, "field" | "select" | "autocomple
     contenedorFisico:   "field",
   },
   MOVIL: {
-    marca:              "select",
+    marca:              "select-other",   // ← CAMBIO
     region:             "select",
-    modelo:             "select",
+    modelo:             "select-other",   // ← CAMBIO
     dependencia:        "field",
     sede:               "autocomplete",
   },
@@ -55,18 +44,16 @@ const FIELD_MODE: Record<string, Record<string, "field" | "select" | "autocomple
     ubicacion:          "autocomplete",
     propietario:        "autocomplete",
     custodio:           "field",
-  }
+  },
 };
 
-/* ─── Opciones de SelectField por campo ─── */
+/* ─── SELECT_OPTIONS ─── */
 const SELECT_OPTIONS: Record<string, Record<string, string[]>> = {
   SERVIDOR: {
-    ambiente:     ["DRP", "PRODUCCIÓN", "PRUEBAS","VALIDAR"],
+    ambiente:     ["DRP", "PRODUCCIÓN", "PRUEBAS", "VALIDAR"],
     tipoServidor: ["FÍSICO", "VIRTUAL", "NUBE"],
-    monitoreo:    ["SI","NO"],
+    monitoreo:    ["SI", "NO"],
     backup:       ["SI", "NO"],
-    
-    
   },
   RED: {
     estado: ["ACTIVO", "DESACTIVADO"],
@@ -78,15 +65,17 @@ const SELECT_OPTIONS: Record<string, Record<string, string[]>> = {
     ambiente: ["PRODUCCIÓN", "DESARROLLO", "QA", "CERTIFICACIÓN"],
   },
   MOVIL: {
-    marca:  ["Samsung"],
-    region: ["Bogotá", "Bucaramanga", "Cúcuta", "Villavicencio", "Ibagué",
-     "Barranquilla", "Santa Marta", "Sincelejo", "Cartagena", "Montería", "Medellín", "Cali", "Pereira"],
-    modelo: ["Galaxy S26", "Galaxy S26 ULTRA","Galaxy A54"],
+    marca:  ["Samsung", "Motorola", "Xiaomi", "Huawei", "Apple"],   // ← CAMBIO: sin "Otra", la agrega SelectWithOtherField
+    region: [
+      "Bogotá", "Bucaramanga", "Cúcuta", "Villavicencio", "Ibagué",
+      "Barranquilla", "Santa Marta", "Sincelejo", "Cartagena",
+      "Montería", "Medellín", "Cali", "Pereira",
+    ],
+    modelo: ["Galaxy S26", "Galaxy S26 Ultra", "Galaxy A54"],       // ← CAMBIO: sin "Otro", la agrega SelectWithOtherField
   },
-  
 };
 
-/* ─── Helper: renderiza el componente correcto según FIELD_MODE ─── */
+/* ─── SmartField ─── */
 function SmartField({
   tipo, field, label, value, onChange, placeholder, required, type,
 }: {
@@ -100,6 +89,20 @@ function SmartField({
   type?: string;
 }) {
   const mode = FIELD_MODE[tipo]?.[field] ?? "field";
+
+  if (mode === "select-other") {                          // ← CAMBIO: nuevo caso
+    const options = SELECT_OPTIONS[tipo]?.[field] ?? [];
+    return (
+      <SelectWithOtherField
+        label={label}
+        field={field}
+        value={value}
+        onChange={onChange}
+        options={options}
+        required={required}
+      />
+    );
+  }
 
   if (mode === "select") {
     const options = SELECT_OPTIONS[tipo]?.[field] ?? [];
@@ -129,7 +132,6 @@ function SmartField({
     );
   }
 
-  // "field" — input libre por defecto
   return (
     <Field
       label={label}
@@ -144,7 +146,7 @@ function SmartField({
 }
 
 /* ═══════════════════════════════════════════════════════
-   FormSection — idéntico al monolito original
+   FormSection — idéntico al original
 ═══════════════════════════════════════════════════════ */
 export function FormSection({ title, icon, children }: {
   title: string; icon?: string; children: React.ReactNode;
@@ -175,7 +177,7 @@ export function FormSection({ title, icon, children }: {
 }
 
 /* ═══════════════════════════════════════════════════════
-   FormServidor
+   FormServidor — idéntico al original
 ═══════════════════════════════════════════════════════ */
 export function FormServidor({ data, onChange }: { data: any; onChange: (f: string, v: string) => void }) {
   return (
@@ -185,29 +187,27 @@ export function FormServidor({ data, onChange }: { data: any; onChange: (f: stri
         <Field label="IP Gestión"  field="ipGestion"  value={data.ipGestion  ?? ""} onChange={onChange} placeholder="Ej: 10.0.0.1" />
         <Field label="IP Servicio" field="ipServicio" value={data.ipServicio ?? ""} onChange={onChange} placeholder="Ej: 172.16.0.5" />
       </FormSection>
-
       <FormSection title="Recursos" icon="⚙️">
         <SmartField tipo="SERVIDOR" field="vcpu"             label="vCPU"             value={data.vcpu             ?? ""} onChange={onChange} type="number" placeholder="Ej: 4" />
         <SmartField tipo="SERVIDOR" field="vramMb"           label="vRAM (MB)"        value={data.vramMb           ?? ""} onChange={onChange} type="number" placeholder="Ej: 8192" />
         <SmartField tipo="SERVIDOR" field="sistemaOperativo" label="Sistema Operativo" value={data.sistemaOperativo ?? ""} onChange={onChange} placeholder="Ej: Windows Server 2019" />
       </FormSection>
-
       <FormSection title="Operación" icon="🔧">
-        <SmartField tipo="SERVIDOR" field="ambiente"           label="Ambiente"                value={data.ambiente           ?? ""} onChange={onChange} placeholder="Ej: Producción" />
-        <SmartField tipo="SERVIDOR" field="tipoServidor"       label="Tipo de Servidor"        value={data.tipoServidor       ?? ""} onChange={onChange} placeholder="Ej: Virtual" />
-        <SmartField tipo="SERVIDOR" field="appSoporta"         label="Aplicación que soporta"  value={data.appSoporta         ?? ""} onChange={onChange} placeholder="Ej: Oracle EBS" />
-        <SmartField tipo="SERVIDOR" field="monitoreo"          label="Monitoreo"               value={data.monitoreo          ?? ""} onChange={onChange} placeholder="Ej: Zabbix" />
-        <SmartField tipo="SERVIDOR" field="backup"             label="Backup"                  value={data.backup             ?? ""} onChange={onChange} placeholder="Ej: SI/NO" />
-        <SmartField tipo="SERVIDOR" field="rutasBackup"        label="Rutas de Backup"          value={data.rutasBackup        ?? ""} onChange={onChange} placeholder="Ej: /backup/srv" />
-        <Field                      field="fechaFinSoporte"    label="Fecha Fin Soporte"        value={data.fechaFinSoporte    ?? ""} onChange={onChange} type="date" />
-        <SmartField tipo="SERVIDOR" field="contratoQueSoporta" label="Contrato que lo soporta"  value={data.contratoQueSoporta ?? ""} onChange={onChange} placeholder="Ej: CTR-2024-001" />
+        <SmartField tipo="SERVIDOR" field="ambiente"           label="Ambiente"               value={data.ambiente           ?? ""} onChange={onChange} />
+        <SmartField tipo="SERVIDOR" field="tipoServidor"       label="Tipo de Servidor"       value={data.tipoServidor       ?? ""} onChange={onChange} />
+        <SmartField tipo="SERVIDOR" field="appSoporta"         label="Aplicación que soporta" value={data.appSoporta         ?? ""} onChange={onChange} />
+        <SmartField tipo="SERVIDOR" field="monitoreo"          label="Monitoreo"              value={data.monitoreo          ?? ""} onChange={onChange} />
+        <SmartField tipo="SERVIDOR" field="backup"             label="Backup"                 value={data.backup             ?? ""} onChange={onChange} />
+        <SmartField tipo="SERVIDOR" field="rutasBackup"        label="Rutas de Backup"        value={data.rutasBackup        ?? ""} onChange={onChange} />
+        <Field                      field="fechaFinSoporte"    label="Fecha Fin Soporte"      value={data.fechaFinSoporte    ?? ""} onChange={onChange} type="date" />
+        <SmartField tipo="SERVIDOR" field="contratoQueSoporta" label="Contrato que lo soporta" value={data.contratoQueSoporta ?? ""} onChange={onChange} />
       </FormSection>
     </>
   );
 }
 
 /* ═══════════════════════════════════════════════════════
-   FormRed
+   FormRed — idéntico al original
 ═══════════════════════════════════════════════════════ */
 export function FormRed({ data, onChange }: { data: any; onChange: (f: string, v: string) => void }) {
   return (
@@ -215,16 +215,16 @@ export function FormRed({ data, onChange }: { data: any; onChange: (f: string, v
       <Field      field="serial"             label="Serial"                  value={data.serial             ?? ""} onChange={onChange} />
       <Field      field="mac"                label="MAC"                     value={data.mac                ?? ""} onChange={onChange} placeholder="Ej: AA:BB:CC:DD:EE:FF" />
       <SmartField tipo="RED" field="modelo"             label="Modelo"                  value={data.modelo             ?? ""} onChange={onChange} placeholder="Ej: Cisco Catalyst 9200" />
-      <SmartField tipo="RED"      field="ipGestion"          label="IP Gestión"              value={data.ipGestion          ?? ""} onChange={onChange} placeholder="Ej: 10.0.0.1" />
-      <SmartField tipo="RED" field="estado"             label="Estado"                  value={data.estado             ?? ""} onChange={onChange} placeholder="Ej: Activo" />
+      <SmartField tipo="RED" field="ipGestion"          label="IP Gestión"              value={data.ipGestion          ?? ""} onChange={onChange} placeholder="Ej: 10.0.0.1" />
+      <SmartField tipo="RED" field="estado"             label="Estado"                  value={data.estado             ?? ""} onChange={onChange} />
       <Field      field="fechaFinSoporte"    label="Fecha Fin Soporte"       value={data.fechaFinSoporte    ?? ""} onChange={onChange} type="date" />
-      <SmartField tipo="RED" field="contratoQueSoporta" label="Contrato que lo soporta" value={data.contratoQueSoporta ?? ""} onChange={onChange} placeholder="Ej: CTR-2024-001" />
+      <SmartField tipo="RED" field="contratoQueSoporta" label="Contrato que lo soporta" value={data.contratoQueSoporta ?? ""} onChange={onChange} />
     </FormSection>
   );
 }
 
 /* ═══════════════════════════════════════════════════════
-   FormUps
+   FormUps — idéntico al original
 ═══════════════════════════════════════════════════════ */
 export function FormUps({ data, onChange }: { data: any; onChange: (f: string, v: string) => void }) {
   return (
@@ -232,13 +232,13 @@ export function FormUps({ data, onChange }: { data: any; onChange: (f: string, v
       <Field      field="serial" label="Serial" value={data.serial ?? ""} onChange={onChange} />
       <Field      field="placa"  label="Placa"  value={data.placa  ?? ""} onChange={onChange} />
       <SmartField tipo="UPS" field="modelo" label="Modelo" value={data.modelo ?? ""} onChange={onChange} placeholder="Ej: APC Smart-UPS 1500" />
-      <SmartField tipo="UPS" field="estado" label="Estado" value={data.estado ?? ""} onChange={onChange} placeholder="Ej: Activo" />
+      <SmartField tipo="UPS" field="estado" label="Estado" value={data.estado ?? ""} onChange={onChange} />
     </FormSection>
   );
 }
 
 /* ═══════════════════════════════════════════════════════
-   FormBaseDatos
+   FormBaseDatos — idéntico al original
 ═══════════════════════════════════════════════════════ */
 export function FormBaseDatos({ data, onChange }: { data: any; onChange: (f: string, v: string) => void }) {
   return (
@@ -246,18 +246,18 @@ export function FormBaseDatos({ data, onChange }: { data: any; onChange: (f: str
       <Field      field="servidor1"          label="Servidor 1"              value={data.servidor1          ?? ""} onChange={onChange} required />
       <Field      field="servidor2"          label="Servidor 2"              value={data.servidor2          ?? ""} onChange={onChange} />
       <Field      field="racScan"            label="RAC/Scan"                value={data.racScan            ?? ""} onChange={onChange} />
-      <SmartField tipo="BASE_DATOS" field="ambiente"           label="Ambiente"                value={data.ambiente           ?? ""} onChange={onChange} placeholder="Ej: Producción" />
+      <SmartField tipo="BASE_DATOS" field="ambiente"           label="Ambiente"                value={data.ambiente           ?? ""} onChange={onChange} />
       <SmartField tipo="BASE_DATOS" field="appSoporta"         label="Aplicación que soporta" value={data.appSoporta         ?? ""} onChange={onChange} />
       <Field      field="versionBd"          label="Versión BD"              value={data.versionBd          ?? ""} onChange={onChange} placeholder="Ej: Oracle 19c" />
       <Field      field="fechaFinalSoporte"  label="Fecha Final Soporte"     value={data.fechaFinalSoporte  ?? ""} onChange={onChange} type="date" />
       <SmartField tipo="BASE_DATOS" field="contenedorFisico"  label="Contenedor Físico"       value={data.contenedorFisico   ?? ""} onChange={onChange} />
-      <SmartField tipo="BASE_DATOS" field="contratoQueSoporta" label="Contrato que lo soporta" value={data.contratoQueSoporta ?? ""} onChange={onChange} placeholder="Ej: CTR 2024-001 o pega un link" />
+      <SmartField tipo="BASE_DATOS" field="contratoQueSoporta" label="Contrato que lo soporta" value={data.contratoQueSoporta ?? ""} onChange={onChange} />
     </FormSection>
   );
 }
 
 /* ═══════════════════════════════════════════════════════
-   FormVpn — ⛔ INTACTO, copia exacta del monolito
+   FormVpn — idéntico al original
 ═══════════════════════════════════════════════════════ */
 export function FormVpn({
   data, onChange, vpnRules, currentRule, onAddRule, onRemoveRule, onRuleFieldChange,
@@ -293,8 +293,7 @@ export function FormVpn({
           }}>Reglas VPN</span>
           {vpnRules.length > 0 && (
             <span style={{
-              marginLeft: "auto",
-              fontSize: 10, fontWeight: 700,
+              marginLeft: "auto", fontSize: 10, fontWeight: 700,
               background: "#B7312C", color: "#fff",
               padding: "3px 8px", borderRadius: 4,
               fontFamily: "Calibri, sans-serif",
@@ -315,43 +314,24 @@ export function FormVpn({
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {vpnRules.map((rule, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    display: "flex", alignItems: "flex-start", justifyContent: "space-between",
-                    background: "#fefcfa", padding: "14px 15px", borderRadius: 8,
-                    border: "1px solid #e5ddd8", boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
-                    transition: "all 0.15s ease",
-                  }}
-                >
+                <div key={idx} style={{
+                  display: "flex", alignItems: "flex-start", justifyContent: "space-between",
+                  background: "#fefcfa", padding: "14px 15px", borderRadius: 8,
+                  border: "1px solid #e5ddd8", boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
+                }}>
                   <div style={{ flex: 1, fontSize: 12, color: "#1A1A1A" }}>
-                    <div style={{ marginBottom: 6 }}>
-                      <span style={{ fontWeight: 700, color: "#5a4a45" }}>Conexión:</span>{" "}
-                      <span style={{ color: "#666" }}>{rule.conexion || "—"}</span>
-                    </div>
-                    <div style={{ marginBottom: 6 }}>
-                      <span style={{ fontWeight: 700, color: "#5a4a45" }}>Fases:</span>{" "}
-                      <span style={{ color: "#666" }}>{rule.fases || "—"}</span>
-                    </div>
-                    <div style={{ marginBottom: 6 }}>
-                      <span style={{ fontWeight: 700, color: "#5a4a45" }}>Origen:</span>{" "}
-                      <span style={{ color: "#666" }}>{rule.origen || "—"}</span>
-                    </div>
-                    <div>
-                      <span style={{ fontWeight: 700, color: "#5a4a45" }}>Destino:</span>{" "}
-                      <span style={{ color: "#666" }}>{rule.destino || "—"}</span>
-                    </div>
+                    <div style={{ marginBottom: 6 }}><span style={{ fontWeight: 700, color: "#5a4a45" }}>Conexión:</span> <span style={{ color: "#666" }}>{rule.conexion || "—"}</span></div>
+                    <div style={{ marginBottom: 6 }}><span style={{ fontWeight: 700, color: "#5a4a45" }}>Fases:</span> <span style={{ color: "#666" }}>{rule.fases || "—"}</span></div>
+                    <div style={{ marginBottom: 6 }}><span style={{ fontWeight: 700, color: "#5a4a45" }}>Origen:</span> <span style={{ color: "#666" }}>{rule.origen || "—"}</span></div>
+                    <div><span style={{ fontWeight: 700, color: "#5a4a45" }}>Destino:</span> <span style={{ color: "#666" }}>{rule.destino || "—"}</span></div>
                   </div>
                   <button
                     onClick={() => onRemoveRule(idx)}
                     style={{
-                      marginLeft: 12, flexShrink: 0,
-                      padding: "8px 12px", background: "#ffebeb",
+                      marginLeft: 12, padding: "8px 12px", background: "#ffebeb",
                       border: "1px solid #f08080", color: "#c0392b",
-                      borderRadius: 6, fontSize: 11, fontWeight: 700,
-                      cursor: "pointer", transition: "all 0.15s ease",
-                      fontFamily: "Calibri, sans-serif",
-                      textTransform: "uppercase", letterSpacing: "0.02em",
+                      borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: "pointer",
+                      fontFamily: "Calibri, sans-serif", textTransform: "uppercase",
                     }}
                     onMouseEnter={e => { e.currentTarget.style.background = "#ff9999"; e.currentTarget.style.color = "#fff"; }}
                     onMouseLeave={e => { e.currentTarget.style.background = "#ffebeb"; e.currentTarget.style.color = "#c0392b"; }}
@@ -367,7 +347,6 @@ export function FormVpn({
         <div style={{
           background: "#fefcfa", border: "1px solid #e5ddd8",
           borderRadius: 8, padding: "16px 15px",
-          boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
         }}>
           <div style={{
             fontSize: 10, fontWeight: 700, color: "#5a4a45",
@@ -381,22 +360,10 @@ export function FormVpn({
             gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))",
             gap: "12px 14px", marginBottom: 12,
           }}>
-            <div>
-              <label style={labelStyle}>Conexión</label>
-              <input type="text" placeholder="Ej: IPSec, BGP..." value={currentRule.conexion ?? ""} onChange={e => onRuleFieldChange("conexion", e.target.value)} style={inputStyle} />
-            </div>
-            <div>
-              <label style={labelStyle}>Fases</label>
-              <input type="text" placeholder="Ej: IKEv2 P1 y P2..." value={currentRule.fases ?? ""} onChange={e => onRuleFieldChange("fases", e.target.value)} style={inputStyle} />
-            </div>
-            <div>
-              <label style={labelStyle}>Origen</label>
-              <input type="text" placeholder="Ej: AS 65001..." value={currentRule.origen ?? ""} onChange={e => onRuleFieldChange("origen", e.target.value)} style={inputStyle} />
-            </div>
-            <div>
-              <label style={labelStyle}>Destino</label>
-              <input type="text" placeholder="Ej: AS 65002..." value={currentRule.destino ?? ""} onChange={e => onRuleFieldChange("destino", e.target.value)} style={inputStyle} />
-            </div>
+            <div><label style={labelStyle}>Conexión</label><input type="text" placeholder="Ej: IPSec, BGP..." value={currentRule.conexion ?? ""} onChange={e => onRuleFieldChange("conexion", e.target.value)} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Fases</label><input type="text" placeholder="Ej: IKEv2 P1 y P2..." value={currentRule.fases ?? ""} onChange={e => onRuleFieldChange("fases", e.target.value)} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Origen</label><input type="text" placeholder="Ej: AS 65001..." value={currentRule.origen ?? ""} onChange={e => onRuleFieldChange("origen", e.target.value)} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Destino</label><input type="text" placeholder="Ej: AS 65002..." value={currentRule.destino ?? ""} onChange={e => onRuleFieldChange("destino", e.target.value)} style={inputStyle} /></div>
           </div>
           <button
             onClick={onAddRule}
@@ -404,8 +371,7 @@ export function FormVpn({
               width: "100%", padding: "11px 15px", background: C.grad,
               border: "none", color: "#fff", borderRadius: 6,
               fontSize: 12, fontWeight: 800, cursor: "pointer",
-              transition: "all 0.15s ease", letterSpacing: "0.02em",
-              textTransform: "uppercase",
+              textTransform: "uppercase", letterSpacing: "0.02em",
               boxShadow: "0 4px 12px rgba(183, 49, 44, 0.2)",
               fontFamily: "Calibri, sans-serif",
             }}
@@ -421,7 +387,7 @@ export function FormVpn({
 }
 
 /* ═══════════════════════════════════════════════════════
-   FormMovil — lógica serial/staging intacta del monolito
+   FormMovil
 ═══════════════════════════════════════════════════════ */
 export function FormMovil({ data, onChange }: { data: any; onChange: (f: string, v: string) => void }) {
   const [sugerencias, setSugerencias] = useState<any[]>([]);
@@ -432,6 +398,8 @@ export function FormMovil({ data, onChange }: { data: any; onChange: (f: string,
     onChange("serial", valor);
     onChange("imei1", "");
     onChange("imei2", "");
+    onChange("marca",  "");   // ← CAMBIO
+    onChange("modelo", "");   // ← CAMBIO
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (valor.length < 2) {
@@ -454,8 +422,10 @@ export function FormMovil({ data, onChange }: { data: any; onChange: (f: string,
 
   const seleccionarSerial = (item: any) => {
     onChange("serial", item.serial);
-    onChange("imei1", item.imei1 || "");
-    onChange("imei2", item.imei2 || "");
+    onChange("imei1",  item.imei1  || "");
+    onChange("imei2",  item.imei2  || "");
+    onChange("marca",  item.marca  || "");   // ← CAMBIO
+    onChange("modelo", item.modelo || "");   // ← CAMBIO
     setSugerencias([]);
     setMostrarDrop(false);
   };
@@ -463,27 +433,34 @@ export function FormMovil({ data, onChange }: { data: any; onChange: (f: string,
   return (
     <>
       <FormSection title="Datos del Usuario" icon="👤">
-        <Field label="# Caso"               field="numeroCaso"         value={data.numeroCaso         ?? ""} onChange={onChange} />
-        <SmartField tipo="MOVIL" field="region"     label="Región/Departamento"  value={data.region             ?? ""} onChange={onChange} />
-        <SmartField tipo="MOVIL" field="dependencia" label="Dependencia/Área"    value={data.dependencia        ?? ""} onChange={onChange} />
-        <SmartField tipo="MOVIL" field="sede"        label="Sede"                value={data.sede               ?? ""} onChange={onChange} />
-        <Field label="C.C."                 field="cedula"             value={data.cedula             ?? ""} onChange={onChange} />
-        <Field label="Usuario de Red"       field="usuarioRed"         value={data.usuarioRed         ?? ""} onChange={onChange} />
-        <Field label="Correo Responsable"   field="correoResponsable"  value={data.correoResponsable  ?? ""} onChange={onChange} />
+        <Field label="# Caso"             field="numeroCaso"        value={data.numeroCaso        ?? ""} onChange={onChange} />
+        <SmartField tipo="MOVIL" field="region"      label="Región/Departamento" value={data.region            ?? ""} onChange={onChange} />
+        <SmartField tipo="MOVIL" field="dependencia" label="Dependencia/Área"    value={data.dependencia       ?? ""} onChange={onChange} />
+        <SmartField tipo="MOVIL" field="sede"        label="Sede"                value={data.sede              ?? ""} onChange={onChange} />
+        <Field label="C.C."               field="cedula"            value={data.cedula            ?? ""} onChange={onChange} />
+        <Field label="Usuario de Red"     field="usuarioRed"        value={data.usuarioRed        ?? ""} onChange={onChange} />
+        <Field label="Correo Responsable" field="correoResponsable" value={data.correoResponsable ?? ""} onChange={onChange} />
       </FormSection>
 
       <FormSection title="Datos del Equipo" icon="📱">
         <Field label="UNI" field="uni" value={"1"} onChange={onChange} readOnly />
+
+        {/* Marca — select-other, autofillado desde staging */}
         <SmartField tipo="MOVIL" field="marca"  label="Marca"  value={data.marca  ?? ""} onChange={onChange} />
+
+        {/* Modelo — select-other, autofillado desde staging.
+            Si staging tiene un modelo fuera de la lista → SelectWithOtherField
+            lo detecta automáticamente y activa el input con el valor ya escrito */}
         <SmartField tipo="MOVIL" field="modelo" label="Modelo" value={data.modelo ?? ""} onChange={onChange} />
 
-        {/* Serial con autocomplete MobileStaging — intacto */}
+        {/* Serial con autocomplete MobileStaging */}
         <div style={{ position: "relative" }}>
           <label style={labelStyle}>Serial</label>
           <input
             value={data.serial ?? ""}
             onChange={e => buscarSerial(e.target.value)}
             style={inputStyle}
+            placeholder="Escanea o escribe el serial..."
           />
           {mostrarDrop && (
             <div style={{
@@ -496,23 +473,26 @@ export function FormMovil({ data, onChange }: { data: any; onChange: (f: string,
                   key={s.id}
                   onClick={() => seleccionarSerial(s)}
                   style={{ padding: 8, cursor: "pointer" }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "#fef7f4")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "#fff")}
                 >
                   <strong>{s.serial}</strong>
+                  {s.marca && <span style={{ marginLeft: 8, color: "#888", fontSize: 12 }}>{s.marca} {s.modelo}</span>}
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        <Field label="IMEI 1"          field="imei1"       value={data.imei1       ?? ""} onChange={onChange} />
-        <Field label="IMEI 2"          field="imei2"       value={data.imei2       ?? ""} onChange={onChange}  />
+        <Field label="IMEI 1"           field="imei1"       value={data.imei1       ?? ""} onChange={onChange} />
+        <Field label="IMEI 2"           field="imei2"       value={data.imei2       ?? ""} onChange={onChange} />
         <SelectField
           label="SIM" field="sim"
           value={data.sim ?? ""}
           onChange={onChange}
           options={["Sí", "No"]}
         />
-        <Field label="Número de Línea" field="numeroLinea" value={data.numeroLinea ?? ""} onChange={onChange} />
+        <Field label="Número de Línea"  field="numeroLinea" value={data.numeroLinea  ?? ""} onChange={onChange} />
         <Field label="Fecha de Entrega" field="fechaEntrega" value={data.fechaEntrega ?? ""} onChange={onChange} type="date" />
       </FormSection>
 

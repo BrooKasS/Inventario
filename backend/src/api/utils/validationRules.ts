@@ -218,10 +218,6 @@ export function validateAssetData(
     }
   
 
-    if (movil.imei2) {
-      const err = validateIMEI(movil.imei2);
-      if (err) errors.push(err);
-    }
 
     if (movil.numeroLinea) {
       const err = validateNumeroLinea(movil.numeroLinea);

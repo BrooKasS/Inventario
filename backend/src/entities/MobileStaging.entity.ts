@@ -2,7 +2,6 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from "typeor
 
 @Entity("MOBILE_STAGING")
 export class MobileStaging {
-
   @PrimaryGeneratedColumn("uuid", { name: "ID" })
   id!: string;
 
@@ -14,6 +13,12 @@ export class MobileStaging {
 
   @Column({ name: "IMEI2", type: "varchar2", length: 50, nullable: true })
   imei2!: string | null;
+
+  @Column({ name: "MARCA", type: "varchar2", length: 200, nullable: true })
+  marca!: string | null;
+
+  @Column({ name: "MODELO", type: "varchar2", length: 200, nullable: true })
+  modelo!: string | null;
 
   @Column({ name: "USADO", type: "varchar2", length: 5, default: "false" })
   usado!: string;

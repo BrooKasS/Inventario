@@ -1,8 +1,4 @@
 // frontend/src/components/AssetCreateModal.fields.tsx
-// ─────────────────────────────────────────────────────────────────────────
-// Exporta: C (design tokens), Field, SelectField, AutocompleteField
-// ⛔ NO modificar Field — es idéntico al original del monolito
-// ─────────────────────────────────────────────────────────────────────────
 import { useState, useRef, useEffect } from "react";
 
 /* ─── Design tokens ─── */
@@ -21,7 +17,6 @@ export const C = {
   info:    "#3498DB",
 };
 
-/* ─── Estilos base compartidos ─── */
 export const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "13px 15px",
@@ -49,7 +44,7 @@ export const labelStyle: React.CSSProperties = {
 };
 
 /* ═══════════════════════════════════════════════════════
-   Field — input libre (idéntico al monolito original)
+   Field — idéntico al original
 ═══════════════════════════════════════════════════════ */
 export function Field({
   label, field, value, onChange, type = "text", placeholder, required, readOnly,
@@ -64,7 +59,6 @@ export function Field({
   readOnly?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
-
   return (
     <div>
       <label style={labelStyle}>
@@ -91,7 +85,7 @@ export function Field({
 }
 
 /* ═══════════════════════════════════════════════════════
-   SelectField — opciones fijas (vocabulario controlado)
+   SelectField — idéntico al original
 ═══════════════════════════════════════════════════════ */
 export function SelectField({
   label, field, value, onChange, options, required,
@@ -104,7 +98,6 @@ export function SelectField({
   required?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
-
   return (
     <div>
       <label style={labelStyle}>
@@ -139,7 +132,7 @@ export function SelectField({
 }
 
 /* ═══════════════════════════════════════════════════════
-   AutocompleteField — lee BD vía /api/assets/suggestions
+   AutocompleteField — idéntico al original
 ═══════════════════════════════════════════════════════ */
 function HighlightMatch({ text, query }: { text: string; query: string }) {
   if (!query.trim()) return <span>{text}</span>;
@@ -169,7 +162,7 @@ export function AutocompleteField({
   const [open, setOpen]               = useState(false);
   const [loading, setLoading]         = useState(false);
   const [focused, setFocused]         = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const fetchSuggestions = async (q: string) => {
@@ -177,9 +170,7 @@ export function AutocompleteField({
     try {
       const token = sessionStorage.getItem("inventario_token");
       const url   = `${import.meta.env.VITE_API_URL}/assets/suggestions?tipo=${tipo}&field=${field}&q=${encodeURIComponent(q)}`;
-      const res   = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res   = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       const json  = await res.json();
       const data: string[] = json?.data?.suggestions ?? [];
       setSuggestions(data);
@@ -209,7 +200,6 @@ export function AutocompleteField({
     setOpen(false);
   };
 
-  // Cerrar al click fuera
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -243,7 +233,6 @@ export function AutocompleteField({
               : "0 1px 2px rgba(0,0,0,0.03)",
           }}
         />
-        {/* Spinner sutil */}
         {loading && (
           <div style={{
             position: "absolute", right: 10, top: "50%",
@@ -256,35 +245,22 @@ export function AutocompleteField({
           }} />
         )}
       </div>
-
-      {/* Dropdown */}
       {open && suggestions.length > 0 && (
         <div style={{
-          position: "absolute",
-          zIndex: 999,
-          top: "100%",
-          left: 0,
-          right: 0,
-          background: "#fff",
-          border: "1px solid #e5ddd8",
-          borderRadius: 8,
-          boxShadow: "0 4px 16px rgba(0,0,0,0.10)",
-          marginTop: 3,
-          overflow: "hidden",
+          position: "absolute", zIndex: 999, top: "100%", left: 0, right: 0,
+          background: "#fff", border: "1px solid #e5ddd8", borderRadius: 8,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.10)", marginTop: 3, overflow: "hidden",
         }}>
           {suggestions.map((s, i) => (
             <div
               key={i}
               onMouseDown={() => handleSelect(s)}
               style={{
-                padding: "10px 14px",
-                fontSize: 13,
-                fontFamily: "Calibri, sans-serif",
-                color: C.text,
+                padding: "10px 14px", fontSize: 13,
+                fontFamily: "Calibri, sans-serif", color: C.text,
                 cursor: "pointer",
                 borderBottom: i < suggestions.length - 1 ? "1px solid #f5f0ed" : "none",
-                background: "#fff",
-                transition: "background 0.1s",
+                background: "#fff", transition: "background 0.1s",
               }}
               onMouseEnter={e => (e.currentTarget.style.background = "#fef7f4")}
               onMouseLeave={e => (e.currentTarget.style.background = "#fff")}
@@ -294,8 +270,99 @@ export function AutocompleteField({
           ))}
         </div>
       )}
-
       <style>{`@keyframes acSpin{0%{transform:translateY(-50%) rotate(0deg)}100%{transform:translateY(-50%) rotate(360deg)}}`}</style>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
+   SelectWithOtherField — Select fijo + opción "Otro" con input libre
+   Lógica clave:
+   - Si value está en options → select muestra ese valor, sin input
+   - Si value NO está en options y no es "" → select muestra "Otro", input
+     aparece con ese valor ya escrito (clave para autofill desde staging)
+   - Si value es "" → select en "— Seleccionar —", sin input
+   - onChange siempre dispara con el valor real, nunca con "__otro__"
+═══════════════════════════════════════════════════════ */
+export function SelectWithOtherField({
+  label, field, value, onChange, options, required,
+}: {
+  label: string;
+  field: string;
+  value: string;
+  onChange: (field: string, val: string) => void;
+  options: string[];
+  required?: boolean;
+}) {
+  const [focusedSelect, setFocusedSelect] = useState(false);
+  const [focusedInput,  setFocusedInput]  = useState(false);
+
+  // Si el valor existe pero no está en la lista → modo "Otro"
+  const isOther = value !== "" && !options.includes(value);
+  const selectValue = isOther ? "__otro__" : value;
+
+  const handleSelectChange = (val: string) => {
+    if (val === "__otro__") {
+      // Activa input libre vacío para que el usuario escriba
+      onChange(field, "");
+    } else {
+      onChange(field, val);
+    }
+  };
+
+  const selectStyles: React.CSSProperties = {
+    ...inputStyle,
+    cursor: "pointer",
+    appearance: "none",
+    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+    backgroundRepeat: "no-repeat",
+    backgroundPosition: "right 12px center",
+    paddingRight: 32,
+    borderColor: focusedSelect ? C.primary : "#e5ddd8",
+    boxShadow: focusedSelect
+      ? `0 0 0 2px rgba(183, 49, 44, 0.08), 0 2px 6px rgba(0,0,0,0.06)`
+      : "0 1px 2px rgba(0,0,0,0.03)",
+    marginBottom: isOther ? 8 : 0,
+  };
+
+  return (
+    <div>
+      <label style={labelStyle}>
+        {label}{required && <span style={{ color: C.accent, marginLeft: 3 }}>*</span>}
+      </label>
+
+      <select
+        value={selectValue}
+        onChange={e => handleSelectChange(e.target.value)}
+        style={selectStyles}
+        onFocus={() => setFocusedSelect(true)}
+        onBlur={() => setFocusedSelect(false)}
+      >
+        <option value="">— Seleccionar —</option>
+        {options.map(opt => (
+          <option key={opt} value={opt}>{opt}</option>
+        ))}
+        <option value="__otro__">Otro</option>
+      </select>
+
+      {isOther && (
+        <input
+          type="text"
+          value={value}
+          onChange={e => onChange(field, e.target.value)}
+          placeholder={`Especifica ${label.toLowerCase()}...`}
+          autoFocus
+          style={{
+            ...inputStyle,
+            borderColor: focusedInput ? C.primary : "#e5ddd8",
+            boxShadow: focusedInput
+              ? `0 0 0 2px rgba(183, 49, 44, 0.08), 0 2px 6px rgba(0,0,0,0.06)`
+              : "0 1px 2px rgba(0,0,0,0.03)",
+          }}
+          onFocus={() => setFocusedInput(true)}
+          onBlur={() => setFocusedInput(false)}
+        />
+      )}
     </div>
   );
 }
