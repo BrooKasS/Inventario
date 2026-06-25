@@ -83,8 +83,8 @@ const DEFAULTS_POR_TIPO: Record<string, {
   custodio: string;
   codigoServicio: string;
 }> = {
-  SERVIDOR:   { ubicacion: "TRIARA", propietario: "Gerencia TI",    custodio: "Profesional de servidores", codigoServicio: "" },
-  RED:        { ubicacion: "",       propietario: "Fiduprevisora",   custodio: "Profesional de redes",      codigoServicio: "" },
+  SERVIDOR:   { ubicacion: "TRIARA", propietario: "Gerencia TI",    custodio: "Profesional de servidores", codigoServicio: "FLP0" },
+  RED:        { ubicacion: "",       propietario: "Fiduprevisora",   custodio: "Profesional de redes",      codigoServicio: "FLP0" },
   UPS:        { ubicacion: "",       propietario: "FIDUPREVISORA",   custodio: "Profesional de redes",      codigoServicio: "" },
   BASE_DATOS: { ubicacion: "",       propietario: "FIDUPREVISORA",   custodio: "Profesional de redes",      codigoServicio: "" },
   VPN:        { ubicacion: "",       propietario: "",                custodio: "",                          codigoServicio: "" },

@@ -281,6 +281,7 @@ export default function AssetDetail() {
           <h1 style={{ color: "#333", fontSize: 28, fontWeight: 700, margin: 0 }}>
             {asset.nombre ?? "Sin nombre"}
           </h1>
+    
           {asset.ubicacion && (
             <p style={{ color: "#777", marginTop: 6, fontSize: 14 }}>
               {asset.ubicacion}

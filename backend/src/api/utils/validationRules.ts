@@ -283,9 +283,10 @@ export function validateAssetData(
       if (err) errors.push(err);
     }
 
+
     if (servidor.vramMb) {
       const err = validatePositiveNumber(servidor.vramMb, "vRAM");
-      if (err) errors.push(err);
+     if (err) errors.push(err);
     }
   }
 

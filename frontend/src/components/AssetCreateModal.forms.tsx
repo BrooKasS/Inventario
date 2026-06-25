@@ -32,10 +32,11 @@ const FIELD_MODE: Record<string, Record<string, "field" | "select" | "autocomple
     modelo:             "autocomplete",
     contratoQueSoporta: "autocomplete",
     ipGestion:          "autocomplete",
+    
   },
   UPS: {
     estado:             "select",
-    modelo:             "field",
+    modelo:             "autocomplete",
   },
   BASE_DATOS: {
     ambiente:           "autocomplete",
@@ -52,7 +53,7 @@ const FIELD_MODE: Record<string, Record<string, "field" | "select" | "autocomple
   },
   ASSET: {
     ubicacion:          "autocomplete",
-    propietario:        "field",
+    propietario:        "autocomplete",
     custodio:           "field",
   }
 };
@@ -64,6 +65,7 @@ const SELECT_OPTIONS: Record<string, Record<string, string[]>> = {
     tipoServidor: ["FÍSICO", "VIRTUAL", "NUBE"],
     monitoreo:    ["SI","NO"],
     backup:       ["SI", "NO"],
+    
     
   },
   RED: {
@@ -502,8 +504,8 @@ export function FormMovil({ data, onChange }: { data: any; onChange: (f: string,
           )}
         </div>
 
-        <Field label="IMEI 1"          field="imei1"       value={data.imei1       ?? ""} onChange={onChange} readOnly />
-        <Field label="IMEI 2"          field="imei2"       value={data.imei2       ?? ""} onChange={onChange} readOnly />
+        <Field label="IMEI 1"          field="imei1"       value={data.imei1       ?? ""} onChange={onChange} />
+        <Field label="IMEI 2"          field="imei2"       value={data.imei2       ?? ""} onChange={onChange}  />
         <SelectField
           label="SIM" field="sim"
           value={data.sim ?? ""}
