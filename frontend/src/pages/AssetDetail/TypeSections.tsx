@@ -1,6 +1,12 @@
-import type { Asset, Vpn, VpnRule } from "../../types";
-import { Field, Section } from "./DetailComponents";
 import { useState } from "react";
+import type { Asset, Vpn, VpnRule } from "../../types";
+import {
+  Field,
+  Section,
+  EditSelectField,
+  EditAutoField,
+  EditDateField,
+} from "./DetailComponents";
 
 /* ═══════════════════════════════════════════
    SERVIDOR SECTIONS
@@ -10,120 +16,151 @@ export function ServidorSections({
   editing,
   handleChange,
 }: {
-  asset: Asset;//
+  asset: Asset;
   editing: boolean;
   handleChange: (section: string | null, field: string, val: string) => void;
 }) {
   const s = asset.servidor;
-
   if (!s) return null;
+
+  const hc = (f: string, v: string) => handleChange("servidor", f, v);
 
   return (
     <>
+      {/* ── Red ── */}
       <Section title="Red" icon="🌐">
         <Field
           label="IP Interna"
           value={s.ipInterna}
           editing={editing}
           field="ipInterna"
-          onChange={(f, v) => handleChange("servidor", f, v)}
+          onChange={hc}
         />
         <Field
           label="IP Gestión"
           value={s.ipGestion}
           editing={editing}
           field="ipGestion"
-          onChange={(f, v) => handleChange("servidor", f, v)}
+          onChange={hc}
         />
         <Field
           label="IP Servicio"
           value={s.ipServicio}
           editing={editing}
           field="ipServicio"
-          onChange={(f, v) => handleChange("servidor", f, v)}
+          onChange={hc}
         />
       </Section>
 
+      {/* ── Recursos ── */}
       <Section title="Recursos" icon="⚙️">
-        <Field
+        {/*
+          vcpu / vramMb: AutocompleteField porque los valores existentes
+          en BD son numéricos variados — el usuario puede querer sugerir
+          lo que ya existe.
+        */}
+        <EditAutoField
           label="vCPU"
-          value={s.vcpu}
-          editing={editing}
+          value={s.vcpu != null ? String(s.vcpu) : null}
           field="vcpu"
-          onChange={(f, v) => handleChange("servidor", f, v)}
+          editing={editing}
+          onChange={hc}
+          tipo="SERVIDOR"
+          placeholder="Ej: 4"
         />
-     <Field
-  label="vRAM (MB)"
-  value={s.vramMb ? String(s.vramMb) : null}
-  editing={editing}
-  field="vramMb"
-  onChange={(f, v) => handleChange("servidor", f, v)}
-/>
-        <Field
+        <EditAutoField
+          label="vRAM (MB)"
+          value={s.vramMb != null ? String(s.vramMb) : null}
+          field="vramMb"
+          editing={editing}
+          onChange={hc}
+          tipo="SERVIDOR"
+          placeholder="Ej: 8192"
+        />
+        <EditAutoField
           label="Sistema Operativo"
           value={s.sistemaOperativo}
-          editing={editing}
           field="sistemaOperativo"
-          onChange={(f, v) => handleChange("servidor", f, v)}
+          editing={editing}
+          onChange={hc}
+          tipo="SERVIDOR"
+          placeholder="Ej: Windows Server 2019"
         />
       </Section>
 
+      {/* ── Operación ── */}
       <Section title="Operación" icon="🔧">
-        <Field
+        {/*
+          ambiente / tipoServidor / monitoreo / backup: SelectField porque
+          son vocabulario controlado igual que en el Create.
+          Opciones idénticas a FIELD_MODE SERVIDOR en forms.tsx.
+        */}
+        <EditSelectField
           label="Ambiente"
           value={s.ambiente}
-          editing={editing}
           field="ambiente"
-          onChange={(f, v) => handleChange("servidor", f, v)}
+          editing={editing}
+          onChange={hc}
+          options={["DRP", "PRODUCCIÓN", "PRUEBAS", "VALIDAR"]}
         />
-        <Field
+        <EditSelectField
           label="Tipo Servidor"
           value={s.tipoServidor}
-          editing={editing}
           field="tipoServidor"
-          onChange={(f, v) => handleChange("servidor", f, v)}
+          editing={editing}
+          onChange={hc}
+          options={["FÍSICO", "VIRTUAL", "NUBE"]}
         />
-        <Field
+        <EditAutoField
           label="Aplicación que soporta"
           value={s.appSoporta}
-          editing={editing}
           field="appSoporta"
-          onChange={(f, v) => handleChange("servidor", f, v)}
+          editing={editing}
+          onChange={hc}
+          tipo="SERVIDOR"
         />
-        <Field
+        <EditSelectField
           label="Monitoreo"
           value={s.monitoreo}
-          editing={editing}
           field="monitoreo"
-          onChange={(f, v) => handleChange("servidor", f, v)}
+          editing={editing}
+          onChange={hc}
+          options={["SI", "NO"]}
         />
-        <Field
+        <EditSelectField
           label="Backup"
           value={s.backup}
-          editing={editing}
           field="backup"
-          onChange={(f, v) => handleChange("servidor", f, v)}
+          editing={editing}
+          onChange={hc}
+          options={["SI", "NO"]}
         />
-        <Field
+        <EditAutoField
           label="Rutas de Backup"
           value={s.rutasBackup}
-          editing={editing}
           field="rutasBackup"
-          onChange={(f, v) => handleChange("servidor", f, v)}
+          editing={editing}
+          onChange={hc}
+          tipo="SERVIDOR"
         />
-        <Field
+        {/*
+          fechaFinSoporte: EditDateField porque Field no soporta type="date"
+          y se perdía el date picker nativo.
+        */}
+        <EditDateField
           label="Fecha Fin Soporte"
           value={s.fechaFinSoporte}
-          editing={editing}
           field="fechaFinSoporte"
-          onChange={(f, v) => handleChange("servidor", f, v)}
+          editing={editing}
+          onChange={hc}
         />
-        <Field
+        <EditAutoField
           label="Contrato que lo soporta"
           value={s.contratoQueSoporta}
-          editing={editing}
           field="contratoQueSoporta"
-          onChange={(f, v) => handleChange("servidor", f, v)}
+          editing={editing}
+          onChange={hc}
+          tipo="SERVIDOR"
         />
       </Section>
     </>
@@ -143,59 +180,47 @@ export function RedSection({
   handleChange: (section: string | null, field: string, val: string) => void;
 }) {
   const r = asset.red;
-
   if (!r) return null;
+
+  const hc = (f: string, v: string) => handleChange("red", f, v);
 
   return (
     <Section title="Equipo de Red" icon="🔌">
-      <Field
-        label="Serial"
-        value={r.serial}
-        editing={editing}
-        field="serial"
-        onChange={(f, v) => handleChange("red", f, v)}
-      />
-      <Field
-        label="MAC"
-        value={r.mac}
-        editing={editing}
-        field="mac"
-        onChange={(f, v) => handleChange("red", f, v)}
-      />
-      <Field
+      {/* serial / mac: texto libre siempre */}
+      <Field label="Serial" value={r.serial} editing={editing} field="serial" onChange={hc} />
+      <Field label="MAC"    value={r.mac}    editing={editing} field="mac"    onChange={hc} placeholder="Ej: AA:BB:CC:DD:EE:FF" />
+      <EditAutoField
         label="Modelo"
         value={r.modelo}
-        editing={editing}
         field="modelo"
-        onChange={(f, v) => handleChange("red", f, v)}
-      />
-      <Field
-        label="IP Gestión"
-        value={r.ipGestion}
         editing={editing}
-        field="ipGestion"
-        onChange={(f, v) => handleChange("red", f, v)}
+        onChange={hc}
+        tipo="RED"
+        placeholder="Ej: Cisco Catalyst 9200"
       />
-      <Field
+      <Field label="IP Gestión" value={r.ipGestion} editing={editing} field="ipGestion" onChange={hc} />
+      <EditSelectField
         label="Estado"
         value={r.estado}
-        editing={editing}
         field="estado"
-        onChange={(f, v) => handleChange("red", f, v)}
+        editing={editing}
+        onChange={hc}
+        options={["ACTIVO", "DESACTIVADO"]}
       />
-      <Field
+      <EditDateField
         label="Fecha Fin Soporte"
         value={r.fechaFinSoporte}
-        editing={editing}
         field="fechaFinSoporte"
-        onChange={(f, v) => handleChange("red", f, v)}
+        editing={editing}
+        onChange={hc}
       />
-      <Field
+      <EditAutoField
         label="Contrato que lo soporta"
         value={r.contratoQueSoporta}
-        editing={editing}
         field="contratoQueSoporta"
-        onChange={(f, v) => handleChange("red", f, v)}
+        editing={editing}
+        onChange={hc}
+        tipo="RED"
       />
     </Section>
   );
@@ -214,38 +239,30 @@ export function UpsSection({
   handleChange: (section: string | null, field: string, val: string) => void;
 }) {
   const u = asset.ups;
-
   if (!u) return null;
+
+  const hc = (f: string, v: string) => handleChange("ups", f, v);
 
   return (
     <Section title="UPS" icon="🔋">
-      <Field
-        label="Serial"
-        value={u.serial}
-        editing={editing}
-        field="serial"
-        onChange={(f, v) => handleChange("ups", f, v)}
-      />
-      <Field
-        label="Placa"
-        value={u.placa}
-        editing={editing}
-        field="placa"
-        onChange={(f, v) => handleChange("ups", f, v)}
-      />
-      <Field
+      <Field label="Serial" value={u.serial} editing={editing} field="serial" onChange={hc} />
+      <Field label="Placa"  value={u.placa}  editing={editing} field="placa"  onChange={hc} />
+      <EditAutoField
         label="Modelo"
         value={u.modelo}
-        editing={editing}
         field="modelo"
-        onChange={(f, v) => handleChange("ups", f, v)}
+        editing={editing}
+        onChange={hc}
+        tipo="UPS"
+        placeholder="Ej: APC Smart-UPS 1500"
       />
-      <Field
+      <EditSelectField
         label="Estado"
         value={u.estado}
-        editing={editing}
         field="estado"
-        onChange={(f, v) => handleChange("ups", f, v)}
+        editing={editing}
+        onChange={hc}
+        options={["ACTIVO", "INACTIVO", "DESCONECTADO"]}
       />
     </Section>
   );
@@ -264,85 +281,81 @@ export function BaseDatosSection({
   handleChange: (section: string | null, field: string, val: string) => void;
 }) {
   const b = asset.baseDatos;
-
   if (!b) return null;
+
+  const hc = (f: string, v: string) => handleChange("baseDatos", f, v);
 
   return (
     <Section title="Base de Datos" icon="🗄️">
-      <Field
-        label="Servidor 1"
-        value={b.servidor1}
-        editing={editing}
-        field="servidor1"
-        onChange={(f, v) => handleChange("baseDatos", f, v)}
-      />
-      <Field
-        label="Servidor 2"
-        value={b.servidor2}
-        editing={editing}
-        field="servidor2"
-        onChange={(f, v) => handleChange("baseDatos", f, v)}
-      />
-      <Field
-        label="RAC/Scan"
-        value={b.racScan}
-        editing={editing}
-        field="racScan"
-        onChange={(f, v) => handleChange("baseDatos", f, v)}
-      />
-      <Field
+      {/* servidor1/2, racScan: texto libre siempre */}
+      <Field label="Servidor 1" value={b.servidor1} editing={editing} field="servidor1" onChange={hc} />
+      <Field label="Servidor 2" value={b.servidor2} editing={editing} field="servidor2" onChange={hc} />
+      <Field label="RAC/Scan"   value={b.racScan}   editing={editing} field="racScan"   onChange={hc} />
+      <EditSelectField
         label="Ambiente"
         value={b.ambiente}
-        editing={editing}
         field="ambiente"
-        onChange={(f, v) => handleChange("baseDatos", f, v)}
-      />
-      <Field
-        label="Aplicación"
-        value={b.appSoporta}
         editing={editing}
-        field="appSoporta"
-        onChange={(f, v) => handleChange("baseDatos", f, v)}
+        onChange={hc}
+        options={["PRODUCCIÓN", "DESARROLLO", "QA", "CERTIFICACIÓN"]}
       />
+      <EditAutoField
+        label="Aplicación que soporta"
+        value={b.appSoporta}
+        field="appSoporta"
+        editing={editing}
+        onChange={hc}
+        tipo="BASE_DATOS"
+      />
+      {/* versionBd: texto libre */}
       <Field
         label="Versión BD"
         value={b.versionBd}
         editing={editing}
         field="versionBd"
-        onChange={(f, v) => handleChange("baseDatos", f, v)}
+        onChange={hc}
+        placeholder="Ej: Oracle 19c"
       />
-      <Field
+      <EditDateField
         label="Fecha Final Soporte"
         value={b.fechaFinalSoporte}
-        editing={editing}
         field="fechaFinalSoporte"
-        onChange={(f, v) => handleChange("baseDatos", f, v)}
+        editing={editing}
+        onChange={hc}
       />
-      <Field
+      <EditAutoField
         label="Contenedor Físico"
         value={b.contenedorFisico}
-        editing={editing}
         field="contenedorFisico"
-        onChange={(f, v) => handleChange("baseDatos", f, v)}
+        editing={editing}
+        onChange={hc}
+        tipo="BASE_DATOS"
       />
-      <Field
+      <EditAutoField
         label="Contrato que lo soporta"
         value={b.contratoQueSoporta}
-        editing={editing}
         field="contratoQueSoporta"
-        onChange={(f, v) => handleChange("baseDatos", f, v)}
+        editing={editing}
+        onChange={hc}
+        tipo="BASE_DATOS"
       />
     </Section>
   );
 }
 
 /* ═══════════════════════════════════════════
-   VPN SECTION
+   VPN SECTION — NO TIENE EL BUG
+   conexion/fases/origen/destino son texto libre
+   tanto en Create como en Edit. No se toca nada.
 ═══════════════════════════════════════════ */
-
-function ReglaHistorica({ regla, idx, editing, onEliminar }: { 
-  regla: Vpn; 
-  idx: number; 
+function ReglaHistorica({
+  regla,
+  idx,
+  editing,
+  onEliminar,
+}: {
+  regla: Vpn;
+  idx: number;
   editing: boolean;
   onEliminar: () => void;
 }) {
@@ -353,7 +366,7 @@ function ReglaHistorica({ regla, idx, editing, onEliminar }: {
     destino:  regla.destino  ?? "",
     fases:    regla.fases    ?? "",
   });
-  const [guardando, setGuardando] = useState(false);
+  const [guardando,  setGuardando]  = useState(false);
   const [eliminando, setEliminando] = useState(false);
 
   const guardarRegla = async () => {
@@ -362,7 +375,10 @@ function ReglaHistorica({ regla, idx, editing, onEliminar }: {
       const token = sessionStorage.getItem("inventario_token");
       await fetch(`${import.meta.env.VITE_API_URL}/assets/${regla.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ vpn: valores }),
       });
       setEditando(false);
@@ -393,30 +409,44 @@ function ReglaHistorica({ regla, idx, editing, onEliminar }: {
     <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-lg hover:shadow-md transition-all">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <span className="inline-block w-6 h-6 bg-amber-600 text-white rounded-full text-center text-xs font-bold leading-6">{idx + 1}</span>
-          <span className="font-bold text-amber-900">{valores.conexion || `Regla ${idx + 1}`}</span>
+          <span className="inline-block w-6 h-6 bg-amber-600 text-white rounded-full text-center text-xs font-bold leading-6">
+            {idx + 1}
+          </span>
+          <span className="font-bold text-amber-900">
+            {valores.conexion || `Regla ${idx + 1}`}
+          </span>
         </div>
         {editing && (
           <div className="flex gap-2">
             {editando ? (
               <>
-                <button onClick={guardarRegla} disabled={guardando}
-                  style={{ padding:"4px 12px", background:"#22c55e", color:"#fff", border:"none", borderRadius:6, fontWeight:700, fontSize:12, cursor:"pointer" }}>
+                <button
+                  onClick={guardarRegla}
+                  disabled={guardando}
+                  style={{ padding: "4px 12px", background: "#22c55e", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}
+                >
                   {guardando ? "Guardando..." : "💾 Guardar"}
                 </button>
-                <button onClick={() => setEditando(false)}
-                  style={{ padding:"4px 12px", background:"#6b7280", color:"#fff", border:"none", borderRadius:6, fontWeight:700, fontSize:12, cursor:"pointer" }}>
+                <button
+                  onClick={() => setEditando(false)}
+                  style={{ padding: "4px 12px", background: "#6b7280", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}
+                >
                   Cancelar
                 </button>
               </>
             ) : (
               <>
-                <button onClick={() => setEditando(true)}
-                  style={{ padding:"4px 12px", background:"#f59e0b", color:"#fff", border:"none", borderRadius:6, fontWeight:700, fontSize:12, cursor:"pointer" }}>
+                <button
+                  onClick={() => setEditando(true)}
+                  style={{ padding: "4px 12px", background: "#f59e0b", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}
+                >
                   ✏️ Editar
                 </button>
-                <button onClick={eliminarRegla} disabled={eliminando}
-                  style={{ padding:"4px 12px", background:"#ef4444", color:"#fff", border:"none", borderRadius:6, fontWeight:700, fontSize:12, cursor:"pointer" }}>
+                <button
+                  onClick={eliminarRegla}
+                  disabled={eliminando}
+                  style={{ padding: "4px 12px", background: "#ef4444", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}
+                >
                   {eliminando ? "..." : "✕"}
                 </button>
               </>
@@ -424,23 +454,27 @@ function ReglaHistorica({ regla, idx, editing, onEliminar }: {
           </div>
         )}
       </div>
-
       <div className="mb-2 p-2 bg-white rounded border-l-4 border-blue-400">
         <div className="text-xs font-semibold text-gray-500 uppercase">🌐 Conexión</div>
         {editando ? (
-          <input value={valores.conexion} onChange={e => setValores(v => ({ ...v, conexion: e.target.value }))}
-            style={{ width:"100%", padding:"4px 8px", border:"1px solid #d1d5db", borderRadius:4, fontSize:13, marginTop:4, boxSizing:"border-box" as any }} />
+          <input
+            value={valores.conexion}
+            onChange={(e) => setValores((v) => ({ ...v, conexion: e.target.value }))}
+            style={{ width: "100%", padding: "4px 8px", border: "1px solid #d1d5db", borderRadius: 4, fontSize: 13, marginTop: 4, boxSizing: "border-box" }}
+          />
         ) : (
           <div className="text-sm font-mono text-blue-600 font-bold mt-1">{valores.conexion || "—"}</div>
         )}
       </div>
-
       <div className="flex items-center gap-2">
         <div className="flex-1 p-2 bg-white rounded border-l-4 border-green-400">
           <div className="text-xs font-semibold text-gray-500">← Origen</div>
           {editando ? (
-            <input value={valores.origen} onChange={e => setValores(v => ({ ...v, origen: e.target.value }))}
-              style={{ width:"100%", padding:"4px 8px", border:"1px solid #d1d5db", borderRadius:4, fontSize:13, marginTop:4, boxSizing:"border-box" as any }} />
+            <input
+              value={valores.origen}
+              onChange={(e) => setValores((v) => ({ ...v, origen: e.target.value }))}
+              style={{ width: "100%", padding: "4px 8px", border: "1px solid #d1d5db", borderRadius: 4, fontSize: 13, marginTop: 4, boxSizing: "border-box" }}
+            />
           ) : (
             <div className="text-xs font-mono text-green-600 mt-1 break-all">{valores.origen || "—"}</div>
           )}
@@ -449,8 +483,11 @@ function ReglaHistorica({ regla, idx, editing, onEliminar }: {
         <div className="flex-1 p-2 bg-white rounded border-l-4 border-red-400">
           <div className="text-xs font-semibold text-gray-500">Destino →</div>
           {editando ? (
-            <input value={valores.destino} onChange={e => setValores(v => ({ ...v, destino: e.target.value }))}
-              style={{ width:"100%", padding:"4px 8px", border:"1px solid #d1d5db", borderRadius:4, fontSize:13, marginTop:4, boxSizing:"border-box" as any }} />
+            <input
+              value={valores.destino}
+              onChange={(e) => setValores((v) => ({ ...v, destino: e.target.value }))}
+              style={{ width: "100%", padding: "4px 8px", border: "1px solid #d1d5db", borderRadius: 4, fontSize: 13, marginTop: 4, boxSizing: "border-box" }}
+            />
           ) : (
             <div className="text-xs font-mono text-red-600 mt-1 break-all">{valores.destino || "—"}</div>
           )}
@@ -470,17 +507,23 @@ export function VpnSection({
   handleChange: (section: string | null, field: string, val: any) => void;
 }) {
   const v = asset.vpn;
-  const [historicas, setHistoricas] = useState<Vpn[]>((v as any)?.reglasHistoricas ?? []);
-  const [nuevaRegla, setNuevaRegla] = useState({ conexion:"", fases:"", origen:"", destino:"" });
+  const [historicas, setHistoricas] = useState<Vpn[]>(
+    (v as any)?.reglasHistoricas ?? []
+  );
+  const [nuevaRegla, setNuevaRegla] = useState({
+    conexion: "", fases: "", origen: "", destino: "",
+  });
   const [reglas, setReglas] = useState<Partial<VpnRule>[]>(v?.reglas ?? []);
 
   if (!v) return null;
+
+  const hc = (f: string, val: string) => handleChange("vpn", f, val);
 
   const agregarRegla = () => {
     if (!nuevaRegla.conexion && !nuevaRegla.origen && !nuevaRegla.destino) return;
     const actualizadas = [...reglas, nuevaRegla];
     setReglas(actualizadas);
-    setNuevaRegla({ conexion:"", fases:"", origen:"", destino:"" });
+    setNuevaRegla({ conexion: "", fases: "", origen: "", destino: "" });
     handleChange("vpn", "reglas", actualizadas as any);
   };
 
@@ -495,27 +538,34 @@ export function VpnSection({
   return (
     <>
       <Section title="VPN" icon="🔒">
-        <Field label="Conexión" value={v.conexion} editing={editing} field="conexion" onChange={(f, val) => handleChange("vpn", f, val)} />
-        <Field label="Fases"    value={v.fases}    editing={editing} field="fases"    onChange={(f, val) => handleChange("vpn", f, val)} />
-        <Field label="Origen"   value={v.origen}   editing={editing} field="origen"   onChange={(f, val) => handleChange("vpn", f, val)} />
-        <Field label="Destino"  value={v.destino}  editing={editing} field="destino"  onChange={(f, val) => handleChange("vpn", f, val)} />
+        <Field label="Conexión" value={v.conexion} editing={editing} field="conexion" onChange={hc} />
+        <Field label="Fases"    value={v.fases}    editing={editing} field="fases"    onChange={hc} />
+        <Field label="Origen"   value={v.origen}   editing={editing} field="origen"   onChange={hc} />
+        <Field label="Destino"  value={v.destino}  editing={editing} field="destino"  onChange={hc} />
       </Section>
 
       {(totalReglas > 0 || editing) && (
         <Section title={`Reglas Asociadas (${totalReglas})`} icon="🔗">
           <div className="space-y-3">
-
-            {/* TODAS LAS REGLAS JUNTAS */}
             {reglas.map((regla, idx) => (
-              <div key={idx} className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-lg hover:shadow-md transition-all">
+              <div
+                key={idx}
+                className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-lg hover:shadow-md transition-all"
+              >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="inline-block w-6 h-6 bg-green-600 text-white rounded-full text-center text-xs font-bold leading-6">{idx + 1}</span>
-                    <span className="font-bold text-green-900">{regla.conexion || `Regla #${idx + 1}`}</span>
+                    <span className="inline-block w-6 h-6 bg-green-600 text-white rounded-full text-center text-xs font-bold leading-6">
+                      {idx + 1}
+                    </span>
+                    <span className="font-bold text-green-900">
+                      {regla.conexion || `Regla #${idx + 1}`}
+                    </span>
                   </div>
                   {editing && (
-                    <button onClick={() => eliminarRegla(idx)}
-                      style={{ padding:"4px 10px", background:"#ef4444", color:"#fff", border:"none", borderRadius:6, fontSize:12, fontWeight:700, cursor:"pointer" }}>
+                    <button
+                      onClick={() => eliminarRegla(idx)}
+                      style={{ padding: "4px 10px", background: "#ef4444", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                    >
                       ✕
                     </button>
                   )}
@@ -544,35 +594,41 @@ export function VpnSection({
                 regla={regla}
                 idx={reglas.length + idx}
                 editing={editing}
-                onEliminar={() => setHistoricas(h => h.filter(r => r.id !== regla.id))}
+                onEliminar={() =>
+                  setHistoricas((h) => h.filter((r) => r.id !== regla.id))
+                }
               />
             ))}
 
-            {/* FORMULARIO AGREGAR */}
             {editing && (
-              <div style={{ marginTop:16, background:"#f8fafc", border:"1px solid #e2e8f0", borderRadius:8, padding:16 }}>
-                <div style={{ fontSize:11, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>
+              <div style={{ marginTop: 16, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>
                   📝 Agregar Nueva Regla
                 </div>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
-                  {["conexion","fases","origen","destino"].map(campo => (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+                  {(["conexion", "fases", "origen", "destino"] as const).map((campo) => (
                     <div key={campo}>
-                      <label style={{ fontSize:11, fontWeight:700, color:"#374151", display:"block", marginBottom:4, textTransform:"uppercase" as any }}>{campo}</label>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: "#374151", display: "block", marginBottom: 4, textTransform: "uppercase" }}>
+                        {campo}
+                      </label>
                       <input
-                        value={(nuevaRegla as any)[campo]}
-                        onChange={e => setNuevaRegla(r => ({ ...r, [campo]: e.target.value }))}
-                        style={{ width:"100%", padding:"6px 10px", border:"1px solid #d1d5db", borderRadius:6, fontSize:13, boxSizing:"border-box" as any }}
+                        value={nuevaRegla[campo]}
+                        onChange={(e) =>
+                          setNuevaRegla((r) => ({ ...r, [campo]: e.target.value }))
+                        }
+                        style={{ width: "100%", padding: "6px 10px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 13, boxSizing: "border-box" }}
                       />
                     </div>
                   ))}
                 </div>
-                <button onClick={agregarRegla}
-                  style={{ width:"100%", padding:"10px", background:"#6366f1", color:"#fff", border:"none", borderRadius:6, fontWeight:700, fontSize:13, cursor:"pointer" }}>
+                <button
+                  onClick={agregarRegla}
+                  style={{ width: "100%", padding: "10px", background: "#6366f1", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+                >
                   + Agregar Regla
                 </button>
               </div>
             )}
-
           </div>
         </Section>
       )}
@@ -581,10 +637,10 @@ export function VpnSection({
 }
 
 /* ═══════════════════════════════════════════
-   MOVIL
-
-/* ═══════════════════════════════════════════
    MOVIL SECTION
+   ⚠️ editabilidad controlada por estado, NO por
+   "editing" plano. Ver lógica puedeEditar* abajo.
+   NO cambiar esta lógica — es diseño intencional.
 ═══════════════════════════════════════════ */
 export function MovilSection({
   asset,
@@ -596,159 +652,194 @@ export function MovilSection({
   handleChange: (section: string | null, field: string, val: string) => void;
 }) {
   const m = asset.movil;
-
   if (!m) return null;
 
-  const estado = m.estados;
-  const procesoCerrado = estado === "DEVUELTO";
-  const actaEntregaFirmada = !!m.firmaPath;
-  const puedeEditarCorreo = editing && !procesoCerrado;
+  const hc = (f: string, v: string) => handleChange("movil", f, v);
+
+  const estado              = m.estados;
+  const procesoCerrado      = estado === "DEVUELTO";
+  const actaEntregaFirmada  = !!m.firmaPath;
+
+  // Lógica de editabilidad por estado — NO TOCAR
   const puedeEditarActaEntrega = editing && !procesoCerrado && !actaEntregaFirmada;
-  const puedeEditarDevolucion =
-    editing && !procesoCerrado && (estado === "DEVOLUCION" || estado === "PENDIENTE_DEVOLUCION");
+  const puedeEditarCorreo      = editing && !procesoCerrado;
+  const puedeEditarDevolucion  =
+    editing &&
+    !procesoCerrado &&
+    (estado === "DEVOLUCION" || estado === "PENDIENTE_DEVOLUCION");
 
   return (
     <>
-      <Section title="Datos del Usuario" icon="Usuario">
+      <Section title="Datos del Usuario" icon="👤">
+        {/* numeroCaso / cedula / usuarioRed: texto libre siempre */}
         <Field
           label="# Caso"
           value={m.numeroCaso}
           editing={puedeEditarActaEntrega}
           field="numeroCaso"
-          onChange={(f, v) => handleChange("movil", f, v)}
+          onChange={hc}
         />
-        <Field
-          label="Region/Departamento"
+        {/*
+          region: SelectField — vocabulario controlado.
+          Mismo set que FormMovil en forms.tsx.
+        */}
+        <EditSelectField
+          label="Región/Departamento"
           value={m.region}
-          editing={puedeEditarActaEntrega}
           field="region"
-          onChange={(f, v) => handleChange("movil", f, v)}
+          editing={puedeEditarActaEntrega}
+          onChange={hc}
+          options={[
+            "Bogotá", "Bucaramanga", "Cúcuta", "Villavicencio", "Ibagué",
+            "Barranquilla", "Santa Marta", "Sincelejo", "Cartagena",
+            "Montería", "Medellín", "Cali", "Pereira",
+          ]}
         />
+        {/* dependencia: texto libre */}
         <Field
-          label="Dependencia/Area"
+          label="Dependencia/Área"
           value={m.dependencia}
           editing={puedeEditarActaEntrega}
           field="dependencia"
-          onChange={(f, v) => handleChange("movil", f, v)}
+          onChange={hc}
         />
-        <Field
+        {/* sede: AutocompleteField */}
+        <EditAutoField
           label="Sede"
           value={m.sede}
-          editing={puedeEditarActaEntrega}
           field="sede"
-          onChange={(f, v) => handleChange("movil", f, v)}
+          editing={puedeEditarActaEntrega}
+          onChange={hc}
+          tipo="MOVIL"
         />
         <Field
           label="C.C."
           value={m.cedula}
           editing={puedeEditarActaEntrega}
           field="cedula"
-          onChange={(f, v) => handleChange("movil", f, v)}
+          onChange={hc}
         />
         <Field
           label="Usuario de Red"
           value={m.usuarioRed}
           editing={puedeEditarActaEntrega}
           field="usuarioRed"
-          onChange={(f, v) => handleChange("movil", f, v)}
+          onChange={hc}
         />
         <Field
           label="Correo Responsable"
           value={m.correoResponsable}
           editing={puedeEditarCorreo}
           field="correoResponsable"
-          onChange={(f, v) => handleChange("movil", f, v)}
+          onChange={hc}
         />
       </Section>
 
-      <Section title="Datos del Equipo Entregado" icon="Movil">
+      <Section title="Datos del Equipo Entregado" icon="📱">
+        {/* uni: texto libre */}
         <Field
           label="UNI"
           value={m.uni}
           editing={puedeEditarActaEntrega}
           field="uni"
-          onChange={(f, v) => handleChange("movil", f, v)}
+          onChange={hc}
         />
-        <Field
+        {/*
+          marca / modelo: SelectField y AutocompleteField.
+          marca: vocabulario controlado igual que FormMovil.
+          modelo: sugerencias de BD.
+        */}
+        <EditSelectField
           label="Marca"
           value={m.marca}
-          editing={puedeEditarActaEntrega}
           field="marca"
-          onChange={(f, v) => handleChange("movil", f, v)}
+          editing={puedeEditarActaEntrega}
+          onChange={hc}
+          options={["Samsung", "Motorola", "Xiaomi", "Huawei", "Apple"]}
         />
-        <Field
+        <EditAutoField
           label="Modelo"
           value={m.modelo}
-          editing={puedeEditarActaEntrega}
           field="modelo"
-          onChange={(f, v) => handleChange("movil", f, v)}
+          editing={puedeEditarActaEntrega}
+          onChange={hc}
+          tipo="MOVIL"
         />
+        {/* serial / imei1 / imei2: texto libre SIEMPRE — nunca cambiar */}
         <Field
           label="Serial"
           value={m.serial}
           editing={puedeEditarActaEntrega}
           field="serial"
-          onChange={(f, v) => handleChange("movil", f, v)}
+          onChange={hc}
         />
         <Field
           label="IMEI 1"
           value={m.imei1}
           editing={puedeEditarActaEntrega}
           field="imei1"
-          onChange={(f, v) => handleChange("movil", f, v)}
+          onChange={hc}
         />
         <Field
           label="IMEI 2"
           value={m.imei2}
           editing={puedeEditarActaEntrega}
           field="imei2"
-          onChange={(f, v) => handleChange("movil", f, v)}
+          onChange={hc}
         />
-        <Field
+        {/* sim: SelectField */}
+        <EditSelectField
           label="SIM"
           value={m.sim}
-          editing={puedeEditarActaEntrega}
           field="sim"
-          onChange={(f, v) => handleChange("movil", f, v)}
+          editing={puedeEditarActaEntrega}
+          onChange={hc}
+          options={["Sí", "No"]}
         />
+        {/* numeroLinea: texto libre */}
         <Field
-          label="Numero de Linea"
+          label="Número de Línea"
           value={m.numeroLinea}
           editing={puedeEditarActaEntrega}
           field="numeroLinea"
-          onChange={(f, v) => handleChange("movil", f, v)}
+          onChange={hc}
         />
-        <Field
+        {/* fechaEntrega: EditDateField */}
+        <EditDateField
           label="Fecha de Entrega"
           value={m.fechaEntrega}
-          editing={puedeEditarActaEntrega}
           field="fechaEntrega"
-          onChange={(f, v) => handleChange("movil", f, v)}
+          editing={puedeEditarActaEntrega}
+          onChange={hc}
         />
         <Field
           label="Observaciones Entrega"
           value={m.observacionesEntrega}
           editing={puedeEditarActaEntrega}
           field="observacionesEntrega"
-          onChange={(f, v) => handleChange("movil", f, v)}
+          onChange={hc}
         />
       </Section>
 
-      {(estado === "DEVOLUCION" || estado === "PENDIENTE_DEVOLUCION" || estado === "DEVUELTO" || editing) && (
-        <Section title="Datos de Devolucion" icon="Devolucion">
+      {(estado === "DEVOLUCION" ||
+        estado === "PENDIENTE_DEVOLUCION" ||
+        estado === "DEVUELTO" ||
+        editing) && (
+        <Section title="Datos de Devolución" icon="↩️">
+          {/* fechaDevolucion: editing siempre false — lo setea el sistema */}
           <Field
-            label="Fecha de Devolucion"
+            label="Fecha de Devolución"
             value={m.fechaDevolucion}
             editing={false}
             field="fechaDevolucion"
-            onChange={(f, v) => handleChange("movil", f, v)}
+            onChange={hc}
           />
           <Field
-            label="Observaciones Devolucion"
+            label="Observaciones Devolución"
             value={m.observacionesDevolucion}
             editing={puedeEditarDevolucion}
             field="observacionesDevolucion"
-            onChange={(f, v) => handleChange("movil", f, v)}
+            onChange={hc}
           />
         </Section>
       )}
