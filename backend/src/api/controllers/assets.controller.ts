@@ -5,7 +5,7 @@ import { ApiResponse } from "../../types/api.types";
 import { sendToFlow } from "../utils/flow";
 import { mapAssetsToFlowPayload, toFlowTipo } from "../utils/flowMappers";
 import { sanitizePayloadForFlow } from "../utils/flowSanitizer";
-import { generarWordMovil } from "../utils/generarMovilDocx";
+import { generarPdfMovil } from "../utils/generarMovilDocx";
 import { generarExcelInventario } from "../utils/ExportInventario";
 import { generarExcelObservaciones } from "../utils/exportObservaciones";
 import { sendMovilEmail } from "../utils/sendMovilEmail";
@@ -204,7 +204,7 @@ async deleteBitacoraEntry(req: Request, res: Response) {
       }
 
       const m = asset.movil;
-      const buffer = await generarWordMovil({
+      const buffer = await generarPdfMovil({
         nombre:                  asset.nombre,
         numeroCaso:              m?.numeroCaso              ?? null,
         region:                  m?.region                 ?? null,
@@ -228,7 +228,7 @@ async deleteBitacoraEntry(req: Request, res: Response) {
         fechaFirma:             m?.fechaFirma            ?? null,
       });
 
-      const nombre = `FR-GTE-02-044_${(asset.nombre ?? "movil").replace(/\s+/g, "_")}.docx`;
+      const nombre = `FR-GTE-02-044_${(asset.nombre ?? "movil").replace(/\s+/g, "_")}.pdf`;
 
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
       res.setHeader("Content-Disposition", `attachment; filename="${nombre}"`);
@@ -318,6 +318,7 @@ async deleteBitacoraEntry(req: Request, res: Response) {
   try {
     const tipos: string[] = req.body.tipos ?? [];
     const ids: string[]   = req.body.ids   ?? [];
+    const movilExportMode = req.body.movilExportMode === "escaneados" ? "escaneados" : "usuario";
 
     let assets: any[] = [];
     if (ids.length > 0) {
@@ -338,7 +339,7 @@ async deleteBitacoraEntry(req: Request, res: Response) {
       return res.status(404).json({ success: false, error: "No hay activos para exportar" });
     }
 
-    const buffer = await generarExcelInventario(assets);
+    const buffer = await generarExcelInventario(assets, { movilExportMode });
     const fecha  = new Date().toISOString().slice(0, 10);
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
@@ -517,7 +518,7 @@ async deleteBitacoraEntry(req: Request, res: Response) {
         correo,
         nombreActivo: nombreActivo || "TEST",
         assetId: "test-firma-" + Date.now(),
-        nombreArchivo: "Acta_Entrega_TEST.docx",
+        nombreArchivo: "Acta_Entrega_TEST.pdf",
         archivoBase64: wordBase64,
         observacionesEntrega: "Test de envío - No es un documento real",
       });

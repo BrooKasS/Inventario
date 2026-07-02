@@ -6,6 +6,8 @@
 import * as fs   from "fs";
 import * as path from "path";
 import { execSync } from "child_process";
+import { AppDataSource } from "../../config/database";
+import { MobileStaging } from "../../entities/MobileStaging.entity";
 
 const TEMPLATE_PATH = path.join(__dirname, "template_inventario.xlsx");
 
@@ -29,7 +31,24 @@ function v(val: any): string {
   return String(val);
 }
 
-export async function generarExcelInventario(assets: AssetData[]): Promise<Buffer> {
+export async function generarExcelInventario(
+  assets: AssetData[],
+  opts?: { movilExportMode?: "usuario" | "escaneados" }
+): Promise<Buffer> {
+  let movilesEscaneados: Array<{ Marca: string; Modelo: string; Serial: string; "IMEI 1": string; Estado: string }> = [];
+
+  if (opts?.movilExportMode === "escaneados") {
+    const stagingRepo = AppDataSource.getRepository(MobileStaging);
+    const registros = await stagingRepo.find({ order: { creadoEn: "DESC" } });
+    movilesEscaneados = registros.map(r => ({
+      Marca: v(r.marca),
+      Modelo: v(r.modelo),
+      Serial: v(r.serial),
+      "IMEI 1": v(r.imei1),
+      Estado: r.usado === "true" ? "Registrado" : "Pendiente",
+    }));
+  }
+
   if (!fs.existsSync(TEMPLATE_PATH)) {
     throw new Error(`Template no encontrado en: ${TEMPLATE_PATH}`);
   }
@@ -39,7 +58,7 @@ export async function generarExcelInventario(assets: AssetData[]): Promise<Buffe
   const ups        = assets.filter(a => a.tipo === "UPS");
   const bds        = assets.filter(a => a.tipo === "BASE_DATOS");
   const vpns       = assets.filter(a => a.tipo === "VPN");
-  const moviles    = assets.filter(a => a.tipo === "MOVIL");
+  const movilesRestantes = assets.filter(a => a.tipo === "MOVIL");
 
   const payload = {
     template: TEMPLATE_PATH,
@@ -114,7 +133,7 @@ export async function generarExcelInventario(assets: AssetData[]): Promise<Buffe
       destino:  v(a.vpn?.destino),
     })),
 
-    moviles: moviles.map(a => ({
+    moviles: movilesRestantes.map(a => ({
       nombre:                  v(a.nombre),
       numeroCaso:              v(a.movil?.numeroCaso),
       region:                  v(a.movil?.region),
@@ -135,7 +154,9 @@ export async function generarExcelInventario(assets: AssetData[]): Promise<Buffe
       observacionesEntrega:    v(a.movil?.observacionesEntrega),
       fechaDevolucion:         v(a.movil?.fechaDevolucion),
       observacionesDevolucion: v(a.movil?.observacionesDevolucion),
+      estados:                 v(a.movil?.estados),
     })),
+    movilesEscaneados,
   };
 
   const payloadPath = path.join(__dirname, `export_payload_${Date.now()}.json`);

@@ -1,8 +1,4 @@
-import {
-  Document, Packer, Table, TableRow, TableCell, Paragraph, TextRun,
-  BorderStyle, WidthType, ShadingType, VerticalAlign, AlignmentType,
-  ImageRun,
-} from "docx";
+import PDFDocument from 'pdfkit';
 import fs from "fs";
 
 /* ─── Tipos ─── */
@@ -31,7 +27,21 @@ interface DatosMovil {
   firmaPathFinal?: string | null;
 }
 
-/* ─── Helpers ─── */
+/* ─── Colores corporativos ─── */
+const COLORS = {
+  primary: "#FF9A1F",
+  secondary: "#8A1A40",
+  accent1: "#B7312C",
+  accent2: "#D86018",
+  darkGray: "#2C3E50",
+  mediumGray: "#34495E",
+  lightGray: "#c9c9c9",
+  lightGray2: "#f0f0f0",
+  white: "#FFFFFF",
+  borderGray: "#BDC3C7",
+  textDark: "#1A1A1A",
+};
+
 const val = (v: string | null | undefined) => v ?? "";
 
 function formatFecha(f: string | Date | null | undefined): string {
@@ -40,520 +50,376 @@ function formatFecha(f: string | Date | null | undefined): string {
   return d.toLocaleDateString("es-CO", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-/* ─── Estilos de borde ─── */
-const BORDER_SINGLE = { style: BorderStyle.SINGLE, size: 8, color: "000000" };
-const BORDER_NIL    = { style: BorderStyle.NIL,    size: 0, color: "000000" };
-const ALL_BORDERS   = { top: BORDER_SINGLE, bottom: BORDER_SINGLE, left: BORDER_SINGLE, right: BORDER_SINGLE };
-const SHADING_GRAY  = { fill: "D9D9D9", type: ShadingType.CLEAR, color: "000000" };
-const SHADING_CLEAR = { fill: "auto",   type: ShadingType.CLEAR, color: "auto" };
-const CELL_MARGINS  = { top: 80, bottom: 80, left: 100, right: 100 };
+/* ─── Header ─── */
+function drawHeaderGradient(
+  doc: PDFKit.PDFDocument,
+  y: number,
+  type: "entrega" | "devolucion",
+  meta?: { codigo?: string; version?: string; fechaActualizacion?: string; Proceso?: string }
+): void {
+  const title = type === "entrega" ? "ACTA DE ENTREGA" : "ACTA DE DEVOLUCIÓN";
+  const bannerH = 65;
 
-/* ─── TextRun helpers ─── */
-function labelRun(text: string) {
-  return new TextRun({ text, bold: true, font: "Calibri", size: 20, color: "000000" });
+  // Fondo del banner (dos mitades de color)
+  
+  const grad = doc.linearGradient(40, y, 555, y);
+  
+  grad.stop(0, COLORS.primary);   // naranja
+  grad.stop(1, COLORS.secondary); // vino
+  
+  doc.rect(40, y, 515, bannerH).fill(grad);
+
+
+  if (meta) {
+    const logoW = 80;
+    const metaW = 185;
+    const titleX = 40 + logoW;
+    const titleW = 515 - logoW - metaW;
+    const metaX = 40 + logoW + titleW;
+
+    // Logo dentro del banner
+    if (fs.existsSync("storage/img/logo.png")) {
+      doc.image("storage/img/logo.png", 46, y + 8, { fit: [68, 48], align: "center", valign: "center" });
+    } else {
+      doc.fontSize(9).font("Helvetica-Bold").fillColor(COLORS.white);
+      doc.text("fiduprevisora", 44, y + 26, { width: logoW - 8, align: "center" });
+    }
+
+    // Línea divisora vertical logo | título
+    doc.strokeColor(COLORS.white).lineWidth(0.5).opacity(0.4);
+    doc.moveTo(titleX, y + 8).lineTo(titleX, y + bannerH - 8).stroke();
+    doc.opacity(1);
+
+    // Título centrado
+    doc.fontSize(22).font("Helvetica-Bold").fillColor(COLORS.white);
+    doc.text(title, titleX, y + 10, { width: titleW, align: "center" });
+    doc.fontSize(10).font("Helvetica").fillColor(COLORS.white).opacity(0.85);
+    doc.text("Documento de Gestión de Activos Móviles", titleX, y + 40, { width: titleW, align: "center" });
+    doc.opacity(1);
+
+    // Línea divisora vertical título | metadata
+    doc.strokeColor(COLORS.white).lineWidth(0.5).opacity(0.4);
+    doc.moveTo(metaX, y + 8).lineTo(metaX, y + bannerH - 8).stroke();
+    doc.opacity(1);
+
+    // Metadata: código, versión, fecha
+    const metaLines = [
+      { label: "Código:",              value: meta.codigo ?? "FR-GTE-02-044" },
+      { label: "Versión:",             value: meta.version ?? "1" },
+      { label: "Fecha Actualización:", value: meta.fechaActualizacion ?? new Date().toLocaleDateString("es-CO") },
+      { label: "Proceso:",            value: meta.Proceso ?? "Infraestructura Tecnológica" },
+    ];
+    const lineH = bannerH / metaLines.length;
+    metaLines.forEach(({ label, value }, i) => {
+      const lineY = y + i * lineH + 6;
+      if (i > 0) {
+        doc.strokeColor(COLORS.white).lineWidth(0.3).opacity(0.35);
+        doc.moveTo(metaX + 4, y + i * lineH).lineTo(metaX + metaW - 4, y + i * lineH).stroke();
+        doc.opacity(1);
+      }
+      doc.fontSize(10).font("Helvetica-Bold").fillColor(COLORS.white);
+      doc.text(label, metaX + 6, lineY, { continued: true });
+      doc.fontSize(10.5).font("Helvetica").fillColor(COLORS.white).opacity(0.92);
+      doc.text(` ${value}`, { width: metaW - 10 })
+      doc.opacity(1);
+    });
+
+  } else {
+    // Sin metadata: título centrado simple (devolución)
+    doc.fontSize(22).font("Helvetica-Bold").fillColor(COLORS.white);
+    doc.text(title, 40, y + 16, { width: 515, align: "center" });
+    doc.fontSize(8.5).font("Helvetica").fillColor(COLORS.white).opacity(0.9);
+    doc.text("Documento de Gestión de Activos Móviles", 40, y + 44, { width: 515, align: "center" });
+    doc.opacity(1);
+  }
 }
 
-function valueRun(text: string) {
-  return new TextRun({ text, font: "Calibri", size: 20, color: "000000" });
+/* ─── Sección título ─── */
+function drawSectionTitle(doc: PDFKit.PDFDocument, title: string, y: number): number {
+  doc.strokeColor(COLORS.primary).lineWidth(2);
+  doc.moveTo(40, y).lineTo(555, y).stroke();
+  doc.fontSize(10).font("Helvetica-Bold").fillColor(COLORS.secondary);
+  doc.text(title, 45, y + 5, { width: 510 });
+  return y + 20;
 }
 
-function headerRun(text: string) {
-  return new TextRun({ text, bold: true, font: "Calibri", size: 20, color: "000000" });
+/* ─── Info grid ─── */
+interface InfoCard { label: string; value: string; }
+
+function drawInfoGrid(doc: PDFKit.PDFDocument, cards: InfoCard[], startY: number, rowH = 38): number {
+  const colW = 240;
+  const gap = 20;
+  const pad = 7;
+  let y = startY;
+  for (let i = 0; i < cards.length; i += 2) {
+    const c1 = cards[i];
+    const c2 = cards[i + 1];
+    doc.rect(40, y, colW, rowH).fill(COLORS.lightGray2).stroke();
+    doc.fontSize(8).font("Helvetica-Bold").fillColor(COLORS.secondary);
+    doc.text(c1.label, 40 + pad, y + pad, { width: colW - pad * 2 });
+    doc.fontSize(10).font("Helvetica").fillColor(COLORS.textDark);
+    doc.text(c1.value, 40 + pad, y + 20, { width: colW - pad * 2 });
+    if (c2) {
+      doc.rect(40 + colW + gap, y, colW, rowH).fill(COLORS.lightGray2).stroke();
+      doc.fontSize(8).font("Helvetica-Bold").fillColor(COLORS.secondary);
+      doc.text(c2.label, 40 + colW + gap + pad, y + pad, { width: colW - pad * 2 });
+      doc.fontSize(10).font("Helvetica").fillColor(COLORS.textDark);
+      doc.text(c2.value, 40 + colW + gap + pad, y + 20, { width: colW - pad * 2 });
+    }
+    y += rowH + 5;
+  }
+  return y;
 }
 
-/* ─── Celda con label ─── */
-function labelCell(text: string, width: number, borders = ALL_BORDERS) {
-  return new TableCell({
-    width: { size: width, type: WidthType.DXA },
-    borders,
-    shading: SHADING_CLEAR,
-    verticalAlign: VerticalAlign.CENTER,
-    margins: CELL_MARGINS,
-    children: [new Paragraph({ spacing: { after: 0, line: 240 }, children: [labelRun(text)] })],
-  });
+/* ─── Tabla equipo en 2 columnas ─── */
+interface TableRow { cells: string[]; }
+
+function drawEquipmentTable(doc: PDFKit.PDFDocument, rows: TableRow[], startY: number, rowH = 22): number {
+  const col1W = 110;
+  const col2W = 145;
+  const pad = 5;
+  const half = Math.ceil(rows.length / 2);
+  let y = startY;
+  for (let i = 0; i < half; i++) {
+    const r1 = rows[i];
+    const r2 = rows[i + half];
+    const bg = i % 2 === 0 ? COLORS.lightGray2 : COLORS.white;
+    doc.rect(40, y, col1W + col2W, rowH).fill(bg).stroke();
+    doc.fontSize(8).font("Helvetica-Bold").fillColor(COLORS.secondary);
+    doc.text(r1.cells[0], 40 + pad, y + pad, { width: col1W - pad });
+    doc.fontSize(9).font("Helvetica").fillColor(COLORS.textDark);
+    doc.text(r1.cells[1], 40 + col1W + pad, y + pad, { width: col2W - pad });
+    if (r2) {
+      const xOff = col1W + col2W + 15;
+      doc.rect(40 + xOff, y, col1W + col2W, rowH).fill(bg).stroke();
+      doc.fontSize(8).font("Helvetica-Bold").fillColor(COLORS.secondary);
+      doc.text(r2.cells[0], 40 + xOff + pad, y + pad, { width: col1W - pad });
+      doc.fontSize(9).font("Helvetica").fillColor(COLORS.textDark);
+      doc.text(r2.cells[1], 40 + xOff + col1W + pad, y + pad, { width: col2W - pad });
+    }
+    y += rowH;
+  }
+  return y;
 }
 
-/* ─── Celda con valor ─── */
-function valueCell(text: string, width: number, borders = ALL_BORDERS, span?: number) {
-  return new TableCell({
-    width: { size: width, type: WidthType.DXA },
-    columnSpan: span,
-    borders,
-    shading: SHADING_CLEAR,
-    verticalAlign: VerticalAlign.CENTER,
-    margins: CELL_MARGINS,
-    children: [new Paragraph({ spacing: { after: 0, line: 240 }, children: [valueRun(text)] })],
-  });
+/* ─── Observaciones ─── */
+function drawObservationsBox(
+  doc: PDFKit.PDFDocument,
+  title: string,
+  content: string,
+  startY: number,
+  boxH = 55
+): number {
+  doc.rect(40, startY, 515, 20).fill(COLORS.secondary).stroke();
+  doc.fontSize(9).font("Helvetica-Bold").fillColor(COLORS.white);
+  doc.text(title, 45, startY + 6, { width: 505 });
+  doc.rect(40, startY + 20, 515, boxH).fill(COLORS.lightGray2).stroke();
+  doc.fontSize(9).font("Helvetica").fillColor(COLORS.textDark);
+  doc.text(val(content), 45, startY + 26, { width: 505, height: boxH - 10 });
+  return startY + 20 + boxH + 6;
 }
 
-/* ─── Fila label | valor (2 columnas) ─── */
-function labelValueRow(label: string, value: string, labelW = 4272, valueW = 5763): TableRow {
-  return new TableRow({
-    height: { value: 280, rule: "atLeast" },
-    children: [
-      labelCell(label, labelW),
-      valueCell(value, valueW, ALL_BORDERS, 4),
-    ],
-  });
+/* ─── Footer ─── */
+function drawFooter(doc: PDFKit.PDFDocument): void {
+  const footerY = 820;
+  doc.strokeColor(COLORS.borderGray).lineWidth(0.5);
+  doc.moveTo(40, footerY).lineTo(555, footerY).stroke();
+  doc.fontSize(7.5).font("Helvetica").fillColor(COLORS.mediumGray);
+  doc.text("Fiduprevisora - Dirección de Infraestructura", 40, footerY + 6, { width: 300, align: "left" });
+  doc.text(`Generado: ${new Date().toLocaleDateString("es-CO")}`, 300, footerY + 6, { width: 255, align: "right" });
 }
 
-/* ─── Fila header gris (full width) ─── */
-function grayHeaderRow(text: string, totalW = 10035): TableRow {
-  return new TableRow({
-    height: { value: 300, rule: "atLeast" },
-    children: [
-      new TableCell({
-        width: { size: totalW, type: WidthType.DXA },
-        columnSpan: 5,
-        borders: ALL_BORDERS,
-        shading: SHADING_GRAY,
-        verticalAlign: VerticalAlign.CENTER,
-        margins: CELL_MARGINS,
-        children: [
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 0, line: 240 },
-            children: [headerRun(text)],
-          }),
-        ],
-      }),
-    ],
-  });
-}
+/* ══════════════════════════════════════════════
+   ENTREGA — una sola página
+══════════════════════════════════════════════ */
+export async function generarPdfEntrega(datos: DatosMovil): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: "A4", margin: 0, bufferPages: false });
+    const chunks: Buffer[] = [];
+    doc.on("data", (c) => chunks.push(c));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
 
-/* ─── Fila CELULAR | UNI (5 cols) ─── */
-function equipoHeaderRow(labelText: string, uniLabel: string, uniVal: string): TableRow {
-  return new TableRow({
-    height: { value: 200, rule: "atLeast" },
-    children: [
-      new TableCell({
-        width: { size: 4272, type: WidthType.DXA },
-        borders: { top: BORDER_NIL, bottom: BORDER_SINGLE, left: BORDER_SINGLE, right: BORDER_SINGLE },
-        shading: SHADING_CLEAR,
-        verticalAlign: VerticalAlign.CENTER,
-        margins: CELL_MARGINS,
-        children: [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0, line: 240 }, children: [headerRun(labelText)] })],
-      }),
-      new TableCell({
-        width: { size: 1435, type: WidthType.DXA },
-        borders: { top: BORDER_SINGLE, bottom: BORDER_NIL, left: BORDER_NIL, right: BORDER_SINGLE },
-        shading: SHADING_CLEAR,
-        verticalAlign: VerticalAlign.CENTER,
-        margins: CELL_MARGINS,
-        children: [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0, line: 240 }, children: [headerRun(`${uniLabel} `)] })],
-      }),
-      new TableCell({
-        width: { size: 4305, type: WidthType.DXA },
-        columnSpan: 3,
-        borders: { top: BORDER_SINGLE, bottom: BORDER_SINGLE, left: BORDER_NIL, right: BORDER_SINGLE },
-        shading: SHADING_CLEAR,
-        verticalAlign: VerticalAlign.CENTER,
-        margins: CELL_MARGINS,
-        children: [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0, line: 240 }, children: [valueRun(uniVal)] })],
-      }),
-    ],
-  });
-}
+    let y = 25;
 
-/* ─── Fila simple centrada label | valor (5 cols) ─── */
-function simpleRow(label: string, value: string): TableRow {
-  return new TableRow({
-    height: { value: 280, rule: "atLeast" },
-    children: [
-      new TableCell({
-        width: { size: 4272, type: WidthType.DXA },
-        borders: { top: BORDER_NIL, bottom: BORDER_SINGLE, left: BORDER_SINGLE, right: BORDER_SINGLE },
-        shading: SHADING_CLEAR,
-        verticalAlign: VerticalAlign.CENTER,
-        margins: CELL_MARGINS,
-        children: [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0, line: 240 }, children: [headerRun(label)] })],
-      }),
-      new TableCell({
-        width: { size: 5763, type: WidthType.DXA },
-        columnSpan: 4,
-        borders: { top: BORDER_SINGLE, bottom: BORDER_NIL, left: BORDER_NIL, right: BORDER_SINGLE },
-        shading: SHADING_CLEAR,
-        verticalAlign: VerticalAlign.CENTER,
-        margins: CELL_MARGINS,
-        children: [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0, line: 240 }, children: [valueRun(value)] })],
-      }),
-    ],
-  });
-}
+    // HEADER
+    drawHeaderGradient(doc, y, "entrega", {
+      codigo: "FR-GTE-02-044",
+      version: "1",
+      fechaActualizacion: "26/06/2026",
+      Proceso: "Infraestructura Tecnológica",
 
-/* ─── Fila simple centrada label | valor (3 cols) ─── */
-function simpleRow3(label: string, value: string): TableRow {
-  return new TableRow({
-    height: { value: 300, rule: "atLeast" },
-    children: [
-      new TableCell({
-        width: { size: 4248, type: WidthType.DXA },
-        borders: ALL_BORDERS,
-        shading: SHADING_CLEAR,
-        verticalAlign: VerticalAlign.CENTER,
-        margins: CELL_MARGINS,
-        children: [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0, line: 240 }, children: [headerRun(label)] })],
-      }),
-      new TableCell({
-        width: { size: 5845, type: WidthType.DXA },
-        columnSpan: 2,
-        borders: ALL_BORDERS,
-        shading: SHADING_CLEAR,
-        verticalAlign: VerticalAlign.CENTER,
-        margins: CELL_MARGINS,
-        children: [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0, line: 240 }, children: [valueRun(value)] })],
-      }),
-    ],
-  });
-}
+    });
+    y += 70; // 65 banner + 5 gap
 
-/* ─── Fila observaciones (full width) ─── */
-function obsRow(text: string, height = 800, totalW = 10035): TableRow {
-  return new TableRow({
-    height: { value: height, rule: "atLeast" },
-    children: [
-      new TableCell({
-        width: { size: totalW, type: WidthType.DXA },
-        columnSpan: 5,
-        borders: ALL_BORDERS,
-        shading: SHADING_CLEAR,
-        verticalAlign: VerticalAlign.TOP,
-        margins: CELL_MARGINS,
-        children: [new Paragraph({ spacing: { after: 0, line: 240 }, children: [valueRun(text)] })],
-      }),
-    ],
-  });
-}
+    // DATOS DE REGISTRO
+    y = drawSectionTitle(doc, "DATOS DE REGISTRO", y);
+    const infoCabezal: InfoCard[] = [
+      { label: "# CASO",      value: val(datos.numeroCaso) },
+      { label: "REGIÓN",      value: val(datos.region) },
+      { label: "DEPENDENCIA", value: val(datos.dependencia) },
+      { label: "USUARIO",     value: val(datos.nombre) },
+      { label: "SEDE",        value: val(datos.sede) },
+      { label: "CÉDULA",      value: val(datos.cedula) },
+      { label: "USUARIO RED", value: val(datos.usuarioRed) },
+      { label: "FECHA",       value: formatFecha(datos.fechaEntrega) },
+    ];
+    y = drawInfoGrid(doc, infoCabezal, y, 40) + 6;
 
-/* ─── Fila firma entrega (5 cols) ─── */
-function firmaRow(firmaPath: string | null, fechaFirma: string, totalW = 10035): TableRow {
-  return new TableRow({
-    height: { value: 700, rule: "atLeast" },
-    children: [
-      new TableCell({
-        width: { size: totalW, type: WidthType.DXA },
-        columnSpan: 5,
-        borders: ALL_BORDERS,
-        shading: SHADING_CLEAR,
-        verticalAlign: VerticalAlign.CENTER,
-        margins: CELL_MARGINS,
-        children: [
-          new Paragraph({
-            children: [new TextRun({ text: "Firma del responsable:", bold: true, font: "Calibri", size: 24 })],
-          }),
-          ...(firmaPath && fs.existsSync(firmaPath)
-            ? [
-                new Paragraph({
-                  spacing: { before: 200 },
-                  children: [
-                    new ImageRun({
-                      data: fs.readFileSync(firmaPath),
-                      transformation: { width: 200, height: 80 },
-                      type: "png",
-                    }),
-                  ],
-                }),
-              ]
-            : []),
-          new Paragraph({
-            spacing: { before: 100 },
-            children: [new TextRun({ text: `Fecha de firma: ${fechaFirma}`, font: "Calibri", size: 20 })],
-          }),
-        ],
-      }),
-    ],
-  });
-}
+    // EQUIPO ENTREGADO
+    y = drawSectionTitle(doc, "EQUIPO ENTREGADO", y);
+    const equipoData: TableRow[] = [
+      { cells: ["UNI",    val(datos.uni)] },
+      { cells: ["MARCA",  val(datos.marca)] },
+      { cells: ["MODELO", val(datos.modelo)] },
+      { cells: ["SERIAL", val(datos.serial)] },
+      { cells: ["IMEI 1", val(datos.imei1)] },
+      { cells: ["IMEI 2", val(datos.imei2)] },
+      { cells: ["SIM",    val(datos.sim)] },
+      { cells: ["LÍNEA",  val(datos.numeroLinea)] },
+    ];
+    y = drawEquipmentTable(doc, equipoData, y, 24) + 6;
 
-/* ─── Fila firma devolución (3 cols) ─── */
-function firmaRow3Cols(firmaPath: string | null, fechaFirma: string): TableRow {
-  return new TableRow({
-    height: { value: 700, rule: "atLeast" },
-    children: [
-      new TableCell({
-        width: { size: 10093, type: WidthType.DXA },
-        columnSpan: 3,
-        borders: ALL_BORDERS,
-        shading: SHADING_CLEAR,
-        verticalAlign: VerticalAlign.CENTER,
-        margins: CELL_MARGINS,
-        children: [
-          new Paragraph({
-            children: [new TextRun({ text: "Firma devolución:", bold: true, font: "Calibri", size: 24 })],
-          }),
-          ...(firmaPath && fs.existsSync(firmaPath)
-            ? [
-                new Paragraph({
-                  spacing: { before: 200 },
-                  children: [
-                    new ImageRun({
-                      data: fs.readFileSync(firmaPath),
-                      transformation: { width: 200, height: 80 },
-                      type: "png",
-                    }),
-                  ],
-                }),
-              ]
-            : []),
-          new Paragraph({
-            spacing: { before: 100 },
-            children: [new TextRun({ text: `Fecha: ${fechaFirma}`, font: "Calibri", size: 20 })],
-          }),
-        ],
-      }),
-    ],
-  });
-}
+    // RECOMENDACIONES
+    y = drawSectionTitle(doc, "RECOMENDACIONES", y);
+    const recomTexts = [
+      "El equipo móvil debe utilizarse principalmente para actividades relacionadas con el trabajo.",
+      "No se deben almacenar, compartir o transmitir datos sensibles o confidenciales sin medidas de seguridad adecuadas, como cifrado o autenticación de dos factores.",
+      "Está prohibida la instalación de aplicaciones no autorizadas o sospechosas que puedan comprometer la seguridad del equipo o la privacidad de los datos.",
+      "Los dispositivos deben estar protegidos con contraseñas seguras, huella dactilar o reconocimiento facial. Las contraseñas deben cambiarse regularmente.",
+      "Los equipos móviles deben ser manipulados únicamente por personal autorizado en caso de reparaciones o mantenimiento, evitando el uso de servicios no certificados.",
+      "El usuario es responsable de cualquier daño causado por el uso inapropiado del dispositivo.",
+      "En caso de pérdida o robo debe ser reportado inmediatamente a la Vicepresidencia de Tecnología e Información.",
+    ];
+    const recomLineGap = 4;
+    const recomPadV = 8;
+    doc.fontSize(7.5).font("Helvetica");
+    let totalRecomH = recomPadV;
+    const recomHeights: number[] = recomTexts.map(text => {
+      const h = doc.heightOfString(`• ${text}`, { width: 500 });
+      totalRecomH += h + recomLineGap;
+      return h;
+    });
+    totalRecomH += recomPadV - recomLineGap;
+    doc.rect(40, y, 515, totalRecomH).strokeColor(COLORS.primary).lineWidth(1).stroke();
+    let recomCursorY = y + recomPadV;
+    recomTexts.forEach((text, i) => {
+      doc.fontSize(7.5).font("Helvetica").fillColor(COLORS.secondary);
+      doc.text(`• ${text}`, 46, recomCursorY, { width: 500 });
+      recomCursorY += recomHeights[i] + recomLineGap;
+    });
+    y += totalRecomH + 6;
 
-/* ─── Logo ─── */
-function logoParagraph(): Paragraph | null {
-  const logoPath = "storage/img/logo.png";
-  if (!fs.existsSync(logoPath)) return null;
-  return new Paragraph({
-    alignment: AlignmentType.CENTER,
-    spacing: { after: 300 },
-    children: [
-      new ImageRun({
-        data: fs.readFileSync(logoPath),
-        transformation: { width: 300, height: 80 },
-        type: "png",
-      }),
-    ],
+    // OBSERVACIONES
+    y = drawObservationsBox(doc, "OBSERVACIONES", val(datos.observacionesEntrega), y, 80);
+
+    // ACEPTACIÓN + FIRMA
+    y = drawSectionTitle(doc, "ACEPTACIÓN", y);
+    doc.fontSize(9).font("Helvetica").fillColor(COLORS.textDark);
+    doc.text("Declaro recibir el equipo en condiciones adecuadas.", 45, y);
+    y += 14;
+
+    const firmaH = 75;
+    doc.rect(40, y, 220, firmaH).stroke();
+    doc.rect(275, y, 280, firmaH).stroke();
+
+    if (datos.firmaPath && fs.existsSync(datos.firmaPath)) {
+      doc.image(datos.firmaPath, 55, y + 10, { width: 80, height: 32 });
+    }
+    doc.fontSize(8).font("Helvetica").fillColor(COLORS.mediumGray);
+    doc.text("Firma", 40, y + firmaH - 16, { width: 220, align: "center" });
+    doc.fontSize(10).font("Helvetica").fillColor(COLORS.textDark);
+    doc.text("Fecha:", 292, y + 18);
+    doc.fontSize(13).font("Helvetica-Bold").fillColor(COLORS.primary);
+    doc.text(formatFecha(datos.fechaFirma), 292, y + 34);
+
+    drawFooter(doc);
+    doc.end();
   });
 }
 
 /* ══════════════════════════════════════════════
-   FUNCIÓN: ACTA DE ENTREGA
+   DEVOLUCIÓN — una sola página
 ══════════════════════════════════════════════ */
-export async function generarWordEntrega(datos: DatosMovil): Promise<Buffer> {
-  const fechaEntrega = formatFecha(datos.fechaEntrega);
+export async function generarPdfDevolucion(datos: DatosMovil): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: "A4", margin: 0, bufferPages: false });
+    const chunks: Buffer[] = [];
+    doc.on("data", (c) => chunks.push(c));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
 
-  const tabla = new Table({
-    width: { size: 10035, type: WidthType.DXA },
-    columnWidths: [4272, 1435, 3132, 1173, 23],
-    rows: [
-      labelValueRow(`# Caso: ${val(datos.numeroCaso)}`, `Región/Departamento: ${val(datos.region)}`),
-      labelValueRow(`Dependencia/Área: ${val(datos.dependencia)}`, `Nombre: ${val(datos.nombre)}`),
-      labelValueRow(`Sede: ${val(datos.sede)}`, `C.C.: ${val(datos.cedula)}`),
-      labelValueRow(`Fecha: ${fechaEntrega}`, `Usuario de red: ${val(datos.usuarioRed)}`),
+    let y = 25;
 
-      new TableRow({
-        height: { value: 60, rule: "exact" },
-        children: [
-          new TableCell({
-            width: { size: 10035, type: WidthType.DXA },
-            columnSpan: 5,
-            borders: { top: BORDER_NIL, bottom: BORDER_NIL, left: BORDER_NIL, right: BORDER_NIL },
-            shading: SHADING_CLEAR,
-            children: [new Paragraph({ spacing: { after: 0 }, children: [] })],
-          }),
-        ],
-      }),
+    // HEADER (sin metadata — título centrado simple)
+    drawHeaderGradient(doc, y, "devolucion", {
+      codigo: "0",
+      version: "1",
+      fechaActualizacion: "26/06/2026",
+      Proceso: "Infraestructura Tecnológica",
+    });
+    y += 70;
 
-      grayHeaderRow("DATOS DE EQUIPO ENTREGADO"),
-      equipoHeaderRow("CELULAR", "UNI:", val(datos.uni)),
-      simpleRow("MARCA",           val(datos.marca)),
-      simpleRow("MODELO",          val(datos.modelo)),
-      simpleRow("SERIAL",          val(datos.serial)),
-      simpleRow("IMEI 1",          val(datos.imei1)),
-      simpleRow("IMEI 2",          val(datos.imei2)),
-      simpleRow("SIM",             val(datos.sim)),
-      simpleRow("NUMERO DE LINEA", val(datos.numeroLinea)),
+    // DATOS DE REGISTRO
+    y = drawSectionTitle(doc, "DATOS DE REGISTRO", y);
+    const infoCabezal: InfoCard[] = [
+      { label: "# CASO",           value: val(datos.numeroCaso) },
+      { label: "REGIÓN",           value: val(datos.region) },
+      { label: "DEPENDENCIA",      value: val(datos.dependencia) },
+      { label: "USUARIO",          value: val(datos.nombre) },
+      { label: "SEDE",             value: val(datos.sede) },
+      { label: "CÉDULA",           value: val(datos.cedula) },
+      { label: "USUARIO RED",      value: val(datos.usuarioRed) },
+      { label: "FECHA DEVOLUCIÓN", value: formatFecha(datos.fechaDevolucion) },
+    ];
+    y = drawInfoGrid(doc, infoCabezal, y, 40) + 6;
 
-      grayHeaderRow("Recomendaciones de Uso"),
+    // EQUIPO DEVUELTO
+    y = drawSectionTitle(doc, "EQUIPO DEVUELTO", y);
+    const equipoData: TableRow[] = [
+      { cells: ["UNI",    val(datos.uni)] },
+      { cells: ["MARCA",  val(datos.marca)] },
+      { cells: ["MODELO", val(datos.modelo)] },
+      { cells: ["SERIAL", val(datos.serial)] },
+      { cells: ["IMEI 1", val(datos.imei1)] },
+      { cells: ["IMEI 2", val(datos.imei2)] },
+      { cells: ["SIM",    val(datos.sim)] },
+      { cells: ["LÍNEA",  val(datos.numeroLinea)] },
+    ];
+    y = drawEquipmentTable(doc, equipoData, y, 24) + 6;
 
-      new TableRow({
-        height: { value: 400, rule: "atLeast" },
-        children: [
-          new TableCell({
-            width: { size: 10035, type: WidthType.DXA },
-            columnSpan: 5,
-            borders: ALL_BORDERS,
-            shading: SHADING_CLEAR,
-            verticalAlign: VerticalAlign.TOP,
-            margins: CELL_MARGINS,
-            children: [
-              new Paragraph({ spacing: { after: 0, line: 240 }, children: [new TextRun({ text: "1.  El equipo móvil debe utilizarse principalmente para actividades relacionadas con el trabajo.", font: "Calibri", size: 18, color: "000000" })] }),
-              new Paragraph({ spacing: { after: 0, line: 240 }, children: [new TextRun({ text: "2.  No se deben almacenar, compartir o transmitir datos sensibles o confidenciales sin medidas de seguridad adecuadas.", font: "Calibri", size: 18, color: "000000" })] }),
-              new Paragraph({ spacing: { after: 0, line: 240 }, children: [new TextRun({ text: "3.  Está prohibida la instalación de aplicaciones no autorizadas o sospechosas.", font: "Calibri", size: 18, color: "000000" })] }),
-              new Paragraph({ spacing: { after: 0, line: 240 }, children: [new TextRun({ text: "4.  Los dispositivos deben estar protegidos con contraseñas seguras, huella dactilar o reconocimiento facial.", font: "Calibri", size: 18, color: "000000" })] }),
-              new Paragraph({ spacing: { after: 0, line: 240 }, children: [new TextRun({ text: "5.  Los equipos móviles deben ser manipulados únicamente por personal autorizado en caso de reparaciones.", font: "Calibri", size: 18, color: "000000" })] }),
-              new Paragraph({ spacing: { after: 0, line: 240 }, children: [new TextRun({ text: "6.  El usuario es responsable de cualquier daño causado por el uso inapropiado del dispositivo.", font: "Calibri", size: 18, color: "000000" })] }),
-              new Paragraph({ spacing: { after: 0 },            children: [new TextRun({ text: "7.  En caso de pérdida o robo debe ser reportado inmediatamente a la Vicepresidencia de Tecnología e Información.", font: "Calibri", size: 18, color: "000000" })] }),
-            ],
-          }),
-        ],
-      }),
+    // ESTADO DEL EQUIPO
+    y = drawSectionTitle(doc, "ESTADO DEL EQUIPO", y);
+    const estadoCards: InfoCard[] = [
+      { label: "CONDICIÓN GENERAL", value: "Verificado en devolución" },
+      { label: "ACCESORIOS",        value: "Completos" },
+    ];
+    y = drawInfoGrid(doc, estadoCards, y, 40) + 6;
 
-      grayHeaderRow("OBSERVACIONES"),
-      obsRow(val(datos.observacionesEntrega)),
-      firmaRow(datos.firmaPath, formatFecha(datos.fechaFirma)),
-    ],
+    // OBSERVACIONES
+    y = drawObservationsBox(doc, "OBSERVACIONES DE DEVOLUCIÓN", val(datos.observacionesDevolucion), y, 100);
+
+    // RECIBIDO Y ACEPTADO
+    y = drawSectionTitle(doc, "RECIBIDO Y ACEPTADO", y);
+    const firmaH = 100;
+    doc.rect(40, y, 220, firmaH).stroke();
+    doc.rect(275, y, 280, firmaH).stroke();
+
+    if (datos.firmaPathFinal && fs.existsSync(datos.firmaPathFinal)) {
+      doc.image(datos.firmaPathFinal, 55, y + 10, { width: 80, height: 32 });
+    }
+    doc.fontSize(8).font("Helvetica").fillColor(COLORS.mediumGray);
+    doc.text("Firma", 40, y + firmaH - 16, { width: 220, align: "center" });
+    doc.fontSize(10).font("Helvetica").fillColor(COLORS.textDark);
+    doc.text("Fecha Devolución:", 292, y + 18);
+    doc.fontSize(13).font("Helvetica-Bold").fillColor(COLORS.primary);
+    doc.text(formatFecha(datos.fechaDevolucion), 292, y + 34);
+
+    drawFooter(doc);
+    doc.end();
   });
-
-  const doc = new Document({
-    sections: [{
-      properties: {
-        page: {
-          size: { width: 11906, height: 16838 },
-          margin: { top: 567, right: 1274, bottom: 1417, left: 1701 },
-        },
-      },
-      children: [
-        ...(logoParagraph() ? [logoParagraph()!] : []),
-        tabla,
-      ],
-    }],
-  });
-
-  return await Packer.toBuffer(doc);
 }
 
-/* ══════════════════════════════════════════════
-   FUNCIÓN: ACTA DE DEVOLUCIÓN
-══════════════════════════════════════════════ */
-export async function generarWordDevolucion(datos: DatosMovil): Promise<Buffer> {
-  const fechaDevolucion = formatFecha(datos.fechaDevolucion);
-
-  const tabla = new Table({
-    width: { size: 10093, type: WidthType.DXA },
-    columnWidths: [4248, 2835, 3010],
-    rows: [
-      new TableRow({
-        height: { value: 280, rule: "atLeast" },
-        children: [
-          labelCell(`# Caso: ${val(datos.numeroCaso)}`, 4272),
-          valueCell(`Región/Departamento: ${val(datos.region)}`, 5763, ALL_BORDERS, 2),
-        ],
-      }),
-      new TableRow({
-        height: { value: 280, rule: "atLeast" },
-        children: [
-          labelCell(`Dependencia/Área: ${val(datos.dependencia)}`, 4272),
-          valueCell(`Nombre: ${val(datos.nombre)}`, 5763, ALL_BORDERS, 2),
-        ],
-      }),
-      new TableRow({
-        height: { value: 280, rule: "atLeast" },
-        children: [
-          labelCell(`Sede: ${val(datos.sede)}`, 4272),
-          valueCell(`C.C.: ${val(datos.cedula)}`, 5763, ALL_BORDERS, 2),
-        ],
-      }),
-      new TableRow({
-        height: { value: 280, rule: "atLeast" },
-        children: [
-          labelCell(`Fecha: ${fechaDevolucion}`, 4272),
-          valueCell(`Usuario de red: ${val(datos.usuarioRed)}`, 5763, ALL_BORDERS, 2),
-        ],
-      }),
-
-      new TableRow({
-        height: { value: 60, rule: "exact" },
-        children: [
-          new TableCell({
-            width: { size: 10093, type: WidthType.DXA },
-            columnSpan: 3,
-            borders: { top: BORDER_NIL, bottom: BORDER_NIL, left: BORDER_NIL, right: BORDER_NIL },
-            children: [new Paragraph("")],
-          }),
-        ],
-      }),
-
-      grayHeaderRow("DATOS DE EQUIPO DEVUELTO"),
-
-      new TableRow({
-        height: { value: 200, rule: "atLeast" },
-        children: [
-          new TableCell({
-            width: { size: 4248, type: WidthType.DXA },
-            borders: ALL_BORDERS,
-            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [headerRun("CELULAR")] })],
-          }),
-          new TableCell({
-            width: { size: 2835, type: WidthType.DXA },
-            borders: ALL_BORDERS,
-            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [headerRun("UNI:")] })],
-          }),
-          new TableCell({
-            width: { size: 3010, type: WidthType.DXA },
-            borders: ALL_BORDERS,
-            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [valueRun(val(datos.uni))] })],
-          }),
-        ],
-      }),
-
-      simpleRow3("MARCA", val(datos.marca)),
-      simpleRow3("MODELO", val(datos.modelo)),
-      simpleRow3("SERIAL", val(datos.serial)),
-      simpleRow3("IMEI 1", val(datos.imei1)),
-      simpleRow3("IMEI 2", val(datos.imei2)),
-      simpleRow3("SIM", val(datos.sim)),
-      simpleRow3("NUMERO DE LINEA", val(datos.numeroLinea)),
-
-      new TableRow({
-        children: [
-          new TableCell({
-            columnSpan: 3,
-            borders: ALL_BORDERS,
-            shading: SHADING_GRAY,
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [headerRun("OBSERVACIONES")],
-              }),
-            ],
-          }),
-        ],
-      }),
-
-      new TableRow({
-        children: [
-          new TableCell({
-            columnSpan: 3,
-            borders: ALL_BORDERS,
-            children: [
-              new Paragraph({
-                children: [valueRun(val(datos.observacionesDevolucion))],
-              }),
-            ],
-          }),
-        ],
-      }),
-
-      new TableRow({
-        children: [
-          new TableCell({
-            columnSpan: 3,
-            borders: ALL_BORDERS,
-            children: [
-              new Paragraph({
-                children: [
-                  labelRun("Fecha de devolución: "),
-                  valueRun(fechaDevolucion),
-                ],
-              }),
-            ],
-          }),
-        ],
-      }),
-
-      firmaRow3Cols(datos.firmaPathFinal ?? null, fechaDevolucion),
-    ],
-  });
-
-  const doc = new Document({
-    sections: [{
-      children: [
-        ...(logoParagraph() ? [logoParagraph()!] : []),
-        tabla,
-      ],
-    }],
-  });
-
-  return await Packer.toBuffer(doc);
-}
-
-export async function generarWordMovil(datos: DatosMovil): Promise<Buffer> {
-  return generarWordEntrega(datos);
+export async function generarPdfMovil(datos: DatosMovil): Promise<Buffer> {
+  return generarPdfEntrega(datos);
 }

@@ -53,6 +53,8 @@ interface ExportModalProps {
   setObsHasta: (date: string) => void;
   incluirSistema: boolean;
   setIncluirSistema: (include: boolean) => void;
+  movilExportMode: "usuario" | "escaneados";
+  setMovilExportMode: (mode: "usuario" | "escaneados") => void;
   pasaFiltroObservacion: (e: any, autor: string, desde: string, hasta: string, eventos: string[], incluirSis: boolean) => boolean;
 }
 
@@ -71,11 +73,13 @@ export default function ExportModal({
   obsDesde, setObsDesde,
   obsHasta, setObsHasta,
   incluirSistema, setIncluirSistema,
+  movilExportMode, setMovilExportMode,
   pasaFiltroObservacion,
 }: ExportModalProps) {
 
   const [showPreview, setShowPreview] = useState(false);
 
+  const mostrarSelectorMoviles = tiposSel.includes("MOVIL") || tiposSel.length === 0;
   const totalSeleccion = seleccion.size;
   const totalPreview   = preview.length;
 
@@ -232,6 +236,25 @@ export default function ExportModal({
                   </p>
                 )}
               </div>
+
+              {mostrarSelectorMoviles && (
+                <div style={{ marginBottom: 20 }}>
+                  <label style={labelStyle}>Formato para móviles</label>
+                  <select
+                    value={movilExportMode}
+                    onChange={(e) => setMovilExportMode(e.target.value as "usuario" | "escaneados")}
+                    style={{ ...inputStyle, width: "100%" }}
+                  >
+                    <option value="usuario">Por usuario</option>
+                    <option value="escaneados">Móviles escaneados</option>
+                  </select>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 6 }}>
+                    {movilExportMode === "usuario"
+                      ? "Exporta el inventario normal de móviles"
+                      : "Agrega una hoja simplificada con Marca, Modelo, Serial, IMEI 1 y Estado"}
+                  </div>
+                </div>
+              )}
 
               {/* Búsqueda */}
               <div style={{ marginBottom: 20 }}>

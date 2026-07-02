@@ -88,8 +88,8 @@ export async function getObservacionesPorTipoEvento(
   const detalles = await Promise.all(items.map((a) => getAssetById(a.id).catch(() => null)));
   const activosDetallados = detalles.filter((d): d is Asset => !!d);
 
-  const incluirSisAuto =
-    incluirSis || tipoEvento === "CAMBIO_CAMPO" || tipoEvento === "IMPORTACION";
+  const incluirSisAuto = incluirSis;
+  const eventosFiltro = tipoEvento === "CAMBIO_CAMPO" ? ["CAMBIO_CAMPO"] : [tipoEvento];
 
   const rows: Array<{
     activo: string;
@@ -108,7 +108,7 @@ export async function getObservacionesPorTipoEvento(
     const bit = (a as any).bitacora ?? [];
     for (const e of bit) {
       if (e?.tipoEvento !== tipoEvento) continue;
-      if (!pasaFiltroObservacion(e, obsAutor, obsDesde, obsHasta, [], incluirSisAuto)) continue;
+      if (!pasaFiltroObservacion(e, obsAutor, obsDesde, obsHasta, eventosFiltro, incluirSisAuto)) continue;
 
       rows.push({
         activo: a.nombre ?? "—",

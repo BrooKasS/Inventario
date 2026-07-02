@@ -120,9 +120,6 @@ function validateMAC(val: any): string | null {
   if (!val) return null;
   const str = String(val).trim().toUpperCase();
   const macRegex = /^([0-9A-F]{2}[:]){5}([0-9A-F]{2})$/;
-  if (!macRegex.test(str)) {
-    return "MAC: formato inválido (debe ser XX:XX:XX:XX:XX:XX)";
-  }
   return null;
 }
 
@@ -243,10 +240,7 @@ export function validateAssetData(
     // ✅ OBLIGATORIOS
     const backupErr = validateRequired(servidor.backup, "Backup");
     if (backupErr) errors.push(backupErr);
-    else {
-      const err = validateBackupMonitoreo(servidor.backup);
-      if (err) errors.push(err);
-    }
+
 
     const monitoreoErr = validateRequired(servidor.monitoreo, "Monitoreo");
     if (monitoreoErr) errors.push(monitoreoErr);
@@ -300,10 +294,7 @@ export function validateAssetData(
 
     const estadoErr = validateRequired(red.estado, "Estado");
     if (estadoErr) errors.push(estadoErr);
-    else {
-      const err = validateBackupMonitoreo(red.estado);
-      if (err) errors.push(err);
-    }
+
 
     const ipGestionErr = validateRequired(red.ipGestion, "IP Gestión");
     if (ipGestionErr) errors.push(ipGestionErr);
@@ -325,10 +316,7 @@ export function validateAssetData(
     // ✅ OBLIGATORIO
     const estadoErr = validateRequired(ups.estado, "Estado");
     if (estadoErr) errors.push(estadoErr);
-    else {
-      const err = validateBackupMonitoreo(ups.estado);
-      if (err) errors.push(err);
-    }
+
   }
 
   // BASE_DATOS

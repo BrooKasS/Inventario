@@ -90,11 +90,14 @@ def add_logo_to_sheet(ws, logo_filename='logo.png'):
 
 # ── Definición de columnas ──
 # incluir_tecnicos: si True agrega Campo modificado, Valor anterior, Valor nuevo
-def get_columns(incluir_tecnicos=False):
+def get_columns(incluir_tecnicos=False, omit_codigo=False):
     cols = [
         {"key": "Activo",         "header": "Activo",         "width": 30, "wrap": False},
         {"key": "Tipo",           "header": "Tipo",           "width": 16, "wrap": False},
-        {"key": "Código",         "header": "Código",         "width": 18, "wrap": False},
+    ]
+    if not omit_codigo:
+        cols.append({"key": "Código", "header": "Código", "width": 18, "wrap": False})
+    cols += [
         {"key": "Fecha",          "header": "Fecha",          "width": 22, "wrap": False},
         {"key": "Autor",          "header": "Autor",          "width": 20, "wrap": False},
         {"key": "Tipo de evento", "header": "Tipo de Evento", "width": 18, "wrap": False},
@@ -109,12 +112,12 @@ def get_columns(incluir_tecnicos=False):
     return cols
 
 
-def escribir_hoja(wb, nombre_hoja, rows, incluir_tecnicos=False):
+def escribir_hoja(wb, nombre_hoja, rows, incluir_tecnicos=False, omit_codigo=False):
     """Crea y formatea una hoja con las observaciones dadas."""
     ws = wb.create_sheet(title=nombre_hoja[:31])
     add_logo_to_sheet(ws)  # ✅ Agregar logo en esquina izquierda
 
-    cols = get_columns(incluir_tecnicos)
+    cols = get_columns(incluir_tecnicos, omit_codigo=omit_codigo)
     num_cols = len(cols)
 
     # ── Fila 1: título del reporte ──
@@ -216,7 +219,7 @@ def main():
     wb.remove(wb.active)
 
     # ── Hoja "Todas" ──
-    escribir_hoja(wb, "Todas", rows, incluir_tecnicos)
+    escribir_hoja(wb, "Todas", rows, incluir_tecnicos, omit_codigo=False)
 
     # ── Hojas por tipo ──
     singular_to_plural = {
@@ -240,7 +243,8 @@ def main():
         if not lista:
             continue
         nombre_hoja = singular_to_plural.get(tipo_singular, tipo_singular)
-        escribir_hoja(wb, nombre_hoja, lista, incluir_tecnicos)
+        omit_codigo = tipo_singular in {"Móvil", "UPS", "Base de Datos"}
+        escribir_hoja(wb, nombre_hoja, lista, incluir_tecnicos, omit_codigo=omit_codigo)
 
     wb.save(output_path)
     print(f"OK: {output_path} — {len(rows)} filas")

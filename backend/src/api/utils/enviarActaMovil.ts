@@ -1,11 +1,11 @@
-import { generarWordMovil } from "./generarMovilDocx";
+import { generarPdfMovil } from "./generarMovilDocx";
 import { sendMovilEmail } from "./sendMovilEmail";
 
 interface EnviarActaMovilParams {
   correo: string;
   nombreActivo: string;
   assetId: string;
-  datosWord: Parameters<typeof generarWordMovil>[0];
+  datosWord: Parameters<typeof generarPdfMovil>[0];
 }
 
 export async function generarYEnviarActaMovil({
@@ -14,8 +14,8 @@ export async function generarYEnviarActaMovil({
   assetId,
   datosWord,
 }: EnviarActaMovilParams) {
-  // 1️⃣ Generar Word
-  const buffer = await generarWordMovil(datosWord);
+  // 1️⃣ Generar PDF
+  const buffer = await generarPdfMovil(datosWord);
 
   // 2️⃣ Convertir a Base64
   const archivoBase64 = buffer.toString("base64");
@@ -25,7 +25,7 @@ export async function generarYEnviarActaMovil({
     correo,
     nombreActivo,
     assetId,
-    nombreArchivo: `Acta_Entrega_${nombreActivo}.docx`,
+    nombreArchivo: `Acta_Entrega_${nombreActivo}.pdf`,
     archivoBase64,
   });
 

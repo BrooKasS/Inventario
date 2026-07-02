@@ -48,6 +48,7 @@ export default function Dashboard() {
   const [obsDesde, setObsDesde] = useState("");
   const [obsHasta, setObsHasta] = useState("");
   const [incluirSistema, setIncluirSistema] = useState(false);
+  const [movilExportMode, setMovilExportMode] = useState<"usuario" | "escaneados">("usuario");
 
   // ────── ESTADO: Gráfica de observaciones ──────
   const [obsChart, setObsChart] = useState<ChartDataPoint[]>([]);
@@ -132,7 +133,7 @@ export default function Dashboard() {
   };
 
   // ────── OBSERVACIONES MODAL ──────
-  const cargarObservacionesPorTipoEvento = async (tipoEvento: string) => {
+  const cargarObservacionesPorTipoEvento = async (tipoEvento: string, includeSystemOverride?: boolean) => {
     try {
       setObsModalLoading(true);
       const rows = await getObservacionesPorTipoEvento(
@@ -141,7 +142,7 @@ export default function Dashboard() {
         obsAutor,
         obsDesde,
         obsHasta,
-        incluirSistema
+        includeSystemOverride ?? incluirSistema
       );
       setObsModalRows(rows);
     } catch (err) {
@@ -152,10 +153,17 @@ export default function Dashboard() {
     }
   };
 
+  const handleToggleIncluirSistema = async (value: boolean) => {
+    setIncluirSistema(value);
+    if (obsModalOpen && obsModalTipo) {
+      await cargarObservacionesPorTipoEvento(obsModalTipo, value);
+    }
+  };
+
   // ────── HANDLER: Exportación Excel ──────
   const handleExportExcel = async () => {
     if (exportMode === "activos") {
-      await handleExportActvosExcel(tiposSel, buscar, seleccion);
+      await handleExportActvosExcel(tiposSel, buscar, seleccion, movilExportMode);
     } else {
       await handleExportObservacionesExcel(tiposSel, buscar, seleccion, obsAutor, obsDesde, obsHasta, eventosSel, incluirSistema);
     }
@@ -383,6 +391,8 @@ export default function Dashboard() {
         setObsHasta={setObsHasta}
         incluirSistema={incluirSistema}
         setIncluirSistema={setIncluirSistema}
+        movilExportMode={movilExportMode}
+        setMovilExportMode={setMovilExportMode}
         pasaFiltroObservacion={pasaFiltroObservacion}
       />
 
@@ -393,6 +403,7 @@ export default function Dashboard() {
         obsModalLoading={obsModalLoading}
         obsModalRows={obsModalRows}
         incluirSistema={incluirSistema}
+        onToggleIncluirSistema={handleToggleIncluirSistema}
       />
     </div>
   );

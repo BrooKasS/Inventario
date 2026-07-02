@@ -296,16 +296,21 @@ export function SelectWithOtherField({
 }) {
   const [focusedSelect, setFocusedSelect] = useState(false);
   const [focusedInput,  setFocusedInput]  = useState(false);
+  const [selectingOther, setSelectingOther] = useState(false);
 
   // Si el valor existe pero no está en la lista → modo "Otro"
-  const isOther = value !== "" && !options.includes(value);
+  // O si selectingOther es true (usuario seleccionó "Otro")
+  const isOther = selectingOther || (value !== "" && !options.includes(value));
   const selectValue = isOther ? "__otro__" : value;
 
   const handleSelectChange = (val: string) => {
     if (val === "__otro__") {
-      // Activa input libre vacío para que el usuario escriba
-      onChange(field, "");
+      // Activa input libre.
+      // IMPORTANTE: NO resetea el valor para no perder autollenado (staging/serial).
+      setSelectingOther(true);
+      if (!value) onChange(field, "");
     } else {
+      setSelectingOther(false);
       onChange(field, val);
     }
   };

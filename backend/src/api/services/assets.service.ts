@@ -12,7 +12,7 @@ import { Movil } from "../../entities/Movil";
 import { EstadoMovil } from "../../entities/Movil";
 import { FindOptionsWhere, In, IsNull, Not } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
-import { generarWordEntrega, generarWordDevolucion } from "../utils/generarMovilDocx";
+import { generarPdfDevolucion, generarPdfEntrega } from "../utils/generarMovilDocx";
 import { sendMovilEmail } from "../utils/sendMovilEmail";
 import fs from "fs";
 import { sendToFlowRaw } from "../utils/flowRaw";
@@ -300,7 +300,7 @@ export class AssetsService {
       await movilRepository.save(movilData);
 
       // Generar acta de ENTREGA (sin datos de devolución)
-      const bufferEntrega = await generarWordEntrega({
+      const bufferEntrega = await generarPdfEntrega({
         nombre:               savedAsset.nombre,
         numeroCaso,
         region,
@@ -478,7 +478,7 @@ export class AssetsService {
     // 2️⃣ Generar SOLO el acta de ENTREGA firmada
     const m = asset.movil;
 
-    const bufferEntrega = await generarWordEntrega({
+    const bufferEntrega = await generarPdfEntrega({
       nombre:                  asset.nombre,
       numeroCaso:              m.numeroCaso,
       region:                  m.region,
@@ -504,7 +504,7 @@ export class AssetsService {
 
     // 3️⃣ Enviar acta de ENTREGA al Flow
     try {
-      const nombreArchivo  = `Acta_Entrega_${asset.nombre?.replace(/\s+/g, "_")}.docx`;
+      const nombreArchivo  = `Acta_Entrega_${asset.nombre?.replace(/\s+/g, "_")}.pdf`;
       const archivoBase64  = bufferEntrega.toString("base64");
 
 
@@ -584,7 +584,7 @@ export class AssetsService {
       );
 
       // Generar SOLO el acta de DEVOLUCIÓN
-      const bufferDevolucion = await generarWordDevolucion({
+      const bufferDevolucion = await generarPdfDevolucion({
         ...movil,
         nombre:         movil.asset.nombre,
         firmaPathFinal: firmaPath,
@@ -593,7 +593,7 @@ export class AssetsService {
 
       // Enviar acta de DEVOLUCIÓN al Flow
       try {
-        const nombreArchivo = `Acta_Devolucion_${movil.asset.nombre?.replace(/\s+/g, "_")}.docx`;
+        const nombreArchivo = `Acta_Devolucion_${movil.asset.nombre?.replace(/\s+/g, "_")}.pdf`;
 
         await sendToFlowArchivoDevolucion({
           correo:        movil.correoResponsable,

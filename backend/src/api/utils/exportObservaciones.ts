@@ -30,12 +30,16 @@ interface ExportObsOptions {
 
 export async function generarExcelObservaciones(opts: ExportObsOptions): Promise<Buffer> {
   const { rows, incluirTecnicos = false } = opts;
+  const filteredRows = rows.filter((row) => {
+    const descripcion = String(row?.Descripción ?? "").trim().toLowerCase();
+    return !descripcion.includes("importado desde excel");
+  });
 
   const payloadPath = path.join(__dirname, `obs_payload_${Date.now()}.json`);
   const outputPath  = path.join(__dirname, `obs_out_${Date.now()}.xlsx`);
 
 try {
-  fs.writeFileSync(payloadPath, JSON.stringify({ rows, incluirTecnicos }));
+  fs.writeFileSync(payloadPath, JSON.stringify({ rows: filteredRows, incluirTecnicos }));
   const scriptPath = path.join(__dirname, "exportObservaciones.py");
   const pythonCmd = process.platform === "win32" ? "python" : "python3";
   execSync(`"${pythonCmd}" "${scriptPath}" "${payloadPath}" "${outputPath}"`, {

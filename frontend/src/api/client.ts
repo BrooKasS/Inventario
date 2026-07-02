@@ -58,7 +58,7 @@ export async function descargarWordMovil(id: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `FR-GTE-02-044_${id}.docx`;
+  a.download = `FR-GTE-02-044_${id}.pdf`;
   a.click();
   URL.revokeObjectURL(url);
 }

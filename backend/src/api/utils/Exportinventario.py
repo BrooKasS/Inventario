@@ -307,43 +307,56 @@ def main():
         crear_hoja_extra(dst_wb, 'InventarioVPN', vpn_labels, vpn_widths, vpn_rows)
 
     # ── MÓVIL ────────────────────────────────────────────────────────
-    if payload.get('moviles'):
-        mov_labels = [
-            'Nombre', '# Caso', 'Región', 'Dependencia', 'Sede', 'C.C.',
-            'Usuario Red', 'Correo', 'UNI', 'Marca', 'Modelo', 'Serial',
-            'IMEI 1', 'IMEI 2', 'SIM', 'Número Línea',
-            'Fecha Entrega', 'Obs. Entrega', 'Fecha Devolución', 'Obs. Devolución',
-        ]
-        mov_widths = [
-            26, 14, 22, 28, 18, 14,
-            20, 34, 14, 16, 20, 20,
-            18, 18, 20, 16,
-            16, 40, 16, 40,
-        ]
-        mov_rows = [{
-            'Nombre':           r.get('nombre', ''),
-            '# Caso':           r.get('numeroCaso', ''),
-            'Región':           r.get('region', ''),
-            'Dependencia':      r.get('dependencia', ''),
-            'Sede':             r.get('sede', ''),
-            'C.C.':             r.get('cedula', ''),
-            'Usuario Red':      r.get('usuarioRed', ''),
-            'Correo':           r.get('correoResponsable', ''),
-            'UNI':              r.get('uni', ''),
-            'Marca':            r.get('marca', ''),
-            'Modelo':           r.get('modelo', ''),
-            'Serial':           r.get('serial', ''),
-            'IMEI 1':           r.get('imei1', ''),
-            'IMEI 2':           r.get('imei2', ''),
-            'SIM':              r.get('sim', ''),
-            'Número Línea':     r.get('numeroLinea', ''),
-            'Fecha Entrega':    r.get('fechaEntrega', ''),
-            'Obs. Entrega':     r.get('observacionesEntrega', ''),
-            'Fecha Devolución': r.get('fechaDevolucion', ''),
-            'Obs. Devolución':  r.get('observacionesDevolucion', ''),
-        } for r in payload['moviles']]
+    movil_rows = payload.get('movilesEscaneados') or payload.get('moviles') or []
+    if movil_rows:
+        if payload.get('movilesEscaneados'):
+            mov_labels = ['Marca', 'Modelo', 'Serial', 'IMEI 1', 'Estado']
+            mov_widths = [22, 22, 22, 24, 20]
+            mov_rows = [{
+                'Marca':  r.get('Marca', ''),
+                'Modelo': r.get('Modelo', ''),
+                'Serial': r.get('Serial', ''),
+                'IMEI 1': r.get('IMEI 1', ''),
+                'Estado': r.get('estados', ''),
+            } for r in movil_rows]
+        else:
+            mov_labels = [
+                'Nombre', '# Caso', 'Región', 'Dependencia', 'Sede', 'C.C.',
+                'Usuario Red', 'Correo', 'UNI', 'Marca', 'Modelo', 'Serial',
+                'IMEI 1', 'IMEI 2', 'SIM', 'Número Línea',
+                'Fecha Entrega', 'Obs. Entrega', 'Fecha Devolución', 'Obs. Devolución', 'Estado Móvil'
+            ]
+            mov_widths = [
+                26, 14, 22, 28, 18, 14,
+                20, 34, 14, 16, 20, 20,
+                18, 18, 20, 16,
+                16, 40, 16, 40, 16,
+            ]
+            mov_rows = [{
+                'Nombre':           r.get('nombre', ''),
+                '# Caso':           r.get('numeroCaso', ''),
+                'Región':           r.get('region', ''),
+                'Dependencia':      r.get('dependencia', ''),
+                'Sede':             r.get('sede', ''),
+                'C.C.':             r.get('cedula', ''),
+                'Usuario Red':      r.get('usuarioRed', ''),
+                'Correo':           r.get('correoResponsable', ''),
+                'UNI':              r.get('uni', ''),
+                'Marca':            r.get('marca', ''),
+                'Modelo':           r.get('modelo', ''),
+                'Serial':           r.get('serial', ''),
+                'IMEI 1':           r.get('imei1', ''),
+                'IMEI 2':           r.get('imei2', ''),
+                'SIM':              r.get('sim', ''),
+                'Número Línea':     r.get('numeroLinea', ''),
+                'Fecha Entrega':    r.get('fechaEntrega', ''),
+                'Obs. Entrega':     r.get('observacionesEntrega', ''),
+                'Fecha Devolución': r.get('fechaDevolucion', ''),
+                'Obs. Devolución':  r.get('observacionesDevolucion', ''),
+                'estados':     r.get('estados', ''),
+            } for r in movil_rows]
         crear_hoja_extra(dst_wb, 'InventarioMovil', mov_labels, mov_widths, mov_rows,
-                         date_label_keys={'Fecha Entrega', 'Fecha Devolución'})
+                         date_label_keys={'Fecha Entrega', 'Fecha Devolución'} if not payload.get('movilesEscaneados') else set())
 
     # ── CONTROL DE CAMBIOS ───────────────────────────────────────────
     if 'Control de Cambios' in src_wb.sheetnames:

@@ -109,7 +109,8 @@ export function useDashboardExport({ pasaFiltroObservacion }: UseDashboardExport
   const handleExportActvosExcel = async (
     tiposSel: string[],
     buscar: string,
-    seleccion: Set<string>
+    seleccion: Set<string>,
+    movilExportMode?: "usuario" | "escaneados"
   ): Promise<void> => {
     try {
       setExporting("excel");
@@ -120,7 +121,7 @@ export function useDashboardExport({ pasaFiltroObservacion }: UseDashboardExport
         alert("No hay activos para exportar con los filtros/selección actuales.");
         return;
       }
-      await exportarActivosExcel(data, nombre);
+      await exportarActivosExcel(data, nombre, { movilExportMode });
     } catch (e) {
       console.error("Error exportando Excel:", e);
       alert("Error exportando a Excel");

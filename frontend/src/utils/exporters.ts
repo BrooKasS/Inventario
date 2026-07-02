@@ -103,8 +103,14 @@ function fechaArchivo() {
 //   return cleaned.slice(0, 31).trim() || "Hoja";
 // }
 
+export type ExportMovilMode = "usuario" | "escaneados";
+
 /** Exporta a Excel usando SheetJS — separado por hojas por tipo */
-export async function exportarActivosExcel(assets: Asset[], nombre: string): Promise<void> {
+export async function exportarActivosExcel(
+  assets: Asset[],
+  nombre: string,
+  opts?: { movilExportMode?: ExportMovilMode }
+): Promise<void> {
   if (assets.length === 0) return;
 
   const ids   = assets.map(a => a.id);
@@ -117,7 +123,7 @@ export async function exportarActivosExcel(assets: Asset[], nombre: string): Pro
     "Content-Type": "application/json",
     "Authorization": `Bearer ${sessionStorage.getItem("inventario_token")}`,
   },
-  body: JSON.stringify({ ids, tipos }),
+  body: JSON.stringify({ ids, tipos, movilExportMode: opts?.movilExportMode ?? "usuario" }),
 });
 
   if (!res.ok) {
@@ -229,7 +235,7 @@ export async function exportarObservacionesExcel(
   method: "POST",
   headers: {
     "Content-Type": "application/json",
-    "Authorization": `Bearer ${localStorage.getItem("inventario_token")}`,
+    "Authorization": `Bearer ${sessionStorage.getItem("inventario_token")}`,
   },
   body: JSON.stringify({ rows, incluirTecnicos }),
 });

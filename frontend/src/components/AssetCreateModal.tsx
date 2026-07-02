@@ -97,7 +97,7 @@ const DEFAULTS_DETALLE: Record<string, Record<string, string>> = {
   UPS:        { ipInterna: "" },
   BASE_DATOS: { ipInterna: "" },
   VPN:        { ipInterna: "" },
-  MOVIL:      { region: "Bogotá", sede: "Calle 72" },
+  MOVIL:      { region: "Bogotá", sede: "Calle 72", uni: "1" },
 };
 
 const [general, setGeneral] = useState({
@@ -113,6 +113,7 @@ const [detalle, setDetalle] = useState<Record<string, string>>({
   sistemaOperativo: initialData?.sistemaOperativo ?? "",
   vramMb:           initialData?.vramMb           ?? "",
   vcpu:             initialData?.vcpu             ?? "",
+  uni:              "1",
 });
 
 const [saving, setSaving] = useState(false);
@@ -142,6 +143,7 @@ useEffect(() => {
       vcpu:             initialData?.vcpu             ?? "",
       region:           dd.region           ?? prev.region           ?? "",
       sede:             dd.sede             ?? prev.sede             ?? "",
+      uni:              dd.uni              ?? prev.uni              ?? "1",
     }));
   }
 }, [open, tipo, initialData]);
@@ -181,7 +183,7 @@ if (!open) return null;
   /* ── Cerrar y limpiar (idéntico al original) ── */
   const handleClose = () => {
     setGeneral({ nombre: "", ubicacion: "", propietario: "", custodio: "", codigoServicio: "" });
-    setDetalle({ ipInterna: "", sistemaOperativo: "", vramMb: "", vcpu: "" });
+    setDetalle({ ipInterna: "", sistemaOperativo: "", vramMb: "", vcpu: "", uni: "1" });
     setVpnRules([]);
     setCurrentRule({ conexion: "", fases: "", origen: "", destino: "" });
     setError(null);
@@ -205,6 +207,10 @@ if (!open) return null;
 
     try {
       const detalleConvertido: Record<string, any> = { ...detalle };
+
+      if (tipo === "MOVIL" && !detalleConvertido.uni) {
+        detalleConvertido.uni = "1";
+      }
 
       if (tipo === "SERVIDOR") {
         if (detalleConvertido.vcpu)   detalleConvertido.vcpu   = parseInt(detalleConvertido.vcpu)   || null;

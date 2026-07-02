@@ -463,7 +463,7 @@ export function FormMovil({ data, onChange }: { data: any; onChange: (f: string,
       </FormSection>
 
       <FormSection title="Datos del Equipo" icon="📱">
-        <Field label="UNI" field="uni" value={"1"} onChange={onChange} readOnly />
+        <Field label="UNI" field="uni" value={data.uni ?? "1"} onChange={onChange} readOnly />
 
         {/* Marca — select-other, autofillado desde staging */}
        
