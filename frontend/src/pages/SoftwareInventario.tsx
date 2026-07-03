@@ -19,8 +19,7 @@ interface SoftwareStats {
 }
 
 const GRAD    = "linear-gradient(135deg, #FA8200 0%, #861F41 35%, #B7312C 70%, #D86018 100%)";
-const PRIMARY = "#B7312C";
-const ACCENT  = "#FA8200";
+
 const LIMIT   = 100;
 
 export default function SoftwareInventario() {

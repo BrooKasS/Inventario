@@ -80,7 +80,6 @@ export default function Papelera() {
   const [buscar,    setBuscar]    = useState("");
   const [tipoFiltro, setTipoFiltro] = useState<string>("");
   const [restoring, setRestoring] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState<string | null>(null);
   const [vaciando, setVaciando] = useState(false);
   const isAdmin = JSON.parse(atob(sessionStorage.getItem("inventario_token")!.split(".")[1])).esAdmin;
 
@@ -140,19 +139,8 @@ export default function Papelera() {
   }
 };
 
-  const handleHardDelete = async (asset: Asset) => {
-  if (!window.confirm(`¿Eliminar PERMANENTEMENTE "${asset.nombre}"? No se puede deshacer.`)) return;
-  setDeleting(asset.id);
-  try {
-    const { hardDeleteAsset } = await import("../api/client");
-    await hardDeleteAsset(asset.id);
-    await cargar();
-  } catch (e) {
-    alert("Error al eliminar el activo.");
-  } finally {
-    setDeleting(null);
-  }
-};
+ 
+
 
   const tiposDisponibles = [...new Set(assets.map(a => a.tipo))];
   const hayFiltros = !!(buscar || tipoFiltro);
