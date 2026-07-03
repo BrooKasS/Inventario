@@ -188,7 +188,7 @@ export function RedSection({
     <Section title="Equipo de Red" icon="🔌">
       {/* serial / mac: texto libre siempre */}
       <Field label="Serial" value={r.serial} editing={editing} field="serial" onChange={hc} />
-      <Field label="MAC"    value={r.mac}    editing={editing} field="mac"    onChange={hc} placeholder="Ej: AA:BB:CC:DD:EE:FF" />
+      <Field label="MAC"    value={r.mac}    editing={editing} field="mac"    onChange={hc}  />
       <EditAutoField
         label="Modelo"
         value={r.modelo}
@@ -314,7 +314,7 @@ export function BaseDatosSection({
         editing={editing}
         field="versionBd"
         onChange={hc}
-        placeholder="Ej: Oracle 19c"
+        
       />
       <EditDateField
         label="Fecha Final Soporte"

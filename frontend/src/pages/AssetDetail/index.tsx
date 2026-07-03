@@ -138,6 +138,7 @@ export default function AssetDetail() {
   const canConfirmManualState = movilAction.kind === "cambio_manual" && !!nextManualState;
 
   async function handleDelete() {
+    if (!asset) return;
     const motivo = window.prompt(
       `Por que deshabilitas "${asset.nombre}"?\nEscribe el motivo.`
     );
@@ -163,6 +164,7 @@ export default function AssetDetail() {
   }
 
   async function handleMovilAction() {
+    if (!asset) return; 
     if (loadingEstado) return;
 
     if (movilAction.kind === "firmar_entrega") {
@@ -184,6 +186,7 @@ export default function AssetDetail() {
     if (loadingEstado || !canConfirmManualState) return;
 
     try {
+      if (!asset) return;
       setLoadingEstado(true);
       const { cambiarEstadoMovil } = await import("../../api/client");
       await cambiarEstadoMovil(asset.id);
