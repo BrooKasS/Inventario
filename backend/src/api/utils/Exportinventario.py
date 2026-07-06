@@ -156,7 +156,7 @@ def crear_hoja_extra(dst_wb, sheet_name, labels, widths, data_rows, date_label_k
         date_label_keys = set()
 
     ws       = dst_wb.create_sheet(sheet_name)
-    add_logo_to_sheet(ws)  # ✅ Agregar logo en esquina izquierda
+    # add_logo_to_sheet(ws)  # removido: VPN/Movil no llevan logo
     num_cols = len(labels)
 
     # Fila 1 — título naranja
