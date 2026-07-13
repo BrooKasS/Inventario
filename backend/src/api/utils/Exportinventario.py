@@ -73,10 +73,10 @@ FONT_DATA  = Font(name='Calibri', size=11, bold=False, color='FF000000')
 ALIGN_DATA = Alignment(wrap_text=True, vertical='center')
 
 ROW_HEIGHTS = {
-    'InventarioServidores': 15.75,
+    'InventarioServidores': 30.75,
     'InventarioRedes':      30.75,
     'InventarioUPS':        30.75,
-    'InventarioBD':         15.75,
+    'InventarioBD':         30.75,
     'InventarioVPN':        20.0,
     'InventarioMovil':      20.0,
 }
