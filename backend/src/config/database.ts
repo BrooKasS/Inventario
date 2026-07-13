@@ -46,6 +46,6 @@ export const AppDataSource = new DataSource({
   ],
 
   // Migraciones automáticas SOLO en producción
-  migrationsRun: process.env.NODE_ENV === "production",
+  migrationsRun: false,
   migrations: ["dist/migrations/*.js"],
 });
