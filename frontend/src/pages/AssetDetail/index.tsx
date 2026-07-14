@@ -356,6 +356,24 @@ export default function AssetDetail() {
                 </button>
               )}
 
+              <button
+                onClick={async () => {
+                  const { exportarActivoExcel } = await import("../../api/client");
+                  await exportarActivoExcel(asset.id, asset.nombre as any);
+                }}
+                style={{
+                  padding: "10px 22px",
+                  borderRadius: 8,
+                  border: "2px solid #FA8200",
+                  background: "#fff",
+                  color: "#FA8200",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontSize: 14,
+                }}
+              >
+                Exportar Excel
+              </button>
               {rol === "ADMIN" && (
                 <>
                   <button

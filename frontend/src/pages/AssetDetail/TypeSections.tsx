@@ -297,7 +297,7 @@ export function BaseDatosSection({
         field="ambiente"
         editing={editing}
         onChange={hc}
-        options={["PRODUCCIÓN", "DESARROLLO", "QA", "CERTIFICACIÓN"]}
+        options={["PRODUCCIÓN", "PRUEBAS"]}
       />
       <EditAutoField
         label="Aplicación que soporta"

@@ -7,6 +7,7 @@ import { mapAssetsToFlowPayload, toFlowTipo } from "../utils/flowMappers";
 import { sanitizePayloadForFlow } from "../utils/flowSanitizer";
 import { generarPdfMovil } from "../utils/generarMovilDocx";
 import { generarExcelInventario } from "../utils/ExportInventario";
+import * as XLSX from "xlsx";
 import { generarExcelObservaciones } from "../utils/exportObservaciones";
 import { sendMovilEmail } from "../utils/sendMovilEmail";
 import { ocsService } from "../services/ocs.service";
@@ -25,6 +26,7 @@ export class AssetsController {
   async getAssets(req: Request, res: Response) {
     const filters = {
       tipo: req.query.tipo as any,
+      tipos: req.query.tipos ? (Array.isArray(req.query.tipos) ? req.query.tipos as any : [req.query.tipos as any]) : undefined,
       q: (req.query.q as string) || undefined,
       page: req.query.page ? parseInt(req.query.page as string) : 1,
       limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
@@ -353,6 +355,69 @@ async deleteBitacoraEntry(req: Request, res: Response) {
   }
 }
 
+  async exportExcelSingle(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ success: false, error: "Falta el id del activo" });
+      }
+
+      const assets = await assetsService.getAssetsByTipoAndIds({ ids: [id] as string[] });
+
+      if (!assets || assets.length === 0) {
+        return res.status(404).json({ success: false, error: "Activo no encontrado" });
+      }
+
+            const asset = assets[0];
+      const camposExcluidos = new Set(["id", "createdAt", "updatedAt", "deletedAt", "creadoEn"]);
+      const filas: [string, string][] = [];
+
+      function aplanarActivo(obj: any, prefijo = ""): void {
+        if (obj === null || obj === undefined || typeof obj !== "object") return;
+        for (const [clave, valor] of Object.entries(obj)) {
+          if (camposExcluidos.has(clave)) continue;
+          if (valor === null || valor === undefined || valor === "") continue;
+          const etiqueta = prefijo ? `${prefijo} - ${clave}` : clave;
+          if (Array.isArray(valor)) {
+            if (valor.length === 0) continue;
+            filas.push([etiqueta, JSON.stringify(valor)]);
+          } else if (typeof valor === "object") {
+            aplanarActivo(valor, etiqueta);
+          } else {
+            filas.push([etiqueta, String(valor)]);
+          }
+        }
+      }
+
+      aplanarActivo(asset);
+
+      const datosHoja = [["CAMPO", "VALOR"], ...filas];
+      const hoja = XLSX.utils.aoa_to_sheet(datosHoja);
+      const anchoCampo = Math.max(20, ...filas.map(([campo]) => campo.length + 2));
+      const anchoValor = Math.max(30, ...filas.map(([, valor]) => Math.min(valor.length + 2, 80)));
+      hoja["!cols"] = [{ wch: anchoCampo }, { wch: anchoValor }];
+
+      const libro = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(libro, hoja, "Activo");
+      const buffer = XLSX.write(libro, { type: "buffer", bookType: "xlsx" }) as Buffer;
+
+      const fecha = new Date().toISOString().slice(0, 10);
+      const nombreActivo = String(asset?.nombre ?? "activo").replace(/[^a-zA-Z0-9_-]/g, "_");
+
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader("Content-Disposition", `attachment; filename="Inventario_${nombreActivo}_${fecha}.xlsx"`);
+      res.setHeader("Content-Length", buffer.length);
+      return res.send(buffer);
+
+    } catch (error: any) {
+      console.error("❌ Error exportando Excel individual:", error);
+      return res.status(500).json({ success: false, error: "Error generando el Excel" });
+    }
+  }
+
+
+
    async exportObservaciones(req: Request, res: Response) {
     try {
       const { rows, incluirTecnicos } = req.body;
@@ -377,6 +442,8 @@ async deleteBitacoraEntry(req: Request, res: Response) {
       return res.status(500).json({ success: false, error: "Error generando el Excel de observaciones" });
     }
   }
+
+
   async cambiarEstadoMovil(req: Request<{id:string}>, res: Response) {
     const id = req.params.id;
     

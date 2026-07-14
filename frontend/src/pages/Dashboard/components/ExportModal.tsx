@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type { Asset } from "../../../types";
 import {
   MAIN_GRADIENT,
@@ -23,6 +24,41 @@ const C = {
 
 /* ─── Tipos de activo disponibles para exportar ─── */
 const TIPOS_EXPORT = ["SERVIDOR", "BASE_DATOS", "RED", "UPS", "VPN", "MOVIL"];
+type DetalleCampo = { label: string; valor: string };
+
+function getDetalle1(a: Asset): DetalleCampo {
+  switch (a.tipo) {
+    case "BASE_DATOS":
+      return { label: "Version BD", valor: a.baseDatos?.versionBd ?? "-" };
+    case "MOVIL":
+      return { label: "Serial", valor: a.movil?.serial ?? "-" };
+    case "VPN":
+      return { label: "Conexion", valor: a.vpn?.conexion ?? "-" };
+    default:
+      return { label: "Codigo", valor: a.codigoServicio ?? "-" };
+  }
+}
+
+function getDetalle2(a: Asset): DetalleCampo {
+  switch (a.tipo) {
+    case "BASE_DATOS":
+      return { label: "Ambiente", valor: a.baseDatos?.ambiente ?? "-" };
+    case "MOVIL":
+      return { label: "Usuario Red", valor: a.movil?.usuarioRed ?? "-" };
+    case "VPN":
+      return { label: "Origen", valor: a.vpn?.origen ?? "-" };
+    default:
+      return { label: "Ubicacion", valor: a.ubicacion ?? "-" };
+  }
+}
+
+function renderDetalle(d: DetalleCampo) {
+  return (
+    <span>
+      <span style={{ color: "#999", fontWeight: 600 }}>{d.label}:</span> {d.valor}
+    </span>
+  );
+}
 
 interface ExportModalProps {
   open: boolean;
@@ -78,6 +114,7 @@ export default function ExportModal({
 }: ExportModalProps) {
 
   const [showPreview, setShowPreview] = useState(false);
+  const navigate = useNavigate();
 
   const mostrarSelectorMoviles = tiposSel.includes("MOVIL") || tiposSel.length === 0;
   const totalSeleccion = seleccion.size;
@@ -326,7 +363,7 @@ export default function ExportModal({
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead>
                         <tr style={{ background: "rgba(90,56,112,.08)" }}>
-                          {["", "Activo", "Tipo", "Código", "Ubicación"].map(h => (
+                          {["", "Activo", "Tipo", "Detalle 1", "Detalle 2"].map(h => (
                             <th key={h} style={{
                               padding: "8px 12px", textAlign: "left",
                               fontSize: 10, fontWeight: 700, textTransform: "uppercase",
@@ -340,19 +377,21 @@ export default function ExportModal({
                           <tr key={a.id} style={{
                             borderBottom: `1px solid ${C.border}`,
                             background: seleccion.has(a.id) ? "rgba(183,49,44,.04)" : "transparent",
-                          }}>
+                            cursor: "pointer",
+                          }} onClick={() => navigate(`/activo/${a.id}`)} className="export-preview-row" title="Ver detalles del activo">
                             <td style={{ padding: "8px 12px" }}>
                               <input
                                 type="checkbox"
                                 checked={seleccion.has(a.id)}
                                 onChange={() => toggleSeleccion(a.id)}
+                                onClick={e => e.stopPropagation()}
                                 style={{ accentColor: C.primary }}
                               />
                             </td>
                             <td style={{ padding: "8px 12px", fontSize: 13, fontWeight: 600 }}>{a.nombre ?? "—"}</td>
                             <td style={{ padding: "8px 12px", fontSize: 12, color: C.muted }}>{TIPO_LABEL[a.tipo] ?? a.tipo}</td>
-                            <td style={{ padding: "8px 12px", fontSize: 12 }}>{a.codigoServicio ?? "—"}</td>
-                            <td style={{ padding: "8px 12px", fontSize: 12 }}>{a.ubicacion ?? "—"}</td>
+                            <td style={{ padding: "8px 12px", fontSize: 12 }}>{renderDetalle(getDetalle1(a))}</td>
+                            <td style={{ padding: "8px 12px", fontSize: 12 }}>{renderDetalle(getDetalle2(a))}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -373,6 +412,7 @@ export default function ExportModal({
                 onExcel={handleExportExcel}
                 onPDF={handleExportPDF}
                 label="activos"
+              showPDF={false}
               />
             </div>
 
@@ -624,12 +664,13 @@ export default function ExportModal({
 
 /* ─── Botones de exportación reutilizables ─── */
 function ExportButtons({
-  exporting, onExcel, onPDF,
+  exporting, onExcel, onPDF, showPDF = true,
 }: {
   exporting: "excel" | "pdf" | null;
   onExcel: () => Promise<void>;
   onPDF: () => Promise<void>;
   label: string;
+  showPDF?: boolean;
 }) {
   const C_grad = MAIN_GRADIENT;
   return (
@@ -637,6 +678,7 @@ function ExportButtons({
       display: "flex", gap: 12, justifyContent: "flex-end",
       paddingTop: 16, borderTop: "1.5px solid #EDE0E0",
     }}>
+      {showPDF && (
       <button
         onClick={onPDF}
         disabled={exporting !== null}
@@ -657,6 +699,7 @@ function ExportButtons({
           <>📄 Exportar PDF</>
         )}
       </button>
+      )}
       <button
         onClick={onExcel}
         disabled={exporting !== null}

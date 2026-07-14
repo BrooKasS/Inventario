@@ -1,6 +1,7 @@
 import { Outlet, NavLink } from "react-router-dom";
 import { useState } from "react";
 import { logoutUser, getUsuario, getNombreReal } from "../api/auth";
+import logo from "../assets/logo.png";
 
 const nav = [
   { label: "Dashboard",      path: "/dashboard",            icon: "⊞" },
@@ -76,9 +77,7 @@ export default function Layout() {
               border: "1px solid rgba(255,255,255,.4)",
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 18,
-            }}>
-              🧭
-            </div>
+            }}><img src={logo} alt="Vaultis" style={{ width: 28, height: 28, objectFit: "contain" }} /></div>
             <div>
               <div style={{
                 fontSize: 18, fontWeight: 900, letterSpacing: "0.18em",

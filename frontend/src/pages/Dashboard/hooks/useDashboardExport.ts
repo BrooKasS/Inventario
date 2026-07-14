@@ -32,7 +32,7 @@ export function useDashboardExport({ pasaFiltroObservacion }: UseDashboardExport
       const resp = await getAssets({ limit, page, tipos: tiposAlFetch, search });
       const items = resp.assets || [];
       out = out.concat(items);
-      const total = resp.total || out.length;
+      const total = resp.pagination?.total ?? out.length;
       if (out.length >= total || items.length === 0) break;
       page++;
     }

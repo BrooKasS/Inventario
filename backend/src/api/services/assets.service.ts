@@ -1,4 +1,4 @@
-﻿import { AppDataSource } from "../../config/database";
+import { AppDataSource } from "../../config/database";
 import { AssetFilters } from "../../types/api.types";
 import { Asset } from "../../entities/Asset";
 import { Bitacora } from "../../entities/Bitacora";
@@ -27,20 +27,20 @@ import { SoftwareInstalado } from "../../entities/SoftwareInstalado";
 
 export class AssetsService {
   async getAssets(filters: AssetFilters) {
-    const { tipo, q, page = 1, limit = 50 } = filters;
+    const { tipo, tipos, q, page = 1, limit = 50 } = filters;
     const skip = (page - 1) * limit;
     
 
     const assetRepository = AppDataSource.getRepository(Asset);
     const vpnRepository = AppDataSource.getRepository(Vpn);
 
-    // ════════════════════════════════════════════════════════════════════════
+    // ------------------------------------------------------------------------
     // PARA VPN: OBTENER SOLO PRINCIPALES (1 por cada conexion/IP)
-    // ════════════════════════════════════════════════════════════════════════
+    // ------------------------------------------------------------------------
     let vpnPrincipalesIds: string[] = [];
     if (tipo === "VPN") {
-      // Query: GROUP BY conexion para obtener 1 VPN por cada IP única
-      // Solo agrupa VPNs con conexion válida (IS NOT NULL)
+      // Query: GROUP BY conexion para obtener 1 VPN por cada IP �nica
+      // Solo agrupa VPNs con conexion v�lida (IS NOT NULL)
       const vpnPrincipales = await vpnRepository
         .createQueryBuilder("vpn")
         .select("MIN(vpn.id)", "id")
@@ -51,12 +51,12 @@ export class AssetsService {
       
       vpnPrincipalesIds = vpnPrincipales.map((v: any) => v.id);
       
-      console.log(`✅ VPN PRINCIPALES: ${vpnPrincipalesIds.length} encontrados`);
+      console.log(`? VPN PRINCIPALES: ${vpnPrincipalesIds.length} encontrados`);
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // BÚSQUEDA CON QUERY (filtro por nombre/código)
-    // ════════════════════════════════════════════════════════════════════════
+    // ------------------------------------------------------------------------
+    // B�SQUEDA CON QUERY (filtro por nombre/c�digo)
+    // ------------------------------------------------------------------------
     if (q) {
       const qb = assetRepository
         .createQueryBuilder("asset")
@@ -71,6 +71,10 @@ export class AssetsService {
 
       if (tipo) {
         qb.andWhere("asset.tipo = :tipo", { tipo });
+      }
+
+      if (tipos && tipos.length > 0) {
+        qb.andWhere("asset.tipo IN (:...tipos)", { tipos });
       }
 
       if (tipo === "VPN") {
@@ -98,9 +102,9 @@ export class AssetsService {
       };
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // BÚSQUEDA SIN QUERY (solo filtro por tipo)
-    // ════════════════════════════════════════════════════════════════════════
+    // ------------------------------------------------------------------------
+    // B�SQUEDA SIN QUERY (solo filtro por tipo)
+    // ------------------------------------------------------------------------
     const qb = assetRepository
       .createQueryBuilder("asset")
       .leftJoinAndSelect("asset.servidor", "servidor")
@@ -114,6 +118,10 @@ export class AssetsService {
 
     if (tipo) {
       qb.andWhere("asset.tipo = :tipo", { tipo });
+    }
+
+    if (tipos && tipos.length > 0) {
+      qb.andWhere("asset.tipo IN (:...tipos)", { tipos });
     }
 
     if (tipo === "VPN") {
@@ -156,16 +164,16 @@ export class AssetsService {
 
     if (!asset) throw new Error("Asset no encontrado");
     
-    // ════════════════════════════════════════════════════════════════
-    // SI ES VPN: CARGAR TAMBIÉN LAS REGLAS HISTÓRICAS (VPNs hermanas)
-    // ════════════════════════════════════════════════════════════════
+    // ----------------------------------------------------------------
+    // SI ES VPN: CARGAR TAMBI�N LAS REGLAS HIST�RICAS (VPNs hermanas)
+    // ----------------------------------------------------------------
     if (asset.vpn && asset.vpn.conexion) {
-      // Buscar todas las VPNs con el mismo conexion (reglas históricas)
+      // Buscar todas las VPNs con el mismo conexion (reglas hist�ricas)
       const vpnRelacionadas = await vpnRepository.find({
         where: { conexion: asset.vpn.conexion },
       });
       
-      // Filtrar: excluir la VPN principal (la del asset), el resto son históricas
+      // Filtrar: excluir la VPN principal (la del asset), el resto son hist�ricas
       const reglasHistoricas = vpnRelacionadas.filter((v: Vpn) => v.id !== asset.vpn!.id);
       
       // Guardar en un campo adicional (compatible con frontend)
@@ -192,10 +200,10 @@ export class AssetsService {
       sim, numeroLinea, fechaEntrega, observacionesEntrega,
     } = data;
 
-    // ✅ VALIDACIÓN: nuevas entradas SIEMPRE se validan
+    // ? VALIDACI�N: nuevas entradas SIEMPRE se validan
     const { valid, errors } = validateAssetData(tipo, data, true);
     if (!valid) {
-      throw new Error(`Validación fallida: ${errors.join(", ")}`);
+      throw new Error(`Validaci�n fallida: ${errors.join(", ")}`);
     }
 
     const assetRepository     = AppDataSource.getRepository(Asset);
@@ -208,7 +216,7 @@ export class AssetsService {
     const vpnRuleRepository   = AppDataSource.getRepository(VpnRule);
     const movilRepository     = AppDataSource.getRepository(Movil);
 
-    // ── Crear Asset base ──
+    // -- Crear Asset base --
     const asset = assetRepository.create({
       tipo,
       nombre,
@@ -259,7 +267,7 @@ export class AssetsService {
         const vpnRulesToSave = reglas.map((regla: any) => {
           const rule = vpnRuleRepository.create({
             id: uuidv4(),
-            vpn: savedVpn, // ✅ TypeORM maneja el VPN_ID automáticamente
+            vpn: savedVpn, // ? TypeORM maneja el VPN_ID autom�ticamente
             conexion: regla.conexion ?? null,
             fases: regla.fases ?? null,
             origen: regla.origen ?? null,
@@ -272,7 +280,7 @@ export class AssetsService {
       }
     }
 
-      // ── MOVIL: genera solo el acta de ENTREGA ──
+      // -- MOVIL: genera solo el acta de ENTREGA --
     if (tipo === "MOVIL") {
       const movilData = movilRepository.create({
         id:                  savedAsset.id,
@@ -299,7 +307,7 @@ export class AssetsService {
 
       await movilRepository.save(movilData);
 
-      // Generar acta de ENTREGA (sin datos de devolución)
+      // Generar acta de ENTREGA (sin datos de devoluci�n)
       const bufferEntrega = await generarPdfEntrega({
         nombre:               savedAsset.nombre,
         numeroCaso,
@@ -344,12 +352,12 @@ export class AssetsService {
           );
           
         } catch (error) {
-          console.error("⚠️ Error enviando acta MOVIL:", error);
+          console.error("?? Error enviando acta MOVIL:", error);
         }
       }
     }
 
-    // ── Bitácora creación ──
+    // -- Bit�cora creaci�n --
     await bitacoraRepository.save(
       bitacoraRepository.create({
         asset:       savedAsset,
@@ -416,7 +424,7 @@ export class AssetsService {
         });
       }
     } catch (error) {
-      console.warn("⚠️ Error en envío de correos:", error);
+      console.warn("?? Error en env�o de correos:", error);
     }
 
     await bitacoraRepo.save(
@@ -451,7 +459,7 @@ export class AssetsService {
       throw new Error("Este activo ya fue firmado");
     }
 
-    // 1️⃣ Guardar firma PNG
+    // 1?? Guardar firma PNG
     const firmaBuffer = Buffer.from(
       firmaBase64.replace(/^data:image\/png;base64,/, ""),
       "base64"
@@ -475,7 +483,7 @@ export class AssetsService {
       }
     );
 
-    // 2️⃣ Generar SOLO el acta de ENTREGA firmada
+    // 2?? Generar SOLO el acta de ENTREGA firmada
     const m = asset.movil;
 
     const bufferEntrega = await generarPdfEntrega({
@@ -502,7 +510,7 @@ export class AssetsService {
       fechaFirma,
     });
 
-    // 3️⃣ Enviar acta de ENTREGA al Flow
+    // 3?? Enviar acta de ENTREGA al Flow
     try {
       const nombreArchivo  = `Acta_Entrega_${asset.nombre?.replace(/\s+/g, "_")}.pdf`;
       const archivoBase64  = bufferEntrega.toString("base64");
@@ -527,10 +535,10 @@ export class AssetsService {
         })
       );
     } catch (error) {
-      console.error("⚠️ Error enviando acta de entrega firmada al Flow:", error);
+      console.error("?? Error enviando acta de entrega firmada al Flow:", error);
     }
 
-    // 4️⃣ Bitácora final
+    // 4?? Bit�cora final
     await bitacoraRepo.save(
       bitacoraRepo.create({
         asset:       asset,
@@ -561,10 +569,10 @@ export class AssetsService {
 
       const estadoActual = movil.estados as EstadoMovil | "PENDIENTE" | null;
       if (estadoActual !== "PENDIENTE_DEVOLUCION" && estadoActual !== "PENDIENTE") {
-        throw new Error("El activo no está listo para firma de devolución");
+        throw new Error("El activo no est� listo para firma de devoluci�n");
       }
 
-      // Guardar firma de devolución
+      // Guardar firma de devoluci�n
       const firmaBuffer = Buffer.from(
         firmaBase64.replace(/^data:image\/png;base64,/, ""),
         "base64"
@@ -583,7 +591,7 @@ export class AssetsService {
         { fechaDevolucion, estados: "DEVUELTO" }
       );
 
-      // Generar SOLO el acta de DEVOLUCIÓN
+      // Generar SOLO el acta de DEVOLUCI�N
       const bufferDevolucion = await generarPdfDevolucion({
         ...movil,
         nombre:         movil.asset.nombre,
@@ -591,7 +599,7 @@ export class AssetsService {
         fechaDevolucion,
       });
 
-      // Enviar acta de DEVOLUCIÓN al Flow
+      // Enviar acta de DEVOLUCI�N al Flow
       try {
         const nombreArchivo = `Acta_Devolucion_${movil.asset.nombre?.replace(/\s+/g, "_")}.pdf`;
 
@@ -603,23 +611,23 @@ export class AssetsService {
           archivoBase64: bufferDevolucion.toString("base64"),
         });
       } catch (flowError) {
-        console.error("⚠️ Error enviando acta de devolución al Flow:", flowError);
+        console.error("?? Error enviando acta de devoluci�n al Flow:", flowError);
       }
 
-      // Bitácora
+      // Bit�cora
       await bitacoraRepo.save(
         bitacoraRepo.create({
           asset:       movil.asset,
           autor:       "Usuario",
           tipoEvento:  "NOTA",
-          descripcion: "Devolución firmada correctamente. Acta de devolución generada y enviada.",
+          descripcion: "Devoluci�n firmada correctamente. Acta de devoluci�n generada y enviada.",
         })
       );
 
       return { ok: true };
 
     } catch (error) {
-      console.error("❌ Error en firmarDevolucion:", error);
+      console.error("? Error en firmarDevolucion:", error);
       return {
         ok:    false,
         error: (error as Error).message || "Error inesperado",
@@ -643,12 +651,12 @@ export class AssetsService {
       relations: ["servidor", "red", "ups", "baseDatos", "vpn", "vpn.reglas", "movil"],
     });
 
-    if (!data || typeof data !== "object") throw new Error("Body inválido");
+    if (!data || typeof data !== "object") throw new Error("Body inv�lido");
     if (!asset) throw new Error("Asset no encontrado");
 
-    // ✅ VALIDACIÓN PATCH-SAFE:
+    // ? VALIDACI�N PATCH-SAFE:
     // Si el registro fue creado hoy, se valida el resultado final (actual + cambios),
-    // no solo el body parcial. Así editar un solo campo no dispara falsos obligatorios.
+    // no solo el body parcial. As� editar un solo campo no dispara falsos obligatorios.
     const isNewRecord = isCreatedToday(asset.creadoEn);
     if (isNewRecord) {
       const dataToValidate: any = { ...asset, ...data };
@@ -674,7 +682,7 @@ export class AssetsService {
 
       const { valid, errors } = validateAssetData(asset.tipo, dataToValidate, true);
       if (!valid) {
-        throw new Error(`Validación fallida: ${errors.join(", ")}`);
+        throw new Error(`Validaci�n fallida: ${errors.join(", ")}`);
       }
     }
 
@@ -778,9 +786,9 @@ export class AssetsService {
         await vpnRepository.update({ asset: { id } }, detailUpdates);
       }
 
-      // ─────────────────────────────────────────────────────────────
+      // -------------------------------------------------------------
       // MANEJAR REGLAS (VpnRule)
-      // ─────────────────────────────────────────────────────────────
+      // -------------------------------------------------------------
       if (data.vpn.reglas !== undefined) {
         const newReglas = data.vpn.reglas || [];
         const oldReglas = vpn.reglas || [];
@@ -827,16 +835,16 @@ export class AssetsService {
         const oldVal = (movil as any)[key];
         const newVal = data.movil[key];
 
-        // El estado solo cambia por los endpoints del flujo, nunca por edición general.
+        // El estado solo cambia por los endpoints del flujo, nunca por edici�n general.
         if (key === "estados") {
           if (newVal !== undefined && newVal !== oldVal) {
-            throw new Error("El estado del móvil no se puede editar manualmente desde el formulario. Usa el flujo de entrega/devolución.");
+            throw new Error("El estado del m�vil no se puede editar manualmente desde el formulario. Usa el flujo de entrega/devoluci�n.");
           }
           return;
         }
 
         if (movil.estados === "DEVUELTO" && newVal !== undefined && newVal !== oldVal) {
-          throw new Error("No puedes editar los datos del móvil porque el proceso ya está cerrado como DEVUELTO.");
+          throw new Error("No puedes editar los datos del m�vil porque el proceso ya est� cerrado como DEVUELTO.");
         }
 
         if (movil.firmaPath && camposBloqueadosConFirma.has(key) && newVal !== undefined && newVal !== oldVal) {
@@ -902,12 +910,12 @@ export class AssetsService {
   async getStats() {
     const assetRepository = AppDataSource.getRepository(Asset);
 
-    // ════════════════════════════════════════════════════════════════
+    // ----------------------------------------------------------------
     // TOTAL: Contar Assets por Tipo
-    // ════════════════════════════════════════════════════════════════
+    // ----------------------------------------------------------------
     const vpnRepository = AppDataSource.getRepository(Vpn);
 
-// Contar VPNs principales (1 por conexión única)
+// Contar VPNs principales (1 por conexi�n �nica)
 const vpnPrincipalesCount = await vpnRepository
   .createQueryBuilder("vpn")
   .select("COUNT(DISTINCT vpn.conexion)", "cnt")
@@ -974,7 +982,7 @@ return {
     if (asset.tipo === "MOVIL" && asset.movil) {
       if (asset.movil.estados !== "DEVUELTO" && asset.movil.estados !== null) {
         throw new Error(
-          "No puedes deshabilitar este activo porque el equipo aún está en manos del empleado. Completa el proceso de devolución primero."
+          "No puedes deshabilitar este activo porque el equipo a�n est� en manos del empleado. Completa el proceso de devoluci�n primero."
         );
       }
     }
@@ -990,7 +998,7 @@ return {
         asset: { id },
         autor,
         tipoEvento:  "NOTA",
-        descripcion: "Activo deshabilitado y movido a histórico.",
+        descripcion: "Activo deshabilitado y movido a hist�rico.",
       })
     );
 
@@ -1050,7 +1058,7 @@ return {
       if (fs.existsSync(firmaPath))    fs.unlinkSync(firmaPath);
       if (fs.existsSync(firmaDevPath)) fs.unlinkSync(firmaDevPath);
     } catch (e) {
-      console.warn("⚠️ No se pudo borrar firma del disco:", e);
+      console.warn("?? No se pudo borrar firma del disco:", e);
     }
 
     // 2. Borrar vpn_rules si tiene VPN
@@ -1058,10 +1066,10 @@ return {
       await vpnRuleRepository.delete({ vpn: { id: asset.vpn.id } });
     }
 
-    // 3. Borrar bitácora
+    // 3. Borrar bit�cora
     await bitacoraRepository.delete({ asset: { id } });
 
-    // 4. Borrar relaciones específicas por tipo
+    // 4. Borrar relaciones espec�ficas por tipo
     await servidorRepository.delete({ asset: { id } });
     await redRepository.delete({ asset: { id } });
     await upsRepository.delete({ asset: { id } });
@@ -1100,7 +1108,7 @@ return {
         if (fs.existsSync(firmaPath))    fs.unlinkSync(firmaPath);
         if (fs.existsSync(firmaDevPath)) fs.unlinkSync(firmaDevPath);
       } catch (e) {
-        console.warn("⚠️ No se pudo borrar firma:", e);
+        console.warn("?? No se pudo borrar firma:", e);
       }
 
       if (asset.vpn) {
@@ -1192,7 +1200,7 @@ return {
     : "%";
 
   if (!/^[A-Za-z0-9_]+$/.test(column)) {
-    console.error(`[getSuggestions] Columna inválida: "${column}"`);
+    console.error(`[getSuggestions] Columna inv�lida: "${column}"`);
     return [];
   }
 

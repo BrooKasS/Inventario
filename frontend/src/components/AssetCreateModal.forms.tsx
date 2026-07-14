@@ -63,7 +63,7 @@ const SELECT_OPTIONS: Record<string, Record<string, string[]>> = {
     estado: ["ACTIVO", "INACTIVO", "DESCONECTADO"],
   },
   BASE_DATOS: {
-    ambiente: ["PRODUCCIÓN", "DESARROLLO", "QA", "CERTIFICACIÓN"],
+    ambiente: ["PRODUCCIÓN", "PRUEBAS"],
   },
   MOVIL: {
     marca:  ["Samsung", "Motorola", "Xiaomi", "Huawei", "Apple"],   // ← CAMBIO: sin "Otra", la agrega SelectWithOtherField

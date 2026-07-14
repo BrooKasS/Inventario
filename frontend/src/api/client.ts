@@ -63,6 +63,24 @@ export async function descargarWordMovil(id: string) {
   URL.revokeObjectURL(url);
 }
 
+export async function exportarActivoExcel(id: string, nombre?: string) {
+  const token = getToken();
+  const res = await fetch(`${import.meta.env.VITE_API_URL}/assets/${id}/export-excel`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    throw new Error("Error exportando Excel del activo");
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const fecha = new Date().toISOString().slice(0, 10);
+  const nombreArchivo = (nombre ?? id).replace(/[^a-zA-Z0-9_-]/g, "_");
+  a.download = `Inventario_${nombreArchivo}_${fecha}.xlsx`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 export const getBitacora = (id: string) =>
   api.get(`/assets/${id}/bitacora`).then(r => r.data.data);
 

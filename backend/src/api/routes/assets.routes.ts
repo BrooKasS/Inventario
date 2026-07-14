@@ -18,6 +18,7 @@ router.get("/export/ocs",      asyncHandler(assetsController.exportOCS.bind(asse
 // Exportación
 router.post("/export-excel",         assetsController.exportExcel.bind(assetsController));
 router.post("/export-observaciones", assetsController.exportObservaciones.bind(assetsController));
+router.get("/:id/export-excel",      assetsController.exportExcelSingle.bind(assetsController));
 
 // Escritura — solo ADMIN — rutas estáticas
 router.post("/",          requireAdmin, asyncHandler(assetsController.createAsset.bind(assetsController)));

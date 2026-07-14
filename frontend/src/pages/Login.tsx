@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginUser } from "../api/auth";
+import logo from "../assets/logo.png";
 
 const C = {
   grad: "linear-gradient(135deg, #FF9A1F 0%, #8A1A40 32%, #B7312C 66%, #D86018 100%)",
@@ -96,7 +97,7 @@ export default function Login() {
             justifyContent: "center", fontSize: 28,
             margin: "0 auto 14px",
             boxShadow: "0 10px 22px rgba(183,49,44,.28)",
-          }}>🖥️</div>
+          }}><img src={logo} alt="Vaultis" style={{ width: 52, height: 52, objectFit: "contain" }} /></div>
           <div style={{
             fontSize: 30, letterSpacing: "0.18em",
             fontWeight: 900, color: C.ink,
