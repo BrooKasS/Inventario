@@ -13,6 +13,8 @@ import { Movil } from "./entities/Movil";
 import { Bitacora } from "./entities/Bitacora";
 import { OcsServerMapping } from "./entities/OcsServerMapping";
 import { SoftwareInstalado } from "./entities/SoftwareInstalado";
+import { CertificadoSsl } from "./entities/CertificadoSsl";
+import { CertificadoSslApp } from "./entities/CertificadoSslApp";
 
 export const AppDataSource = new DataSource({
   type: "oracle",
@@ -37,6 +39,8 @@ export const AppDataSource = new DataSource({
     Bitacora,
     OcsServerMapping,
     SoftwareInstalado,
+    CertificadoSsl,
+    CertificadoSslApp,
   ],
 
   migrationsRun: process.env.NODE_ENV === "production",

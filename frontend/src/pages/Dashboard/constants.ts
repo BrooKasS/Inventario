@@ -9,6 +9,7 @@ export const TIPO_LABEL: Record<string, string> = {
   UPS:        "UPS",
   VPN:        "VPN S2S",
   MOVIL:      "Móviles",
+  CERTIFICADO_SSL: "Certificados SSL",
 };
 
 export const TIPO_LABEL_SINGULAR: Record<string, string> = {
@@ -18,6 +19,7 @@ export const TIPO_LABEL_SINGULAR: Record<string, string> = {
   UPS:        "UPS",
   VPN:        "VPN S2S",
   MOVIL:      "Móvil",
+  CERTIFICADO_SSL: "Certificado SSL",
 };
 
 export const TIPO_ICON: Record<string, string> = {
@@ -27,6 +29,7 @@ export const TIPO_ICON: Record<string, string> = {
   UPS:        "⚡",
   VPN:        "🔒",
   MOVIL:      "📱",
+  CERTIFICADO_SSL: "🔐",
 };
 
 export const TIPO_GRAD: Record<string, string> = {
@@ -36,6 +39,7 @@ export const TIPO_GRAD: Record<string, string> = {
   UPS:        "linear-gradient(135deg, #FA8200, #861F41)",
   VPN:        "linear-gradient(135deg, #7a7a7a, #000000)",
   MOVIL:      "linear-gradient(135deg, #B7312C, #FA8200)",
+  CERTIFICADO_SSL: "linear-gradient(135deg, #1a6b3c, #2d9e5e)",
 };
 
 // Colores sólidos para gráficas
@@ -46,6 +50,7 @@ export const COLOR_TIPO: Record<string, string> = {
   UPS:        "#D86018",
   VPN:        "#7a7a7a",
   MOVIL:      "#e05c00",
+  CERTIFICADO_SSL: "#2d9e5e",
 };
 
 // Mapeo de tipos de evento

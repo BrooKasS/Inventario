@@ -1,4 +1,4 @@
-export type TipoActivo = "SERVIDOR" | "RED" | "UPS" | "BASE_DATOS" | "VPN" | "MOVIL";
+export type TipoActivo = "SERVIDOR" | "RED" | "UPS" | "BASE_DATOS" | "VPN" | "MOVIL" | "CERTIFICADO_SSL";
 export type TipoEvento = "IMPORTACION" | "CAMBIO_CAMPO" | "MANTENIMIENTO" | "INCIDENTE" | "NOTA";
 
 export interface Servidor {
@@ -62,6 +62,28 @@ export interface VpnRule {
   fases: string | null;
   origen: string | null;
   destino: string | null;
+}
+
+export interface CertificadoSslApp {
+  id: string;
+  certificadoSslId: string;
+  nombreAplicacion: string | null;
+  url: string | null;
+  fechaInicio: string | null;
+  fechaFin: string | null;
+}
+
+export interface CertificadoSsl {
+  id: string;
+  assetId?: string;
+  tipoCertificado: "DOMINIO" | "APLICACION" | "PROVEEDOR" | null;
+  nombreAplicacion: string | null;
+  nombreDominio: string | null;
+  proveedor: string | null;
+  url: string | null;
+  fechaInicio: string | null;
+  fechaFin: string | null;
+  aplicaciones?: CertificadoSslApp[];
 }
 
 export interface Vpn {
@@ -128,8 +150,9 @@ export interface Asset {
   red: Red | null;
   ups: Ups | null;
   baseDatos: BaseDatos | null;
-  vpn: Vpn | null;
+vpn: Vpn | null;
   movil: Movil | null;
+  certificadoSsl: CertificadoSsl | null;
   bitacora?: BitacoraEntry[];
 motivoDeshabilitacion?: string | null;
 deshabilitadoPor?: string | null;

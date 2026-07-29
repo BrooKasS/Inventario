@@ -9,6 +9,7 @@ import {
   BaseDatosSection,
   VpnSection,
   MovilSection,
+  CertificadoSslSection,
 } from "./TypeSections";
 import { BitacoraSection } from "./BitacoraSection";
 import { useAssetDetail } from "./useAssetDetail";
@@ -601,45 +602,48 @@ export default function AssetDetail() {
         </div>
       )}
 
-      <Section title="Informacion General" icon="">
-        <Field
-          label="Nombre"
-          value={asset.nombre}
-          editing={editing}
-          field="nombre"
-          onChange={(f, v) => handleChange(null, f, v)}
-        />
-        <Field
-          label="Ubicacion"
-          value={asset.ubicacion}
-          editing={editing}
-          field="ubicacion"
-          onChange={(f, v) => handleChange(null, f, v)}
-        />
-        <Field
-          label="Propietario"
-          value={asset.propietario}
-          editing={editing}
-          field="propietario"
-          onChange={(f, v) => handleChange(null, f, v)}
-        />
-        <Field
-          label="Custodio"
-          value={asset.custodio}
-          editing={editing}
-          field="custodio"
-          onChange={(f, v) => handleChange(null, f, v)}
-        />
-        {["SERVIDOR", "RED"].includes(asset.tipo) && (
+      {asset.tipo !== "CERTIFICADO_SSL" && (
+        <Section title="Informacion General" icon="">
           <Field
-            label="Codigo de Servicio"
-            value={asset.codigoServicio}
+            label="Nombre"
+            value={asset.nombre}
             editing={editing}
-            field="codigoServicio"
+            field="nombre"
             onChange={(f, v) => handleChange(null, f, v)}
           />
-        )}
-      </Section>
+          <Field
+            label="Ubicacion"
+            value={asset.ubicacion}
+            editing={editing}
+            field="ubicacion"
+            onChange={(f, v) => handleChange(null, f, v)}
+          />
+          <Field
+            label="Propietario"
+            value={asset.propietario}
+            editing={editing}
+            field="propietario"
+            onChange={(f, v) => handleChange(null, f, v)}
+          />
+          <Field
+            label="Custodio"
+            value={asset.custodio}
+            editing={editing}
+            field="custodio"
+            onChange={(f, v) => handleChange(null, f, v)}
+          />
+          {["SERVIDOR", "RED"].includes(asset.tipo) && (
+            <Field
+              label="Codigo de Servicio"
+              value={asset.codigoServicio}
+              editing={editing}
+              field="codigoServicio"
+              onChange={(f, v) => handleChange(null, f, v)}
+            />
+          )}
+        </Section>
+      )}
+
 
       <ServidorSections asset={asset} editing={editing} handleChange={handleChange} />
       <RedSection asset={asset} editing={editing} handleChange={handleChange} />
@@ -647,6 +651,7 @@ export default function AssetDetail() {
       <BaseDatosSection asset={asset} editing={editing} handleChange={handleChange} />
       <VpnSection asset={asset} editing={editing} handleChange={handleChange} />
       <MovilSection asset={asset} editing={editing} handleChange={handleChange} />
+      <CertificadoSslSection asset={asset} editing={editing} handleChange={handleChange} />
 
       {asset.tipo === "SERVIDOR" && <OcsSoftwareSection assetId={asset.id} />}
 

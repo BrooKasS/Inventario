@@ -331,7 +331,7 @@ async deleteBitacoraEntry(req: Request, res: Response) {
         assets = assets.concat(r);
       }
     } else {
-      for (const tipo of ["SERVIDOR", "RED", "UPS", "BASE_DATOS", "VPN", "MOVIL"]) {
+      for (const tipo of ["SERVIDOR", "RED", "UPS", "BASE_DATOS", "VPN", "MOVIL", "CERTIFICADO_SSL"]) {
         const r = await assetsService.getAssetsByTipoAndIds({ tipo });
         assets = assets.concat(r);
       }

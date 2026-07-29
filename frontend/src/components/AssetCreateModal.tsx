@@ -17,6 +17,7 @@ import {
   FormBaseDatos,
   FormVpn,
   FormMovil,
+  FormCertificadoSsl,
 } from "./AssetCreateModal.forms";
 
 /* ─── Constantes UI ─── */
@@ -27,6 +28,7 @@ const TIPO_LABEL: Record<string, string> = {
   UPS:        "UPS",
   VPN:        "VPN S2S",
   MOVIL:      "Móvil",
+  CERTIFICADO_SSL: "Certificado SSL",
 };
 
 const TIPO_ICON: Record<string, string> = {
@@ -36,6 +38,7 @@ const TIPO_ICON: Record<string, string> = {
   UPS:        "⚡",
   VPN:        "🔒",
   MOVIL:      "📱",
+  CERTIFICADO_SSL: "🔐",
 };
 
 /* ─── Parser de errores de validación (idéntico al original) ─── */
@@ -124,6 +127,14 @@ const [currentRule, setCurrentRule] = useState<Partial<VpnRule>>({
   conexion: "", fases: "", origen: "", destino: "",
 });
 
+// ── Estado para certificado SSL (apps hijas en modo PROVEEDOR) ──
+const [certificadoApps, setCertificadoApps] = useState<
+  { nombreAplicacion?: string | null; url?: string | null; fechaInicio?: string | null; fechaFin?: string | null }[]
+>([]);
+const [currentCertApp, setCurrentCertApp] = useState<{
+  nombreAplicacion?: string | null; url?: string | null; fechaInicio?: string | null; fechaFin?: string | null
+}>({ nombreAplicacion: "", url: "", fechaInicio: "", fechaFin: "" });
+
 useEffect(() => {
   if (open) {
     const d  = DEFAULTS_POR_TIPO[tipo]  ?? { ubicacion: "", propietario: "", custodio: "", codigoServicio: "" };
@@ -181,18 +192,51 @@ if (!open) return null;
   };
 
   /* ── Cerrar y limpiar (idéntico al original) ── */
+  /* ── Handlers para Certificado SSL (apps hijas en modo PROVEEDOR) ── */
+  const handleAddCertApp = () => {
+    if (!currentCertApp.nombreAplicacion?.trim() && !currentCertApp.url?.trim()) return;
+    // Hereda las fechas del proveedor si la app no tiene fechas propias
+    const app = {
+      nombreAplicacion: currentCertApp.nombreAplicacion || null,
+      url: currentCertApp.url || null,
+      fechaInicio: currentCertApp.fechaInicio || detalle.fechaInicio || null,
+      fechaFin: currentCertApp.fechaFin || detalle.fechaFin || null,
+    };
+    setCertificadoApps([...certificadoApps, app]);
+    setCurrentCertApp({ nombreAplicacion: "", url: "", fechaInicio: "", fechaFin: "" });
+    setError(null);
+  };
+
+  const handleRemoveCertApp = (index: number) => {
+    setCertificadoApps(certificadoApps.filter((_, i) => i !== index));
+    setError(null);
+  };
+
+  const handleCertAppFieldChange = (field: string, value: string) => {
+    setCurrentCertApp({ ...currentCertApp, [field]: value || null });
+    setError(null);
+  };
+
+  /* ── Cerrar y limpiar (idéntico al original) ── */
   const handleClose = () => {
     setGeneral({ nombre: "", ubicacion: "", propietario: "", custodio: "", codigoServicio: "" });
     setDetalle({ ipInterna: "", sistemaOperativo: "", vramMb: "", vcpu: "", uni: "1" });
     setVpnRules([]);
     setCurrentRule({ conexion: "", fases: "", origen: "", destino: "" });
+    setCertificadoApps([]);
+    setCurrentCertApp({ nombreAplicacion: "", url: "", fechaInicio: "", fechaFin: "" });
     setError(null);
     onClose();
   };
 
-  /* ── Submit (idéntico al original — no se toca) ── */
+  /* ── Submit ── */
   const handleSubmit = async () => {
-    if (!general.nombre.trim()) {
+    // Para Certificado SSL, auto-generar nombre si está vacío
+    const nombreFinal = tipo === "CERTIFICADO_SSL" && !general.nombre.trim()
+      ? (detalle.nombreDominio || detalle.nombreAplicacion || detalle.proveedor || "Certificado SSL")
+      : general.nombre.trim();
+
+    if (tipo !== "CERTIFICADO_SSL" && !general.nombre.trim()) {
       setError("El nombre es obligatorio.");
       return;
     }
@@ -229,16 +273,21 @@ if (!open) return null;
                     : tipo === "BASE_DATOS" ? "baseDatos"
                     : tipo === "VPN"        ? "vpn"
                     : tipo === "MOVIL"      ? "movil"
+                    : tipo === "CERTIFICADO_SSL" ? "certificadoSsl"
                     : null;
 
       const payload: any = {
         tipo,
-        nombre:         general.nombre.trim()         || null,
-        ubicacion:      general.ubicacion.trim()      || null,
-        propietario:    general.propietario.trim()    || null,
-        custodio:       general.custodio.trim()       || null,
-        codigoServicio: general.codigoServicio.trim() || null,
+        nombre:         nombreFinal         || null,
       };
+
+      // Solo agregar campos generales si NO es certificado SSL
+      if (tipo !== "CERTIFICADO_SSL") {
+        payload.ubicacion      = general.ubicacion.trim()      || null;
+        payload.propietario    = general.propietario.trim()    || null;
+        payload.custodio       = general.custodio.trim()       || null;
+        payload.codigoServicio = general.codigoServicio.trim() || null;
+      }
 
       if (tipoKey && Object.keys(detalleConvertido).length > 0) {
         if (tipo === "MOVIL") {
@@ -251,6 +300,16 @@ if (!open) return null;
               fases:    rule.fases    ?? null,
               origen:   rule.origen   ?? null,
               destino:  rule.destino  ?? null,
+            })),
+          };
+        } else if (tipo === "CERTIFICADO_SSL") {
+          payload[tipoKey] = {
+            ...detalleConvertido,
+            aplicaciones: certificadoApps.map(app => ({
+              nombreAplicacion: app.nombreAplicacion ?? null,
+              url: app.url ?? null,
+              fechaInicio: app.fechaInicio ?? null,
+              fechaFin: app.fechaFin ?? null,
             })),
           };
         } else {
@@ -402,51 +461,53 @@ if (!open) return null;
             </div>
           )}
 
-          {/* Información General */}
-          <FormSection title="Información General" icon="🏷️">
-            <Field
-              label="Nombre" field="nombre"
-              value={general.nombre} onChange={handleGeneral}
-              required
-              placeholder={
-                tipo === "VPN"      ? "Ej: ALFAGL_BACKUP" :
-                tipo === "MOVIL"    ? "Ej: Movil 001"     :
-                tipo === "SERVIDOR" ? "Ej: SRV-PROD-01"   :
-                "Ej: EQUIPO-001"
-              }
-            />
-            {mostrarCodigo && (
+          {/* Información General — oculto para Certificado SSL */}
+          {tipo !== "CERTIFICADO_SSL" && (
+            <FormSection title="Información General" icon="🏷️">
               <Field
-                label="Código de Servicio" field="codigoServicio"
-                value={general.codigoServicio} onChange={handleGeneral}
-                placeholder="Ej: FLP0520"
+                label="Nombre" field="nombre"
+                value={general.nombre} onChange={handleGeneral}
+                required
+                placeholder={
+                  tipo === "VPN"      ? "Ej: ALFAGL_BACKUP" :
+                  tipo === "MOVIL"    ? "Ej: Movil 001"     :
+                  tipo === "SERVIDOR" ? "Ej: SRV-PROD-01"   :
+                  "Ej: EQUIPO-001"
+                }
               />
-            )}
-           
-{mostrarUbicacion && (
-  <AutocompleteField
-    label="Ubicación"
-    field="ubicacion"
-    value={general.ubicacion}
-    onChange={handleGeneral}
-    tipo={"ASSET" as any}
-  />
-)}
-            {mostrarPropietario && (
-              <Field
-                label="Propietario" field="propietario"
-                value={general.propietario} onChange={handleGeneral}
-                placeholder="Ej: Gerencia TI"
-              />
-            )}
-            {mostrarCustodio && (
-              <Field
-                label="Custodio" field="custodio"
-                value={general.custodio} onChange={handleGeneral}
-                placeholder="Ej: Juan Pérez"
-              />
-            )}
-          </FormSection>
+              {mostrarCodigo && (
+                <Field
+                  label="Código de Servicio" field="codigoServicio"
+                  value={general.codigoServicio} onChange={handleGeneral}
+                  placeholder="Ej: FLP0520"
+                />
+              )}
+              
+              {mostrarUbicacion && (
+                <AutocompleteField
+                  label="Ubicación"
+                  field="ubicacion"
+                  value={general.ubicacion}
+                  onChange={handleGeneral}
+                  tipo={"ASSET" as any}
+                />
+              )}
+              {mostrarPropietario && (
+                <Field
+                  label="Propietario" field="propietario"
+                  value={general.propietario} onChange={handleGeneral}
+                  placeholder="Ej: Gerencia TI"
+                />
+              )}
+              {mostrarCustodio && (
+                <Field
+                  label="Custodio" field="custodio"
+                  value={general.custodio} onChange={handleGeneral}
+                  placeholder="Ej: Juan Pérez"
+                />
+              )}
+            </FormSection>
+          )}
 
           {/* Formulario específico por tipo */}
           {tipo === "SERVIDOR"   && <FormServidor data={detalle} onChange={handleDetalle} />}
@@ -465,6 +526,17 @@ if (!open) return null;
             />
           )}
           {tipo === "MOVIL" && <FormMovil data={detalle} onChange={handleDetalle} />}
+          {tipo === "CERTIFICADO_SSL" && (
+            <FormCertificadoSsl
+              data={detalle}
+              onChange={handleDetalle}
+              certificadoApps={certificadoApps}
+              currentCertApp={currentCertApp}
+              onAddCertApp={handleAddCertApp}
+              onRemoveCertApp={handleRemoveCertApp}
+              onCertAppFieldChange={handleCertAppFieldChange}
+            />
+          )}
         </div>
 
         {/* ── Footer ── */}
@@ -491,12 +563,12 @@ if (!open) return null;
           </button>
           <button
             onClick={handleSubmit}
-            disabled={!general.nombre}
+            disabled={tipo !== "CERTIFICADO_SSL" && !general.nombre}
             style={{
               flex: 1, padding: "12px 16px", borderRadius: 8, border: "none",
-              background: !general.nombre ? "#ddd" : C.grad,
+              background: (tipo !== "CERTIFICADO_SSL" && !general.nombre) ? "#ddd" : C.grad,
               color: "#fff", fontSize: 13, fontWeight: 800,
-              cursor: !general.nombre ? "not-allowed" : "pointer",
+              cursor: (tipo !== "CERTIFICADO_SSL" && !general.nombre) ? "not-allowed" : "pointer",
               transition: "all 0.15s ease",
               letterSpacing: "0.02em",
               boxShadow: !general.nombre ? "none" : "0 4px 12px rgba(183,49,44,0.25)",

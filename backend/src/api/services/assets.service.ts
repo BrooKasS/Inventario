@@ -10,6 +10,7 @@ import { Vpn } from "../../entities/Vpn";
 import { VpnRule } from "../../entities/VpnRule";
 import { Movil } from "../../entities/Movil";
 import { EstadoMovil } from "../../entities/Movil";
+import { CertificadoSsl } from "../../entities/CertificadoSsl";
 import { FindOptionsWhere, In, IsNull, Not } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { generarPdfDevolucion, generarPdfEntrega } from "../utils/generarMovilDocx";
@@ -22,7 +23,7 @@ import { sendToFlowDevolucion, sendToFlowFirmarDevolucion, sendToFlowArchivoDevo
 import { validateAssetData, isCreatedToday } from "../utils/validationRules";
 import { OcsServerMapping } from "../../entities/OcsServerMapping";
 import { SoftwareInstalado } from "../../entities/SoftwareInstalado";
-
+import { CertificadoSslApp } from "../../entities/CertificadoSslApp";
 
 
 export class AssetsService {
@@ -39,8 +40,8 @@ export class AssetsService {
     // ------------------------------------------------------------------------
     let vpnPrincipalesIds: string[] = [];
     if (tipo === "VPN") {
-      // Query: GROUP BY conexion para obtener 1 VPN por cada IP única
-      // Solo agrupa VPNs con conexion válida (IS NOT NULL)
+      // Query: GROUP BY conexion para obtener 1 VPN por cada IP ï¿½nica
+      // Solo agrupa VPNs con conexion vï¿½lida (IS NOT NULL)
       const vpnPrincipales = await vpnRepository
         .createQueryBuilder("vpn")
         .select("MIN(vpn.id)", "id")
@@ -55,7 +56,7 @@ export class AssetsService {
     }
 
     // ------------------------------------------------------------------------
-    // BÚSQUEDA CON QUERY (filtro por nombre/código)
+    // Bï¿½SQUEDA CON QUERY (filtro por nombre/cï¿½digo)
     // ------------------------------------------------------------------------
     if (q) {
       const qb = assetRepository
@@ -67,6 +68,8 @@ export class AssetsService {
         .leftJoinAndSelect("asset.vpn", "vpn")
         .leftJoinAndSelect("vpn.reglas", "vpnRules")
         .leftJoinAndSelect("asset.movil", "movil")
+        .leftJoinAndSelect("asset.certificadoSsl", "certificadoSsl")
+        .leftJoinAndSelect("certificadoSsl.aplicaciones",  "aplicaciones")
         .where("asset.deletedAt IS NULL");
 
       if (tipo) {
@@ -103,7 +106,7 @@ export class AssetsService {
     }
 
     // ------------------------------------------------------------------------
-    // BÚSQUEDA SIN QUERY (solo filtro por tipo)
+    // Bï¿½SQUEDA SIN QUERY (solo filtro por tipo)
     // ------------------------------------------------------------------------
     const qb = assetRepository
       .createQueryBuilder("asset")
@@ -114,6 +117,8 @@ export class AssetsService {
       .leftJoinAndSelect("asset.vpn", "vpn")
       .leftJoinAndSelect("vpn.reglas", "vpnRules")
       .leftJoinAndSelect("asset.movil", "movil")
+      .leftJoinAndSelect("asset.certificadoSsl", "certificadoSsl")
+      .leftJoinAndSelect("certificadoSsl.aplicaciones",  "aplicaciones")
       .where("asset.deletedAt IS NULL");
 
     if (tipo) {
@@ -159,21 +164,23 @@ export class AssetsService {
       .leftJoinAndSelect("asset.vpn", "vpn")
       .leftJoinAndSelect("vpn.reglas", "reglas")
       .leftJoinAndSelect("asset.movil", "movil")
+      .leftJoinAndSelect("asset.certificadoSsl", "certificadoSsl")
+      .leftJoinAndSelect("certificadoSsl.aplicaciones",  "aplicaciones")
       .where("asset.id = :id", { id })
       .getOne();
 
     if (!asset) throw new Error("Asset no encontrado");
     
     // ----------------------------------------------------------------
-    // SI ES VPN: CARGAR TAMBIÉN LAS REGLAS HISTÓRICAS (VPNs hermanas)
+    // SI ES VPN: CARGAR TAMBIï¿½N LAS REGLAS HISTï¿½RICAS (VPNs hermanas)
     // ----------------------------------------------------------------
     if (asset.vpn && asset.vpn.conexion) {
-      // Buscar todas las VPNs con el mismo conexion (reglas históricas)
+      // Buscar todas las VPNs con el mismo conexion (reglas histï¿½ricas)
       const vpnRelacionadas = await vpnRepository.find({
         where: { conexion: asset.vpn.conexion },
       });
       
-      // Filtrar: excluir la VPN principal (la del asset), el resto son históricas
+      // Filtrar: excluir la VPN principal (la del asset), el resto son histï¿½ricas
       const reglasHistoricas = vpnRelacionadas.filter((v: Vpn) => v.id !== asset.vpn!.id);
       
       // Guardar en un campo adicional (compatible con frontend)
@@ -192,18 +199,18 @@ export class AssetsService {
   }
 
   async createAsset(data: any, autor: string = "Sistema") {
-    const {
+const {
       tipo, nombre, ubicacion, propietario, custodio, codigoServicio,
-      servidor, red, ups, baseDatos, vpn,
+      servidor, red, ups, baseDatos, vpn, certificadoSsl,
       numeroCaso, region, dependencia, sede, cedula, usuarioRed,
       correoResponsable, uni, marca, modelo, serial, imei1, imei2,
       sim, numeroLinea, fechaEntrega, observacionesEntrega,
     } = data;
 
-    // ? VALIDACIÓN: nuevas entradas SIEMPRE se validan
+    // ? VALIDACIï¿½N: nuevas entradas SIEMPRE se validan
     const { valid, errors } = validateAssetData(tipo, data, true);
     if (!valid) {
-      throw new Error(`Validación fallida: ${errors.join(", ")}`);
+      throw new Error(`Validaciï¿½n fallida: ${errors.join(", ")}`);
     }
 
     const assetRepository     = AppDataSource.getRepository(Asset);
@@ -215,7 +222,9 @@ export class AssetsService {
     const vpnRepository       = AppDataSource.getRepository(Vpn);
     const vpnRuleRepository   = AppDataSource.getRepository(VpnRule);
     const movilRepository     = AppDataSource.getRepository(Movil);
-
+    const certificadoSslRepository = AppDataSource.getRepository(CertificadoSsl);
+    const certificadoSslAppRepository =  AppDataSource.getRepository(CertificadoSslApp);
+      
     // -- Crear Asset base --
     const asset = assetRepository.create({
       tipo,
@@ -267,7 +276,7 @@ export class AssetsService {
         const vpnRulesToSave = reglas.map((regla: any) => {
           const rule = vpnRuleRepository.create({
             id: uuidv4(),
-            vpn: savedVpn, // ? TypeORM maneja el VPN_ID automáticamente
+            vpn: savedVpn, // ? TypeORM maneja el VPN_ID automï¿½ticamente
             conexion: regla.conexion ?? null,
             fases: regla.fases ?? null,
             origen: regla.origen ?? null,
@@ -277,6 +286,47 @@ export class AssetsService {
         });
         
         await vpnRuleRepository.save(vpnRulesToSave);
+      }
+    }
+
+    // -- CERTIFICADO SSL --
+    if (tipo === "CERTIFICADO_SSL" && certificadoSsl) {
+      const { nombreAplicacion, nombreDominio, proveedor, url, fechaInicio, fechaFin } = certificadoSsl;
+      const certData = certificadoSslRepository.create({
+        id: uuidv4(),
+        asset: savedAsset,
+        tipoCertificado: certificadoSsl.tipoCertificado ?? null,
+        nombreAplicacion: nombreAplicacion ?? null,
+        nombreDominio:    nombreDominio    ?? null,
+        proveedor:        proveedor        ?? null,
+        url:              url              ?? null,
+        fechaInicio:      fechaInicio      ? new Date(fechaInicio) : null,
+        fechaFin:         fechaFin         ? new Date(fechaFin)    : null,
+      });
+      const savedCert =
+        await certificadoSslRepository.save(certData);
+
+      if (
+        certificadoSsl.aplicaciones &&
+        Array.isArray(certificadoSsl.aplicaciones) &&
+        certificadoSsl.aplicaciones.length > 0
+      ) {
+        const apps = certificadoSsl.aplicaciones.map((app: any) =>
+          certificadoSslAppRepository.create({
+            id: uuidv4(),
+            certificadoSsl: savedCert,
+            nombreAplicacion: app.nombreAplicacion ?? null,
+            url: app.url ?? null,
+            fechaInicio: app.fechaInicio
+              ? new Date(app.fechaInicio)
+              : null,
+            fechaFin: app.fechaFin
+              ? new Date(app.fechaFin)
+              : null,
+          })
+        );
+      
+        await certificadoSslAppRepository.save(apps);
       }
     }
 
@@ -307,7 +357,7 @@ export class AssetsService {
 
       await movilRepository.save(movilData);
 
-      // Generar acta de ENTREGA (sin datos de devolución)
+      // Generar acta de ENTREGA (sin datos de devoluciï¿½n)
       const bufferEntrega = await generarPdfEntrega({
         nombre:               savedAsset.nombre,
         numeroCaso,
@@ -357,7 +407,7 @@ export class AssetsService {
       }
     }
 
-    // -- Bitácora creación --
+    // -- Bitï¿½cora creaciï¿½n --
     await bitacoraRepository.save(
       bitacoraRepository.create({
         asset:       savedAsset,
@@ -367,7 +417,7 @@ export class AssetsService {
       })
     );
 
-    // Retornar con QueryBuilder para cargar correctamente reglas VPN anidadas
+    // Retornar con QueryBuilder para cargar correctamente todas las relaciones
     return assetRepository
       .createQueryBuilder("asset")
       .leftJoinAndSelect("asset.servidor", "servidor")
@@ -377,6 +427,8 @@ export class AssetsService {
       .leftJoinAndSelect("asset.vpn", "vpn")
       .leftJoinAndSelect("vpn.reglas", "reglas")
       .leftJoinAndSelect("asset.movil", "movil")
+      .leftJoinAndSelect("asset.certificadoSsl", "certificadoSsl")
+      .leftJoinAndSelect("certificadoSsl.aplicaciones", "aplicaciones")
       .where("asset.id = :id", { id: savedAsset.id })
       .getOne();
   }
@@ -424,7 +476,7 @@ export class AssetsService {
         });
       }
     } catch (error) {
-      console.warn("?? Error en envío de correos:", error);
+      console.warn("?? Error en envï¿½o de correos:", error);
     }
 
     await bitacoraRepo.save(
@@ -538,7 +590,7 @@ export class AssetsService {
       console.error("?? Error enviando acta de entrega firmada al Flow:", error);
     }
 
-    // 4?? Bitácora final
+    // 4?? Bitï¿½cora final
     await bitacoraRepo.save(
       bitacoraRepo.create({
         asset:       asset,
@@ -569,10 +621,10 @@ export class AssetsService {
 
       const estadoActual = movil.estados as EstadoMovil | "PENDIENTE" | null;
       if (estadoActual !== "PENDIENTE_DEVOLUCION" && estadoActual !== "PENDIENTE") {
-        throw new Error("El activo no está listo para firma de devolución");
+        throw new Error("El activo no estï¿½ listo para firma de devoluciï¿½n");
       }
 
-      // Guardar firma de devolución
+      // Guardar firma de devoluciï¿½n
       const firmaBuffer = Buffer.from(
         firmaBase64.replace(/^data:image\/png;base64,/, ""),
         "base64"
@@ -591,7 +643,7 @@ export class AssetsService {
         { fechaDevolucion, estados: "DEVUELTO" }
       );
 
-      // Generar SOLO el acta de DEVOLUCIÓN
+      // Generar SOLO el acta de DEVOLUCIï¿½N
       const bufferDevolucion = await generarPdfDevolucion({
         ...movil,
         nombre:         movil.asset.nombre,
@@ -599,7 +651,7 @@ export class AssetsService {
         fechaDevolucion,
       });
 
-      // Enviar acta de DEVOLUCIÓN al Flow
+      // Enviar acta de DEVOLUCIï¿½N al Flow
       try {
         const nombreArchivo = `Acta_Devolucion_${movil.asset.nombre?.replace(/\s+/g, "_")}.pdf`;
 
@@ -611,16 +663,16 @@ export class AssetsService {
           archivoBase64: bufferDevolucion.toString("base64"),
         });
       } catch (flowError) {
-        console.error("?? Error enviando acta de devolución al Flow:", flowError);
+        console.error("?? Error enviando acta de devoluciï¿½n al Flow:", flowError);
       }
 
-      // Bitácora
+      // Bitï¿½cora
       await bitacoraRepo.save(
         bitacoraRepo.create({
           asset:       movil.asset,
           autor:       "Usuario",
           tipoEvento:  "NOTA",
-          descripcion: "Devolución firmada correctamente. Acta de devolución generada y enviada.",
+          descripcion: "Devoluciï¿½n firmada correctamente. Acta de devoluciï¿½n generada y enviada.",
         })
       );
 
@@ -645,18 +697,128 @@ export class AssetsService {
     const vpnRuleRepository   = AppDataSource.getRepository(VpnRule);
     const movilRepository     = AppDataSource.getRepository(Movil);
     const bitacoraRepository  = AppDataSource.getRepository(Bitacora);
+    const certificadoSslRepository = AppDataSource.getRepository(CertificadoSsl);
+    const certificadoSslAppRepository = AppDataSource.getRepository(CertificadoSslApp);
 
     const asset = await assetRepository.findOne({
       where: { id },
-      relations: ["servidor", "red", "ups", "baseDatos", "vpn", "vpn.reglas", "movil"],
+      relations: ["servidor", "red", "ups", "baseDatos", "vpn", "vpn.reglas", "movil", "certificadoSsl", "certificadoSsl.aplicaciones",],
     });
 
-    if (!data || typeof data !== "object") throw new Error("Body inválido");
+    if (!data || typeof data !== "object") throw new Error("Body invï¿½lido");
     if (!asset) throw new Error("Asset no encontrado");
 
-    // ? VALIDACIÓN PATCH-SAFE:
+    const updates: Partial<Asset> = {};
+    const bitacoraEntries: any[]  = [];
+    if (
+      asset.tipo === "CERTIFICADO_SSL" &&
+      asset.certificadoSsl &&
+      data.certificadoSsl
+    ) {
+      const cert = asset.certificadoSsl;
+    
+      const certUpdates: any = {};
+    
+      Object.keys(data.certificadoSsl).forEach((key) => {
+      
+        if (key === "aplicaciones") return;
+      
+        const oldVal = (cert as any)[key];
+        const newVal = data.certificadoSsl[key];
+      
+        if (newVal !== undefined && newVal !== oldVal) {
+        
+          certUpdates[key] = newVal;
+        
+          bitacoraEntries.push({
+            campoModificado: key,
+            valorAnterior: String(oldVal ?? ""),
+            valorNuevo: String(newVal ?? ""),
+          });
+        }
+      });
+    
+      if (certUpdates.fechaInicio) {
+        certUpdates.fechaInicio =
+          new Date(certUpdates.fechaInicio);
+      }
+    
+      if (certUpdates.fechaFin) {
+        certUpdates.fechaFin =
+          new Date(certUpdates.fechaFin);
+      }
+    
+      if (Object.keys(certUpdates).length > 0) {
+        await certificadoSslRepository.update(
+          { id: cert.id },
+          certUpdates
+        );
+      }
+    
+      // ----------------------------------------
+      // Aplicaciones hijas
+      // ----------------------------------------
+    
+      if (
+        data.certificadoSsl.aplicaciones !== undefined
+      ) {
+      
+        await certificadoSslAppRepository.delete({
+          certificadoSsl: {
+            id: cert.id,
+          },
+        });
+      
+        const apps =
+          data.certificadoSsl.aplicaciones || [];
+      
+        if (apps.length > 0) {
+        
+          const nuevasApps = apps.map(
+            (app: any) =>
+              certificadoSslAppRepository.create({
+                id: uuidv4(),
+                certificadoSsl: cert,
+              
+                nombreAplicacion:
+                  app.nombreAplicacion ?? null,
+              
+                url:
+                  app.url ?? null,
+              
+                fechaInicio:
+                  app.fechaInicio
+                    ? new Date(app.fechaInicio)
+                    : null,
+              
+                fechaFin:
+                  app.fechaFin
+                    ? new Date(app.fechaFin)
+                    : null,
+              })
+          );
+        
+          await certificadoSslAppRepository.save(
+            nuevasApps
+          );
+        }
+      
+        bitacoraEntries.push({
+          campoModificado: "aplicaciones",
+          valorAnterior:
+            String(
+              cert.aplicaciones?.length ?? 0
+            ),
+          valorNuevo:
+            String(
+              apps.length
+            ),
+        });
+      }
+    }
+    // ? VALIDACIï¿½N PATCH-SAFE:
     // Si el registro fue creado hoy, se valida el resultado final (actual + cambios),
-    // no solo el body parcial. Así editar un solo campo no dispara falsos obligatorios.
+    // no solo el body parcial. Asï¿½ editar un solo campo no dispara falsos obligatorios.
     const isNewRecord = isCreatedToday(asset.creadoEn);
     if (isNewRecord) {
       const dataToValidate: any = { ...asset, ...data };
@@ -682,12 +844,10 @@ export class AssetsService {
 
       const { valid, errors } = validateAssetData(asset.tipo, dataToValidate, true);
       if (!valid) {
-        throw new Error(`Validación fallida: ${errors.join(", ")}`);
+        throw new Error(`Validaciï¿½n fallida: ${errors.join(", ")}`);
       }
     }
 
-    const updates: Partial<Asset> = {};
-    const bitacoraEntries: any[]  = [];
 
     if (data.nombre !== undefined && data.nombre !== asset.nombre) {
       updates.nombre = data.nombre;
@@ -835,16 +995,16 @@ export class AssetsService {
         const oldVal = (movil as any)[key];
         const newVal = data.movil[key];
 
-        // El estado solo cambia por los endpoints del flujo, nunca por edición general.
+        // El estado solo cambia por los endpoints del flujo, nunca por ediciï¿½n general.
         if (key === "estados") {
           if (newVal !== undefined && newVal !== oldVal) {
-            throw new Error("El estado del móvil no se puede editar manualmente desde el formulario. Usa el flujo de entrega/devolución.");
+            throw new Error("El estado del mï¿½vil no se puede editar manualmente desde el formulario. Usa el flujo de entrega/devoluciï¿½n.");
           }
           return;
         }
 
         if (movil.estados === "DEVUELTO" && newVal !== undefined && newVal !== oldVal) {
-          throw new Error("No puedes editar los datos del móvil porque el proceso ya está cerrado como DEVUELTO.");
+          throw new Error("No puedes editar los datos del mï¿½vil porque el proceso ya estï¿½ cerrado como DEVUELTO.");
         }
 
         if (movil.firmaPath && camposBloqueadosConFirma.has(key) && newVal !== undefined && newVal !== oldVal) {
@@ -915,7 +1075,7 @@ export class AssetsService {
     // ----------------------------------------------------------------
     const vpnRepository = AppDataSource.getRepository(Vpn);
 
-// Contar VPNs principales (1 por conexión única)
+// Contar VPNs principales (1 por conexiï¿½n ï¿½nica)
 const vpnPrincipalesCount = await vpnRepository
   .createQueryBuilder("vpn")
   .select("COUNT(DISTINCT vpn.conexion)", "cnt")
@@ -982,7 +1142,7 @@ return {
     if (asset.tipo === "MOVIL" && asset.movil) {
       if (asset.movil.estados !== "DEVUELTO" && asset.movil.estados !== null) {
         throw new Error(
-          "No puedes deshabilitar este activo porque el equipo aún está en manos del empleado. Completa el proceso de devolución primero."
+          "No puedes deshabilitar este activo porque el equipo aï¿½n estï¿½ en manos del empleado. Completa el proceso de devoluciï¿½n primero."
         );
       }
     }
@@ -998,7 +1158,7 @@ return {
         asset: { id },
         autor,
         tipoEvento:  "NOTA",
-        descripcion: "Activo deshabilitado y movido a histórico.",
+        descripcion: "Activo deshabilitado y movido a histï¿½rico.",
       })
     );
 
@@ -1066,10 +1226,10 @@ return {
       await vpnRuleRepository.delete({ vpn: { id: asset.vpn.id } });
     }
 
-    // 3. Borrar bitácora
+    // 3. Borrar bitï¿½cora
     await bitacoraRepository.delete({ asset: { id } });
 
-    // 4. Borrar relaciones específicas por tipo
+    // 4. Borrar relaciones especï¿½ficas por tipo
     await servidorRepository.delete({ asset: { id } });
     await redRepository.delete({ asset: { id } });
     await upsRepository.delete({ asset: { id } });
@@ -1200,7 +1360,7 @@ return {
     : "%";
 
   if (!/^[A-Za-z0-9_]+$/.test(column)) {
-    console.error(`[getSuggestions] Columna inválida: "${column}"`);
+    console.error(`[getSuggestions] Columna invï¿½lida: "${column}"`);
     return [];
   }
 

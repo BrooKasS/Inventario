@@ -13,6 +13,8 @@ import { Bitacora } from "../entities/Bitacora";
 import { OcsServerMapping} from "../entities/OcsServerMapping";
 import { SoftwareInstalado } from "../entities/SoftwareInstalado";
 import { MobileStaging } from "../entities/MobileStaging.entity";
+import { CertificadoSsl } from "../entities/CertificadoSsl";
+import { CertificadoSslApp } from "../entities/CertificadoSslApp";
 
 //agarra el .env del backend
 export const AppDataSource = new DataSource({
@@ -41,8 +43,10 @@ export const AppDataSource = new DataSource({
     Movil,
     Bitacora,
     OcsServerMapping,
-    SoftwareInstalado,
+SoftwareInstalado,
     MobileStaging,
+    CertificadoSsl,
+    CertificadoSslApp,
   ],
 
   // Migraciones automáticas SOLO en producción

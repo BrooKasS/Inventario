@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Asset, Vpn, VpnRule } from "../../types";
 import {
   Field,
@@ -7,6 +7,7 @@ import {
   EditAutoField,
   EditDateField,
 } from "./DetailComponents";
+import { inputStyle, labelStyle } from "./constants";
 
 /* ═══════════════════════════════════════════
    SERVIDOR SECTIONS
@@ -27,141 +28,27 @@ export function ServidorSections({
 
   return (
     <>
-      {/* ── Red ── */}
       <Section title="Red" icon="🌐">
-        <Field
-          label="IP Interna"
-          value={s.ipInterna}
-          editing={editing}
-          field="ipInterna"
-          onChange={hc}
-        />
-        <Field
-          label="IP Gestión"
-          value={s.ipGestion}
-          editing={editing}
-          field="ipGestion"
-          onChange={hc}
-        />
-        <Field
-          label="IP Servicio"
-          value={s.ipServicio}
-          editing={editing}
-          field="ipServicio"
-          onChange={hc}
-        />
+        <Field label="IP Interna" value={s.ipInterna} editing={editing} field="ipInterna" onChange={hc} />
+        <Field label="IP Gestión" value={s.ipGestion} editing={editing} field="ipGestion" onChange={hc} />
+        <Field label="IP Servicio" value={s.ipServicio} editing={editing} field="ipServicio" onChange={hc} />
       </Section>
 
-      {/* ── Recursos ── */}
       <Section title="Recursos" icon="⚙️">
-        {/*
-          vcpu / vramMb: AutocompleteField porque los valores existentes
-          en BD son numéricos variados — el usuario puede querer sugerir
-          lo que ya existe.
-        */}
-        <EditAutoField
-          label="vCPU"
-          value={s.vcpu != null ? String(s.vcpu) : null}
-          field="vcpu"
-          editing={editing}
-          onChange={hc}
-          tipo="SERVIDOR"
-          placeholder="Ej: 4"
-        />
-        <EditAutoField
-          label="vRAM (MB)"
-          value={s.vramMb != null ? String(s.vramMb) : null}
-          field="vramMb"
-          editing={editing}
-          onChange={hc}
-          tipo="SERVIDOR"
-          placeholder="Ej: 8192"
-        />
-        <EditAutoField
-          label="Sistema Operativo"
-          value={s.sistemaOperativo}
-          field="sistemaOperativo"
-          editing={editing}
-          onChange={hc}
-          tipo="SERVIDOR"
-          placeholder="Ej: Windows Server 2019"
-        />
+        <EditAutoField label="vCPU" value={s.vcpu != null ? String(s.vcpu) : null} field="vcpu" editing={editing} onChange={hc} tipo="SERVIDOR" placeholder="Ej: 4" />
+        <EditAutoField label="vRAM (MB)" value={s.vramMb != null ? String(s.vramMb) : null} field="vramMb" editing={editing} onChange={hc} tipo="SERVIDOR" placeholder="Ej: 8192" />
+        <EditAutoField label="Sistema Operativo" value={s.sistemaOperativo} field="sistemaOperativo" editing={editing} onChange={hc} tipo="SERVIDOR" placeholder="Ej: Windows Server 2019" />
       </Section>
 
-      {/* ── Operación ── */}
       <Section title="Operación" icon="🔧">
-        {/*
-          ambiente / tipoServidor / monitoreo / backup: SelectField porque
-          son vocabulario controlado igual que en el Create.
-          Opciones idénticas a FIELD_MODE SERVIDOR en forms.tsx.
-        */}
-        <EditSelectField
-          label="Ambiente"
-          value={s.ambiente}
-          field="ambiente"
-          editing={editing}
-          onChange={hc}
-          options={["DRP", "PRODUCCIÓN", "PRUEBAS", "VALIDAR"]}
-        />
-        <EditSelectField
-          label="Tipo Servidor"
-          value={s.tipoServidor}
-          field="tipoServidor"
-          editing={editing}
-          onChange={hc}
-          options={["FÍSICO", "VIRTUAL", "NUBE"]}
-        />
-        <EditAutoField
-          label="Aplicación que soporta"
-          value={s.appSoporta}
-          field="appSoporta"
-          editing={editing}
-          onChange={hc}
-          tipo="SERVIDOR"
-        />
-        <EditSelectField
-          label="Monitoreo"
-          value={s.monitoreo}
-          field="monitoreo"
-          editing={editing}
-          onChange={hc}
-          options={["SI", "NO"]}
-        />
-        <EditSelectField
-          label="Backup"
-          value={s.backup}
-          field="backup"
-          editing={editing}
-          onChange={hc}
-          options={["SI", "NO"]}
-        />
-        <EditAutoField
-          label="Rutas de Backup"
-          value={s.rutasBackup}
-          field="rutasBackup"
-          editing={editing}
-          onChange={hc}
-          tipo="SERVIDOR"
-        />
-        {/*
-          fechaFinSoporte: EditDateField porque Field no soporta type="date"
-          y se perdía el date picker nativo.
-        */}
-        <EditDateField
-          label="Fecha Fin Soporte"
-          value={s.fechaFinSoporte}
-          field="fechaFinSoporte"
-          editing={editing}
-          onChange={hc}
-        />
-        <EditAutoField
-          label="Contrato que lo soporta"
-          value={s.contratoQueSoporta}
-          field="contratoQueSoporta"
-          editing={editing}
-          onChange={hc}
-          tipo="SERVIDOR"
-        />
+        <EditSelectField label="Ambiente" value={s.ambiente} field="ambiente" editing={editing} onChange={hc} options={["DRP", "PRODUCCIÓN", "PRUEBAS", "VALIDAR"]} />
+        <EditSelectField label="Tipo Servidor" value={s.tipoServidor} field="tipoServidor" editing={editing} onChange={hc} options={["FÍSICO", "VIRTUAL", "NUBE"]} />
+        <EditAutoField label="Aplicación que soporta" value={s.appSoporta} field="appSoporta" editing={editing} onChange={hc} tipo="SERVIDOR" />
+        <EditSelectField label="Monitoreo" value={s.monitoreo} field="monitoreo" editing={editing} onChange={hc} options={["SI", "NO"]} />
+        <EditSelectField label="Backup" value={s.backup} field="backup" editing={editing} onChange={hc} options={["SI", "NO"]} />
+        <EditAutoField label="Rutas de Backup" value={s.rutasBackup} field="rutasBackup" editing={editing} onChange={hc} tipo="SERVIDOR" />
+        <EditDateField label="Fecha Fin Soporte" value={s.fechaFinSoporte} field="fechaFinSoporte" editing={editing} onChange={hc} />
+        <EditAutoField label="Contrato que lo soporta" value={s.contratoQueSoporta} field="contratoQueSoporta" editing={editing} onChange={hc} tipo="SERVIDOR" />
       </Section>
     </>
   );
@@ -186,42 +73,13 @@ export function RedSection({
 
   return (
     <Section title="Equipo de Red" icon="🔌">
-      {/* serial / mac: texto libre siempre */}
       <Field label="Serial" value={r.serial} editing={editing} field="serial" onChange={hc} />
-      <Field label="MAC"    value={r.mac}    editing={editing} field="mac"    onChange={hc}  />
-      <EditAutoField
-        label="Modelo"
-        value={r.modelo}
-        field="modelo"
-        editing={editing}
-        onChange={hc}
-        tipo="RED"
-        placeholder="Ej: Cisco Catalyst 9200"
-      />
+      <Field label="MAC" value={r.mac} editing={editing} field="mac" onChange={hc} />
+      <EditAutoField label="Modelo" value={r.modelo} field="modelo" editing={editing} onChange={hc} tipo="RED" placeholder="Ej: Cisco Catalyst 9200" />
       <Field label="IP Gestión" value={r.ipGestion} editing={editing} field="ipGestion" onChange={hc} />
-      <EditSelectField
-        label="Estado"
-        value={r.estado}
-        field="estado"
-        editing={editing}
-        onChange={hc}
-        options={["ACTIVO", "DESACTIVADO"]}
-      />
-      <EditDateField
-        label="Fecha Fin Soporte"
-        value={r.fechaFinSoporte}
-        field="fechaFinSoporte"
-        editing={editing}
-        onChange={hc}
-      />
-      <EditAutoField
-        label="Contrato que lo soporta"
-        value={r.contratoQueSoporta}
-        field="contratoQueSoporta"
-        editing={editing}
-        onChange={hc}
-        tipo="RED"
-      />
+      <EditSelectField label="Estado" value={r.estado} field="estado" editing={editing} onChange={hc} options={["ACTIVO", "DESACTIVADO"]} />
+      <EditDateField label="Fecha Fin Soporte" value={r.fechaFinSoporte} field="fechaFinSoporte" editing={editing} onChange={hc} />
+      <EditAutoField label="Contrato que lo soporta" value={r.contratoQueSoporta} field="contratoQueSoporta" editing={editing} onChange={hc} tipo="RED" />
     </Section>
   );
 }
@@ -246,24 +104,9 @@ export function UpsSection({
   return (
     <Section title="UPS" icon="🔋">
       <Field label="Serial" value={u.serial} editing={editing} field="serial" onChange={hc} />
-      <Field label="Placa"  value={u.placa}  editing={editing} field="placa"  onChange={hc} />
-      <EditAutoField
-        label="Modelo"
-        value={u.modelo}
-        field="modelo"
-        editing={editing}
-        onChange={hc}
-        tipo="UPS"
-        placeholder="Ej: APC Smart-UPS 1500"
-      />
-      <EditSelectField
-        label="Estado"
-        value={u.estado}
-        field="estado"
-        editing={editing}
-        onChange={hc}
-        options={["ACTIVO", "INACTIVO", "DESCONECTADO"]}
-      />
+      <Field label="Placa" value={u.placa} editing={editing} field="placa" onChange={hc} />
+      <EditAutoField label="Modelo" value={u.modelo} field="modelo" editing={editing} onChange={hc} tipo="UPS" placeholder="Ej: APC Smart-UPS 1500" />
+      <EditSelectField label="Estado" value={u.estado} field="estado" editing={editing} onChange={hc} options={["ACTIVO", "INACTIVO", "DESCONECTADO"]} />
     </Section>
   );
 }
@@ -287,58 +130,15 @@ export function BaseDatosSection({
 
   return (
     <Section title="Base de Datos" icon="🗄️">
-      {/* servidor1/2, racScan: texto libre siempre */}
       <Field label="Servidor 1" value={b.servidor1} editing={editing} field="servidor1" onChange={hc} />
       <Field label="Servidor 2" value={b.servidor2} editing={editing} field="servidor2" onChange={hc} />
-      <Field label="RAC/Scan"   value={b.racScan}   editing={editing} field="racScan"   onChange={hc} />
-      <EditSelectField
-        label="Ambiente"
-        value={b.ambiente}
-        field="ambiente"
-        editing={editing}
-        onChange={hc}
-        options={["PRODUCCIÓN", "PRUEBAS"]}
-      />
-      <EditAutoField
-        label="Aplicación que soporta"
-        value={b.appSoporta}
-        field="appSoporta"
-        editing={editing}
-        onChange={hc}
-        tipo="BASE_DATOS"
-      />
-      {/* versionBd: texto libre */}
-      <Field
-        label="Versión BD"
-        value={b.versionBd}
-        editing={editing}
-        field="versionBd"
-        onChange={hc}
-        
-      />
-      <EditDateField
-        label="Fecha Final Soporte"
-        value={b.fechaFinalSoporte}
-        field="fechaFinalSoporte"
-        editing={editing}
-        onChange={hc}
-      />
-      <EditAutoField
-        label="Contenedor Físico"
-        value={b.contenedorFisico}
-        field="contenedorFisico"
-        editing={editing}
-        onChange={hc}
-        tipo="BASE_DATOS"
-      />
-      <EditAutoField
-        label="Contrato que lo soporta"
-        value={b.contratoQueSoporta}
-        field="contratoQueSoporta"
-        editing={editing}
-        onChange={hc}
-        tipo="BASE_DATOS"
-      />
+      <Field label="RAC/Scan" value={b.racScan} editing={editing} field="racScan" onChange={hc} />
+      <EditSelectField label="Ambiente" value={b.ambiente} field="ambiente" editing={editing} onChange={hc} options={["PRODUCCIÓN", "PRUEBAS"]} />
+      <EditAutoField label="Aplicación que soporta" value={b.appSoporta} field="appSoporta" editing={editing} onChange={hc} tipo="BASE_DATOS" />
+      <Field label="Versión BD" value={b.versionBd} editing={editing} field="versionBd" onChange={hc} />
+      <EditDateField label="Fecha Final Soporte" value={b.fechaFinalSoporte} field="fechaFinalSoporte" editing={editing} onChange={hc} />
+      <EditAutoField label="Contenedor Físico" value={b.contenedorFisico} field="contenedorFisico" editing={editing} onChange={hc} tipo="BASE_DATOS" />
+      <EditAutoField label="Contrato que lo soporta" value={b.contratoQueSoporta} field="contratoQueSoporta" editing={editing} onChange={hc} tipo="BASE_DATOS" />
     </Section>
   );
 }
@@ -642,6 +442,146 @@ export function VpnSection({
    "editing" plano. Ver lógica puedeEditar* abajo.
    NO cambiar esta lógica — es diseño intencional.
 ═══════════════════════════════════════════ */
+/* ─── Helper: Días restantes con color ─── */
+function DiasRestantesBadge({ fecha }: { fecha: string | null | undefined }) {
+  if (!fecha) return null;
+  const ahora = new Date();
+  const fin = new Date(fecha);
+  if (isNaN(fin.getTime())) return null;
+  fin.setHours(23, 59, 59, 999);
+  const diffMs = fin.getTime() - ahora.getTime();
+  const diffDias = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const diffMeses = diffDias / 30;
+
+  if (diffDias < 0) {
+    return <span style={{ color: "#c0392b", fontWeight: 800, fontSize: 12, background: "#ffebeb", padding: "2px 8px", borderRadius: 10, marginLeft: 8 }}>⚠️ VENCIDO</span>;
+  }
+
+  let color = "#27ae60";
+  if (diffMeses < 2) color = "#c0392b";
+  else if (diffMeses < 3) color = "#f39c12";
+
+  const label = diffDias >= 30
+    ? `${Math.floor(diffMeses)} mes${Math.floor(diffMeses) !== 1 ? "es" : ""} ${Math.floor(diffDias % 30)} día${Math.floor(diffDias % 30) !== 1 ? "s" : ""}`
+    : `${diffDias} día${diffDias !== 1 ? "s" : ""}`;
+
+  return (
+    <span style={{ color, fontWeight: 800, fontSize: 12, background: `${color}15`, padding: "2px 8px", borderRadius: 10, marginLeft: 8, whiteSpace: "nowrap" }}>
+      {label}
+    </span>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   CERTIFICADO SSL SECTION
+═══════════════════════════════════════════ */
+export function CertificadoSslSection({
+  asset,
+  editing,
+  handleChange,
+}: {
+  asset: Asset;
+  editing: boolean;
+  handleChange: (section: string | null, field: string, val: string) => void;
+}) {
+  const c = asset.certificadoSsl;
+  if (!c) return null;
+
+  const hc = (f: string, v: string) => handleChange("certificadoSsl", f, v);
+  const apps = c.aplicaciones ?? [];
+
+  return (
+    <>
+      <Section title="Certificado SSL" icon="🔐">
+        {/* tipoCertificado: select con 3 modos */}
+        <EditSelectField
+          label="Tipo"
+          value={c.tipoCertificado}
+          field="tipoCertificado"
+          editing={editing}
+          onChange={hc}
+          options={["DOMINIO", "APLICACION", "PROVEEDOR"]}
+        />
+        <Field
+          label="Nombre de Aplicación"
+          value={c.nombreAplicacion}
+          editing={editing}
+          field="nombreAplicacion"
+          onChange={hc}
+        />
+        {(c.tipoCertificado === "DOMINIO") && (
+          <Field
+            label="Nombre del Dominio"
+            value={c.nombreDominio}
+            editing={editing}
+            field="nombreDominio"
+            onChange={hc}
+          />
+        )}
+        
+        <Field
+          label="Proveedor"
+          value={c.proveedor}
+          editing={editing}
+          field="proveedor"
+          onChange={hc}
+        />
+        <Field
+          label="URL"
+          value={c.url}
+          editing={editing}
+          field="url"
+          onChange={hc}
+        />
+        <EditDateField
+          label="Fecha de Inicio"
+          value={c.fechaInicio}
+          field="fechaInicio"
+          editing={editing}
+          onChange={hc}
+        />
+        <EditDateField
+          label="Fecha de Vencimiento"
+          value={c.fechaFin}
+          field="fechaFin"
+          editing={editing}
+          onChange={hc}
+        />
+      </Section>
+
+      {/* Apps hijas del proveedor */}
+      {c.tipoCertificado === "PROVEEDOR" && apps.length > 0 && (
+        <Section title={`Aplicaciones del Proveedor (${apps.length})`} icon="📋">
+          {apps.map((app, idx) => (
+            <div key={idx} style={{
+              background: "#fefcfa", padding: "14px 15px", borderRadius: 8,
+              border: "1px solid #e5ddd8", marginBottom: 8,
+              gridColumn: "1 / -1",
+            }}>
+              <div style={{ fontSize: 12, color: "#1A1A1A" }}>
+                <div style={{ marginBottom: 6 }}>
+                  <span style={{ fontWeight: 700, color: "#5a4a45" }}>App:</span>{" "}
+                  <span style={{ color: "#666" }}>{app.nombreAplicacion || "—"}</span>
+                </div>
+                <div style={{ marginBottom: 6 }}>
+                  <span style={{ fontWeight: 700, color: "#5a4a45" }}>URL:</span>{" "}
+                  <span style={{ color: "#666" }}>{app.url || "—"}</span>
+                </div>
+                <div>
+                  <span style={{ fontWeight: 700, color: "#5a4a45" }}>Fechas:</span>{" "}
+                  <span style={{ color: "#666" }}>
+                    {app.fechaInicio ? new Date(app.fechaInicio).toLocaleDateString("es-CO") : "?"} → {app.fechaFin ? new Date(app.fechaFin).toLocaleDateString("es-CO") : "?"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </Section>
+      )}
+    </>
+  );
+}
+
 export function MovilSection({
   asset,
   editing,

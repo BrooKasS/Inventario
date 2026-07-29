@@ -10,8 +10,9 @@ import { BaseDatos } from "./BaseDatos";
 import { Vpn } from "./Vpn";
 import { Movil } from "./Movil";
 import { Bitacora } from "./Bitacora";
+import { CertificadoSsl } from "./CertificadoSsl";
 
-export type TipoActivo = "SERVIDOR" | "RED" | "UPS" | "BASE_DATOS" | "VPN" | "MOVIL";
+export type TipoActivo = "SERVIDOR" | "RED" | "UPS" | "BASE_DATOS" | "VPN" | "MOVIL" | "CERTIFICADO_SSL";
 
 @Entity("ASSETS")
 @Index("IDX_ASSET_TIPO", ["tipo"])
@@ -76,6 +77,9 @@ export class Asset {
 
   @OneToOne(() => Movil, (m) => m.asset, { cascade: true })
   movil!: Movil | null;
+
+  @OneToOne(() => CertificadoSsl, (c) => c.asset, { cascade: true })
+  certificadoSsl!: CertificadoSsl | null;
 
   @OneToMany(() => Bitacora, (b) => b.asset, { cascade: true })
   bitacora!: Bitacora[];

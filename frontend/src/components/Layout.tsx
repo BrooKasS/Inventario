@@ -12,6 +12,7 @@ const nav = [
   { label: "VPN",            path: "/inventario/VPN",       icon: "🔒" },
   { label: "Móviles",        path: "/inventario/MOVIL",     icon: "📱" },
   { label: "Software",       path: "/inventario/software", icon: "💾" }, 
+  { label: "Certificados SSL", path: "/inventario/CERTIFICADO_SSL", icon: "🔐" },
   { label: "Histórico",      path: "/papelera",             icon: "🗑" },
 ];
 

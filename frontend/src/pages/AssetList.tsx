@@ -15,6 +15,7 @@ const TIPO_LABEL: Record<string, string> = {
   UPS:        "UPS",
   VPN:        "VPN S2S",
   MOVIL:      "Móviles",
+  CERTIFICADO_SSL: "Certificados SSL",
 };
 
 const TIPO_ICON: Record<string, string> = {
@@ -24,6 +25,7 @@ const TIPO_ICON: Record<string, string> = {
   UPS:        "⚡",
   VPN:        "🔒",
   MOVIL:      "📱",
+  CERTIFICADO_SSL: "🔐",
 };
 
 const TIPO_GRAD: Record<string, string> = {
@@ -33,6 +35,7 @@ const TIPO_GRAD: Record<string, string> = {
   UPS:        "linear-gradient(135deg, #FA8200, #861F41)",
   VPN:        "linear-gradient(135deg, #861F41, #FA8200)",
   MOVIL:      "linear-gradient(135deg, #B7312C, #FA8200)",
+  CERTIFICADO_SSL: "linear-gradient(135deg, #1a6b3c, #2d9e5e)",
 };
 
 const FILTER_FIELDS: Record<string, { key: string; label: string }[]> = {
@@ -40,6 +43,8 @@ const FILTER_FIELDS: Record<string, { key: string; label: string }[]> = {
     { key: "ambiente",         label: "Ambiente" },
     { key: "tipoServidor",     label: "Tipo de servidor" },
     { key: "sistemaOperativo", label: "Sistema operativo" },
+    { key: "ipInterna",        label: "IP Interna" },
+    { key: "ipGestion",        label: "IP Gestión" },
     { key: "monitoreo",        label: "Monitoreo" },
     { key: "backup",           label: "Backup" },
   ],
@@ -48,6 +53,7 @@ const FILTER_FIELDS: Record<string, { key: string; label: string }[]> = {
   BASE_DATOS: [{ key: "ambiente", label: "Ambiente" }, { key: "versionBd", label: "Versión BD" }],
   VPN:        [{ key: "conexion", label: "Conexión" }, { key: "origen", label: "Origen" }, { key: "destino", label: "Destino" }, { key: "fases", label: "Fases" }],
   MOVIL:      [{ key: "marca", label: "Marca" }, { key: "modelo", label: "Modelo" }, { key: "sede", label: "Sede" }, { key: "region", label: "Región" }],
+  CERTIFICADO_SSL: [{ key: "nombreDominio", label: "Dominio" }, { key: "proveedor", label: "Proveedor" }],
 };
 
 function normalize(text: string) {
@@ -248,6 +254,55 @@ function MovilRow({ a, onClick }: { a: Asset; onClick: () => void }) {
   ]} />;
 }
 
+/* ─── Helper: Días restantes con color ─── */
+function DiasRestantesBadge({ fecha }: { fecha: string | null | undefined }) {
+  if (!fecha) return <span style={{ color: "#333" }}>—</span>;
+  const ahora = new Date();
+  const fin = new Date(fecha);
+  if (isNaN(fin.getTime())) return <span style={{ color: "#333" }}>—</span>;
+  fin.setHours(23, 59, 59, 999);
+  const diffMs = fin.getTime() - ahora.getTime();
+  const diffDias = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const diffMeses = diffDias / 30;
+
+  if (diffDias < 0) {
+    return <span style={{ color: "#c0392b", fontWeight: 800, fontSize: 12, background: "#ffebeb", padding: "2px 8px", borderRadius: 10 }}>⚠️ VENCIDO</span>;
+  }
+
+  let color = "#27ae60"; // verde < 4 meses
+  if (diffMeses < 2) color = "#c0392b";   // rojo < 2 meses
+  else if (diffMeses < 3) color = "#f39c12"; // amarillo < 3 meses
+
+  const label =
+    diffDias >= 30
+      ? `${Math.floor(diffMeses)} mes${Math.floor(diffMeses) !== 1 ? "es" : ""} ${Math.floor(diffDias % 30)} día${Math.floor(diffDias % 30) !== 1 ? "s" : ""}`
+      : `${diffDias} día${diffDias !== 1 ? "s" : ""}`;
+
+  return (
+    <span style={{ color, fontWeight: 800, fontSize: 12, background: `${color}15`, padding: "2px 8px", borderRadius: 10, whiteSpace: "nowrap" }}>
+      {label}
+    </span>
+  );
+}
+
+function CertificadoSslRow({ a, onClick }: { a: Asset; onClick: () => void }) {
+  const c = a.certificadoSsl;
+  const appsCount = c?.aplicaciones?.length ?? 0;
+  return <Row onClick={onClick} cells={[
+    <strong style={{ color: "#000000" }}>{a.nombre ?? "—"}</strong>,
+    <code style={{ fontSize: 13, wordBreak: "break-all", maxWidth: 220, display: "inline-block", overflow: "hidden", textOverflow: "ellipsis" }}>{c?.url ?? "—"}</code>,
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <span style={{ fontSize: 12, color: "#555" }}>{c?.fechaFin ? new Date(c.fechaFin).toLocaleDateString("es-CO") : "—"}</span>
+      <DiasRestantesBadge fecha={c?.fechaFin} />
+    </div>,
+    c?.tipoCertificado ?? "—",
+    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+      {c?.proveedor && <span style={{ background: "#e8f5e9", color: "#2e7d32", padding: "2px 8px", borderRadius: 10, fontSize: 11, fontWeight: 600 }}>{c.proveedor}</span>}
+      {appsCount > 0 && <span style={{ background: "#2d9e5e", color: "#fff", padding: "2px 8px", borderRadius: 10, fontSize: 11, fontWeight: 700 }}>{appsCount} app{appsCount !== 1 ? "s" : ""}</span>}
+    </div>,
+  ]} />;
+}
+
 const HEADERS: Record<string, string[]> = {
   SERVIDOR:   ["Nombre", "Código", "Ambiente", "IP Interna", "vCPU", "vRAM", "Sistema Operativo", "Ubicación"],
   RED:        ["Nombre", "Serial", "Modelo", "IP Gestión", "Estado", "Ubicación", "Código"],
@@ -255,6 +310,7 @@ const HEADERS: Record<string, string[]> = {
   BASE_DATOS: ["Nombre", "Ambiente", "Aplicación", "Servidor 1", "Versión", "RAC/Scan", "Propietario"],
   VPN:        ["Nombre", "Conexión", "Fases", "Origen", "Destino"],
   MOVIL:      ["Nombre (Usuario)", "# Caso", "Marca", "Modelo", "IMEI 1", "N° Línea", "Sede", "Fecha Entrega"],
+CERTIFICADO_SSL: ["Nombre", "URL", "Fecha Fin / Días Rest.", "Tipo", "Proveedor / Apps"],
 };
 
 const labelStyle: React.CSSProperties = {
@@ -408,8 +464,8 @@ export default function AssetList() {
   };
 
   /* ── ocultar campos según tipo ── */
-  const mostrarCodigo    = tipoKey !== "UPS" && tipoKey !== "BASE_DATOS" && tipoKey !== "VPN" && tipoKey !== "MOVIL";
-  const mostrarUbicacion = tipoKey !== "BASE_DATOS" && tipoKey !== "VPN" && tipoKey !== "MOVIL";
+  const mostrarCodigo    = tipoKey !== "UPS" && tipoKey !== "BASE_DATOS" && tipoKey !== "VPN" && tipoKey !== "MOVIL" && tipoKey !== "CERTIFICADO_SSL";
+  const mostrarUbicacion = tipoKey !== "BASE_DATOS" && tipoKey !== "VPN" && tipoKey !== "MOVIL" && tipoKey !== "CERTIFICADO_SSL";
 
   return (
     <div style={{
@@ -558,6 +614,7 @@ export default function AssetList() {
                       if (tipoKey === "UPS")      return <UpsRow      key={a.id} a={a} onClick={onClick} />;
                       if (tipoKey === "VPN")      return <VpnRow      key={a.id} a={a} onClick={onClick} />;
                       if (tipoKey === "MOVIL")    return <MovilRow    key={a.id} a={a} onClick={onClick} />;
+                      if (tipoKey === "CERTIFICADO_SSL") return <CertificadoSslRow key={a.id} a={a} onClick={onClick} />;
                       return                             <BDRow       key={a.id} a={a} onClick={onClick} />;
                     })}
                   </tbody>
