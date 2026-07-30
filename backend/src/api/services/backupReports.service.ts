@@ -149,12 +149,23 @@ async function createRun(
     }
   }
 
-  const { workbook, summary } =
-    tipo === "kpi" ? await buildKpiBackupReport(files) : await buildSimpleBackupReport(files);
-
   const runId = newRunId();
   const dir = runDir(tipo, runId);
   await fs.mkdir(dir, { recursive: true });
+
+  // Guarda el HTML crudo de cada adjunto — útil para depurar el parseo sin
+  // depender de volver a descargar el correo (los adjuntos solo viven en
+  // memoria durante el procesamiento).
+  if (files.length > 0) {
+    const rawDir = path.join(dir, "raw");
+    await fs.mkdir(rawDir, { recursive: true });
+    await Promise.all(
+      files.map((f, i) => fs.writeFile(path.join(rawDir, `${i}_${f.filename}`), f.html, "utf-8"))
+    );
+  }
+
+  const { workbook, summary } =
+    tipo === "kpi" ? await buildKpiBackupReport(files) : await buildSimpleBackupReport(files);
 
   const excelBuffer = await workbook.xlsx.writeBuffer();
   await fs.writeFile(path.join(dir, "informe.xlsx"), Buffer.from(excelBuffer));
