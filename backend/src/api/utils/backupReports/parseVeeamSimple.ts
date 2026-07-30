@@ -68,13 +68,21 @@ function extractDateFromFilename(filename: string): string {
   return m ? m[1] : "";
 }
 
+// Los reportes de Veeam/CommVault emiten a veces <tr><tr> consecutivos sin
+// cerrar el primero (visible en el header de las tablas "Protected Virtual
+// Machines"). Eso rompe el parseo de esa tabla en cheerio. Se colapsa la
+// apertura duplicada antes de parsear.
+function sanitizeVeeamHtml(html: string): string {
+  return html.replace(/<tr\b[^>]*>\s*(?=<tr\b)/gi, "");
+}
+
 const DEBUG = process.env.BACKUP_DEBUG === "1";
 
 export function parseVeeamSimpleHtml(
   html: string,
   filename: string
 ): { machineStatusData: MachineStatusRow[]; summaryData: SummaryRow[] } {
-  const $ = cheerio.load(html);
+  const $ = cheerio.load(sanitizeVeeamHtml(html));
   const fileDate = extractDateFromFilename(filename);
 
   const machineStatusData: MachineStatusRow[] = [];
