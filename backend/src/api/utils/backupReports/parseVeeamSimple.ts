@@ -68,6 +68,8 @@ function extractDateFromFilename(filename: string): string {
   return m ? m[1] : "";
 }
 
+const DEBUG = process.env.BACKUP_DEBUG === "1";
+
 export function parseVeeamSimpleHtml(
   html: string,
   filename: string
@@ -112,6 +114,7 @@ export function parseVeeamSimpleHtml(
     }
 
     // -------- ESTADOS DE MÁQUINA --------
+    const headerCellsAll = $(rows[0]).find("td, th");
     const headerCells = $(rows[0]).find("td");
     let statusIndex = -1;
     let machineNameIndex = -1;
@@ -120,6 +123,15 @@ export function parseVeeamSimpleHtml(
       if (statusIndex === -1 && t.includes("Status")) statusIndex = i;
       if (machineNameIndex === -1 && t.includes("Machine Name")) machineNameIndex = i;
     });
+
+    if (DEBUG) {
+      const tdTexts = headerCells.toArray().map((td) => JSON.stringify(cleanText($(td).text())));
+      const thCount = headerCellsAll.length - headerCells.length;
+      console.log(
+        `[BACKUP_DEBUG][${filename}] tabla con ${rows.length} filas, ${headerCells.length} <td> en fila 0 (+${thCount} <th>) -> [${tdTexts.join(", ")}] statusIndex=${statusIndex} machineNameIndex=${machineNameIndex}`
+      );
+    }
+
     if (statusIndex === -1 || machineNameIndex === -1) return;
 
     rows.slice(1).each((_, tr) => {
@@ -127,6 +139,9 @@ export function parseVeeamSimpleHtml(
       if (cells.length > statusIndex && cells.length > machineNameIndex) {
         const statusText = cleanText($(cells[statusIndex]).text());
         const machineName = cleanText($(cells[machineNameIndex]).text());
+        if (DEBUG && !VALID_STATUSES.has(statusText)) {
+          console.log(`[BACKUP_DEBUG][${filename}] fila descartada, status no reconocido: ${JSON.stringify(statusText)} (machine=${JSON.stringify(machineName)})`);
+        }
         if (VALID_STATUSES.has(statusText)) {
           machineStatusData.push({ machineName, status: statusText, fecha: fileDate });
         }
