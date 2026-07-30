@@ -7,6 +7,7 @@ import { app } from "./app";
 import { AppDataSource } from "./config/database";
 import { OcsDataSource } from "./config/ocs.database";
 import { initOcsSyncJob } from "./jobs/ocs-sync.job"; // ← corregido osc → ocs
+import { initBackupReportsJobs } from "./jobs/backup-reports.job";
 
 const PORT = process.env.PORT || 3000;
 
@@ -19,6 +20,7 @@ async function start() {
     console.log("✅ OCS DB conectada");
 
     initOcsSyncJob(); // ← ambas DBs listas antes de registrar el cron
+    initBackupReportsJobs();
 
     app.listen(PORT, () => {
       console.log(`🚀 API corriendo en http://localhost:${PORT}`);
