@@ -8,3 +8,4 @@ backend/dist_backup/
 backend/src/api/utils/*.bak*
 backend/test-db.js
 backend/storage/firmas/
+backend/storage/backups/
