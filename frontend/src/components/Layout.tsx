@@ -13,10 +13,7 @@ const nav = [
   { label: "Móviles",        path: "/inventario/MOVIL",     icon: "📱" },
   { label: "Software",       path: "/inventario/software", icon: "💾" }, 
   { label: "Certificados SSL", path: "/inventario/CERTIFICADO_SSL", icon: "🔐" },
-  { label: "Backup Diario",  path: "/backups/diario",       icon: "📅" },
-  { label: "Backup Semanal", path: "/backups/semanal",      icon: "📆" },
-  { label: "Backup Mensual", path: "/backups/mensual",      icon: "🗓" },
-  { label: "KPI Backup",     path: "/backups/kpi",          icon: "📊" },
+  { label: "Backup",         path: "/backups",              icon: "🗄" },
   { label: "Histórico",      path: "/papelera",             icon: "🗑" },
 ];
 
