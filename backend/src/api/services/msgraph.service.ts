@@ -1,4 +1,9 @@
 import axios from "axios";
+import https from "https";
+
+// La red corporativa intercepta TLS con un certificado autofirmado (mismo
+// motivo por el que sendMovilEmail.ts ya desactiva la verificación TLS).
+const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
 export interface GraphMessage {
   id: string;
@@ -53,7 +58,7 @@ async function getGraphToken(): Promise<string> {
     scope: "https://graph.microsoft.com/.default",
   });
 
-  const { data } = await axios.post(url, body);
+  const { data } = await axios.post(url, body, { httpsAgent });
   cachedToken = {
     token: data.access_token,
     expiresAt: Date.now() + (data.expires_in ?? 3000) * 1000,
@@ -83,7 +88,7 @@ async function listMessagesFromSender(
 
   const mensajes: GraphMessage[] = [];
   while (url) {
-    const res: any = await axios.get(url, { headers, params });
+    const res: any = await axios.get(url, { headers, params, httpsAgent });
     const data = res.data;
     mensajes.push(...(data.value ?? []));
     url = data["@odata.nextLink"] ?? null;
@@ -102,7 +107,7 @@ async function listMessagesFromSender(
 async function downloadAttachments(messageId: string): Promise<GraphAttachment[]> {
   const token = await getGraphToken();
   const url = `https://graph.microsoft.com/v1.0/users/${mailbox()}/messages/${messageId}/attachments`;
-  const { data } = await axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
+  const { data } = await axios.get(url, { headers: { Authorization: `Bearer ${token}` }, httpsAgent });
 
   const archivos: GraphAttachment[] = [];
   for (const adj of data.value ?? []) {
@@ -160,7 +165,7 @@ async function sendMail(params: {
   await axios.post(
     url,
     { message, saveToSentItems: true },
-    { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
+    { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, httpsAgent }
   );
 }
 
