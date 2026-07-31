@@ -15,6 +15,7 @@ import { FindOptionsWhere, In, IsNull, Not } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { generarPdfDevolucion, generarPdfEntrega } from "../utils/generarMovilDocx";
 import { sendMovilEmail } from "../utils/sendMovilEmail";
+import { sendServidorAlerta } from "../utils/sendServidorAlerta";
 import fs from "fs";
 import { sendToFlowRaw } from "../utils/flowRaw";
 import path from "path";
@@ -416,6 +417,10 @@ const {
         descripcion: "Activo creado manualmente.",
       })
     );
+
+    if (tipo === "SERVIDOR") {
+      await sendServidorAlerta("creado", savedAsset, { autor });
+    }
 
     // Retornar con QueryBuilder para cargar correctamente todas las relaciones
     return assetRepository
@@ -1161,6 +1166,10 @@ return {
         descripcion: "Activo deshabilitado y movido a hist�rico.",
       })
     );
+
+    if (asset.tipo === "SERVIDOR") {
+      await sendServidorAlerta("deshabilitado", asset, { autor, motivo });
+    }
 
     return assetRepository.findOne({ where: { id } });
   }

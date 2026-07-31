@@ -9,3 +9,4 @@ backend/src/api/utils/*.bak*
 backend/test-db.js
 backend/storage/firmas/
 backend/storage/backups/
+backend/storage/cert-alertas/
