@@ -206,12 +206,31 @@ export default function KpiBackupReportPage() {
               />
             )}
 
+            {/* Top 5 VMs por tamaño (VADP) */}
+            {s.topVms?.length > 0 && (
+              <MiniTable
+                title="Top 5 VMs por tamaño de backup (VADP)"
+                headers={["VM", "Estado", "Tamaño Backup (GB)", "Tipo de Backup"]}
+                rows={s.topVms.map((v: any) => [v.nombreVm, v.estado, v.tamanoBackupGB, v.tipoBackup])}
+              />
+            )}
+
             {/* VMs con fallas */}
             {s.vmsConFallas?.length > 0 && (
               <MiniTable
                 title="VMs con advertencias / fallas"
                 headers={["VM", "Estado", "SO", "Razón de falla"]}
                 rows={s.vmsConFallas.map((v: any) => [v.nombreVm, v.estado, v.sistemaOperativo, v.razonFalla])}
+                alert
+              />
+            )}
+
+            {/* Jobs fallidos (File System/BD y VADP) */}
+            {s.jobsFallidos?.length > 0 && (
+              <MiniTable
+                title="Jobs fallidos — File System/BD y VADP"
+                headers={["Cliente / Máquina", "Tipo de Agente", "Tipo de Backup", "Razón de falla", "Fecha"]}
+                rows={s.jobsFallidos.map((j: any) => [j.clienteMaquina, j.tipoAgente, j.tipoBackup, j.razonFalla, j.fecha])}
                 alert
               />
             )}

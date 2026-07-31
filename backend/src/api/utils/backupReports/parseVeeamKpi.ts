@@ -63,6 +63,7 @@ export interface KpiFsRow {
   objetosFallidos: number;
   mediaAgent: string;
   contenidoFiltro: string;
+  razonFalla: string;
   fecha: string;
 }
 
@@ -109,6 +110,7 @@ export interface KpiReportSummary {
   topClientes: { cliente: string; totalJobs: number; completados: number; pctExito: number }[];
   topVms: { nombreVm: string; estado: string; tamanoBackupGB: number; tipoBackup: string }[];
   vmsConFallas: { nombreVm: string; estado: string; sistemaOperativo: string; razonFalla: string }[];
+  jobsFallidos: { clienteMaquina: string; tipoAgente: string; tipoBackup: string; razonFalla: string; fecha: string }[];
 }
 
 // Normaliza espacios en vez de eliminarlos: colapsa espacios/():nbsp/tabs/
@@ -419,6 +421,19 @@ function parseVeeamKpiHtml(
           }
         }
 
+        // Busca, en las mismas filas siguientes, el bloque "Failure Reason"
+        // (solo aparece cuando el job falló).
+        let jobRazonFalla = "";
+        for (let j = i + 1; j < dataRows.length; j++) {
+          const nextCells = $(dataRows[j]).children("td");
+          if (nextCells.length > maxIdx) break;
+          const reason = extractFailureReason(cleanText($(dataRows[j]).text()));
+          if (reason) {
+            jobRazonFalla = reason;
+            break;
+          }
+        }
+
         // Si es un job de VMware, busca el bloque "Protected Virtual
         // Machines" (mismo job) y extrae sus VMs, heredándoles el Tipo de
         // Backup de este job — esa subtabla no lo trae por su cuenta.
@@ -459,6 +474,7 @@ function parseVeeamKpiHtml(
           objetosFallidos: failObjIdx !== -1 ? parseIntCell($(cells[failObjIdx]).text()) : 0,
           mediaAgent: mediaAgentIdx !== -1 ? cleanText($(cells[mediaAgentIdx]).text()) : "",
           contenidoFiltro,
+          razonFalla: jobRazonFalla,
           fecha: fileDate,
         });
       }
@@ -538,6 +554,21 @@ export async function buildKpiBackupReport(
       tipoBackup: v.tipoBackup,
     }));
 
+  // Todos los jobs fallidos (File System/BD y VMware), no solo VMs — cada
+  // uno con su fecha, para distinguir en qué día del rango procesado
+  // ocurrió cada falla.
+  const jobsFallidos = allFs
+    .filter((r) => r.estado === "Failed")
+    .sort((a, b) => b.fecha.localeCompare(a.fecha))
+    .slice(0, 15)
+    .map((r) => ({
+      clienteMaquina: r.clienteMaquina,
+      tipoAgente: r.tipoAgente,
+      tipoBackup: r.tipoBackup,
+      razonFalla: r.razonFalla,
+      fecha: r.fecha,
+    }));
+
   const summary: KpiReportSummary = {
     totalJobs,
     completados,
@@ -561,6 +592,7 @@ export async function buildKpiBackupReport(
     topClientes,
     topVms,
     vmsConFallas,
+    jobsFallidos,
   };
 
   const fileDate = files.length ? extractDateFromFilename(files[0].filename) : "";
@@ -855,6 +887,40 @@ function buildKpiWorkbook(
     });
 
     dash.getColumn(8).width = 50;
+  }
+
+  if (summary.jobsFallidos.length > 0) {
+    rowNum += 2;
+    dash.getCell(rowNum, 4).value = "❌ JOBS FALLIDOS — FILE SYSTEM/BD Y VADP (máx 15)";
+    dash.getCell(rowNum, 4).font = { bold: true, size: 10, color: { argb: "FFDC2626" }, name: "Arial" };
+    dash.mergeCells(rowNum, 4, rowNum, 8);
+    rowNum += 1;
+
+    const headersJobs = ["Cliente / Máquina", "Tipo de Agente", "Tipo de Backup", "Razón de Falla", "Fecha"];
+    headersJobs.forEach((h, i) => {
+      const c = dash.getCell(rowNum, 4 + i);
+      c.value = h;
+      c.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 9, name: "Arial" };
+      c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDC2626" } };
+      c.border = border;
+      c.alignment = { horizontal: "center" };
+    });
+    rowNum += 1;
+
+    const alertFillJobs: ExcelJS.Fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEE2E2" } };
+    summary.jobsFallidos.forEach((j) => {
+      const vals = [j.clienteMaquina, j.tipoAgente, j.tipoBackup, j.razonFalla, j.fecha];
+      vals.forEach((val, ci) => {
+        const c = dash.getCell(rowNum, 4 + ci);
+        c.value = val;
+        c.font = { size: 8, name: "Arial" };
+        c.fill = alertFillJobs;
+        c.border = border;
+        c.alignment = { wrapText: true, vertical: "middle" };
+      });
+      dash.getRow(rowNum).height = 30;
+      rowNum += 1;
+    });
   }
 
   // ── File System (antes "Resumen por Cliente") ───────────────────────────
