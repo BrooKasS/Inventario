@@ -535,27 +535,8 @@ function buildKpiWorkbook(
 
   // ── Dashboard KPI (primera hoja) ────────────────────────────────────────
   const dash = workbook.addWorksheet("Dashboard KPI");
-  dash.getCell("A1").value = `INFORME GENERAL DE BACKUP — FIDUPREVISORA — ${fileDate}`;
-  dash.getCell("A1").font = { bold: true, size: 14, color: { argb: "FF1E3A8A" }, name: "Arial" };
-  dash.getCell("A1").alignment = { horizontal: "center" };
-  dash.mergeCells("A1:H1");
-
-  dash.getCell("A2").value = `Generado: ${new Date().toISOString().slice(0, 19).replace("T", " ")}`;
-  dash.getCell("A2").font = { italic: true, size: 9, color: { argb: "FF64748B" }, name: "Arial" };
-  dash.mergeCells("A2:H2");
-
-  const kpis: [string, string | number | null, boolean][] = [
-    ["RESUMEN GENERAL DE JOBS", null, true],
-    ["Total de Jobs programados", summary.totalJobs, false],
-    ["Jobs Completados", summary.completados, false],
-    ["Jobs Completados con errores", summary.completadosConErrores, false],
-    ["Jobs Completados con advertencias", summary.completadosConAdvertencias, false],
-    ["Jobs Fallidos", summary.fallidos, false],
-    ["Jobs en Ejecución", summary.enEjecucion, false],
-    ["% Tasa de éxito (Completed)", `${summary.pctExito}%`, false],
-    ["% Completados con error", `${summary.pctError}%`, false],
-    ["% Fallidos", `${summary.pctFallo}%`, false],
-  ];
+  dash.properties.tabColor = { argb: "FF1E3A8A" };
+  dash.views = [{ state: "frozen", ySplit: 3, showGridLines: false } as ExcelJS.WorksheetViewFrozen];
 
   const headerFill: ExcelJS.Fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E3A8A" } };
   const oddFill: ExcelJS.Fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEFF6FF" } };
@@ -567,40 +548,134 @@ function buildKpiWorkbook(
     bottom: { style: "thin", color: { argb: "FFCBD5E1" } },
   };
 
+  // Banner de título a todo el ancho.
+  for (let col = 1; col <= 8; col++) dash.getCell(1, col).fill = headerFill;
+  dash.getCell("A1").value = `📊  INFORME GENERAL DE BACKUP — FIDUPREVISORA — ${fileDate}`;
+  dash.getCell("A1").font = { bold: true, size: 14, color: { argb: "FFFFFFFF" }, name: "Arial" };
+  dash.getCell("A1").alignment = { horizontal: "center", vertical: "middle" };
+  dash.mergeCells("A1:H1");
+  dash.getRow(1).height = 26;
+
+  dash.getCell("A2").value = `Generado: ${new Date().toISOString().slice(0, 19).replace("T", " ")}`;
+  dash.getCell("A2").font = { italic: true, size: 9, color: { argb: "FF64748B" }, name: "Arial" };
+  dash.getCell("A2").alignment = { horizontal: "center" };
+  dash.mergeCells("A2:H2");
+
+  // Cada fila es una "tarjeta": ícono + etiqueta, y un valor grande con
+  // color según el estado (verde/ámbar/rojo). Las de porcentaje guardan
+  // el número puro (no texto) para poder ponerles una barra de datos.
+  type CardRow = { icon: string; label: string; value: number; isPercent?: boolean; color: string };
+  const cardRows: CardRow[] = [
+    { icon: "📁", label: "Total de Jobs programados", value: summary.totalJobs, color: "FF1E3A8A" },
+    { icon: "✅", label: "Jobs Completados", value: summary.completados, color: "FF16A34A" },
+    {
+      icon: "🟠",
+      label: "Jobs Completados con errores",
+      value: summary.completadosConErrores,
+      color: summary.completadosConErrores > 0 ? "FFD97706" : "FF64748B",
+    },
+    {
+      icon: "🟡",
+      label: "Jobs Completados con advertencias",
+      value: summary.completadosConAdvertencias,
+      color: summary.completadosConAdvertencias > 0 ? "FFD97706" : "FF64748B",
+    },
+    {
+      icon: "🔴",
+      label: "Jobs Fallidos",
+      value: summary.fallidos,
+      color: summary.fallidos > 0 ? "FFDC2626" : "FF16A34A",
+    },
+    {
+      icon: "⏳",
+      label: "Jobs en Ejecución",
+      value: summary.enEjecucion,
+      color: summary.enEjecucion > 0 ? "FF2563EB" : "FF64748B",
+    },
+    {
+      icon: "📈",
+      label: "% Tasa de éxito (Completed)",
+      value: summary.pctExito,
+      isPercent: true,
+      color: summary.pctExito >= 90 ? "FF16A34A" : summary.pctExito >= 70 ? "FFD97706" : "FFDC2626",
+    },
+    {
+      icon: "📉",
+      label: "% Completados con error",
+      value: summary.pctError,
+      isPercent: true,
+      color: summary.pctError === 0 ? "FF16A34A" : summary.pctError <= 10 ? "FFD97706" : "FFDC2626",
+    },
+    {
+      icon: "🚫",
+      label: "% Fallidos",
+      value: summary.pctFallo,
+      isPercent: true,
+      color: summary.pctFallo === 0 ? "FF16A34A" : summary.pctFallo <= 10 ? "FFD97706" : "FFDC2626",
+    },
+  ];
+
   let rowNum = 4;
-  let dataRow = 0;
-  for (const [label, value, isSection] of kpis) {
+
+  const cSectionA = dash.getCell(rowNum, 1);
+  const cSectionB = dash.getCell(rowNum, 2);
+  cSectionA.value = "📋 RESUMEN GENERAL DE JOBS";
+  cSectionA.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10, name: "Arial" };
+  cSectionA.fill = headerFill;
+  cSectionB.fill = headerFill;
+  dash.mergeCells(rowNum, 1, rowNum, 2);
+  rowNum += 1;
+
+  const percentRefs: string[] = [];
+  cardRows.forEach((row, i) => {
     const c1 = dash.getCell(rowNum, 1);
     const c2 = dash.getCell(rowNum, 2);
-    c1.value = label;
-    if (value !== null) c2.value = value;
+    c1.value = `${row.icon}  ${row.label}`;
+    c1.font = { size: 9, name: "Arial", color: { argb: "FF334155" } };
+    c1.alignment = { vertical: "middle" };
 
-    if (isSection) {
-      c1.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10, name: "Arial" };
-      c1.fill = headerFill;
-      c2.fill = headerFill;
-      dash.mergeCells(rowNum, 1, rowNum, 2);
-    } else if (label !== "") {
-      dataRow += 1;
-      const bg = dataRow % 2 === 0 ? oddFill : evenFill;
-      c1.fill = bg;
-      c2.fill = bg;
-      c1.font = { size: 9, name: "Arial" };
-      c2.font = { size: 9, bold: true, name: "Arial" };
-      c1.border = border;
-      c2.border = border;
-      c1.alignment = { vertical: "middle" };
-      c2.alignment = { horizontal: "center", vertical: "middle" };
+    c2.value = row.value;
+    if (row.isPercent) {
+      c2.numFmt = '0.00"%"';
+      percentRefs.push(`B${rowNum}`);
     }
+    c2.font = { size: 14, bold: true, name: "Arial", color: { argb: row.color } };
+    c2.alignment = { horizontal: "center", vertical: "middle" };
+
+    const bg = i % 2 === 0 ? evenFill : oddFill;
+    c1.fill = bg;
+    c2.fill = bg;
+    c1.border = border;
+    c2.border = border;
+    dash.getRow(rowNum).height = 20;
     rowNum += 1;
-  }
+  });
+
+  // Barra de datos nativa de Excel (escala fija 0-100%) en cada celda de
+  // porcentaje: se ve como una mini barra de progreso dentro de la celda.
+  percentRefs.forEach((ref, i) => {
+    dash.addConditionalFormatting({
+      ref,
+      rules: [
+        {
+          type: "dataBar",
+          priority: i + 1,
+          cfvo: [
+            { type: "num", value: 0 },
+            { type: "num", value: 100 },
+          ],
+          color: { argb: "FFBFDBFE" },
+        },
+      ],
+    } as unknown as ExcelJS.ConditionalFormattingOptions);
+  });
 
   dash.getColumn(1).width = 42;
   dash.getColumn(2).width = 22;
 
   if (summary.topClientes.length > 0) {
     rowNum += 2;
-    dash.getCell(rowNum, 4).value = "TOP 5 CLIENTES POR TOTAL JOBS";
+    dash.getCell(rowNum, 4).value = "🏆 TOP 5 CLIENTES POR TOTAL JOBS";
     dash.getCell(rowNum, 4).font = { bold: true, size: 10, color: { argb: "FF1E3A8A" }, name: "Arial" };
     dash.mergeCells(rowNum, 4, rowNum, 7);
     rowNum += 1;
@@ -616,6 +691,7 @@ function buildKpiWorkbook(
     });
     rowNum += 1;
 
+    const topClientesFirstRow = rowNum;
     summary.topClientes.forEach((r, i) => {
       const bg = i % 2 === 0 ? oddFill : evenFill;
       const vals = [r.cliente, r.totalJobs, r.completados, `${r.pctExito}%`];
@@ -629,6 +705,20 @@ function buildKpiWorkbook(
       });
       rowNum += 1;
     });
+    const topClientesLastRow = rowNum - 1;
+
+    // Barra de datos comparando el total de jobs entre los 5 clientes.
+    dash.addConditionalFormatting({
+      ref: `E${topClientesFirstRow}:E${topClientesLastRow}`,
+      rules: [
+        {
+          type: "dataBar",
+          priority: 1,
+          cfvo: [{ type: "min" }, { type: "max" }],
+          color: { argb: "FF93C5FD" },
+        },
+      ],
+    } as unknown as ExcelJS.ConditionalFormattingOptions);
 
     dash.getColumn(4).width = 35;
     dash.getColumn(5).width = 14;
@@ -638,7 +728,7 @@ function buildKpiWorkbook(
 
   if (summary.vmsConFallas.length > 0) {
     rowNum += 2;
-    dash.getCell(rowNum, 4).value = "VMs CON ADVERTENCIAS / FALLAS (máx 10)";
+    dash.getCell(rowNum, 4).value = "🔴 VMs CON ADVERTENCIAS / FALLAS (máx 10)";
     dash.getCell(rowNum, 4).font = { bold: true, size: 10, color: { argb: "FFDC2626" }, name: "Arial" };
     dash.mergeCells(rowNum, 4, rowNum, 8);
     rowNum += 1;
