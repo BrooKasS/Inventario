@@ -48,6 +48,7 @@ export interface KpiFsRow {
   backupSetSubclient: string;
   jobId: string;
   tipoBackup: string;
+  scanType: string;
   estado: string;
   horaInicio: string;
   horaFin: string;
@@ -61,6 +62,7 @@ export interface KpiFsRow {
   objetosProtegidos: number;
   objetosFallidos: number;
   mediaAgent: string;
+  contenidoFiltro: string;
   fecha: string;
 }
 
@@ -108,8 +110,12 @@ export interface KpiReportSummary {
   vmsConFallas: { nombreVm: string; estado: string; sistemaOperativo: string; razonFalla: string }[];
 }
 
+// Normaliza espacios en vez de eliminarlos: colapsa espacios/():nbsp/tabs/
+// saltos de línea (los <BR> del HTML original) a un solo espacio. Si se
+// eliminaran todos los espacios, comparaciones como `=== "Machine Name"` o
+// `.includes("Backup Set")` nunca matchearían contra el texto ya limpiado.
 function cleanText(text: string): string {
-  return text.replace(/ /g, "").trim();
+  return text.replace(/ /g, " ").replace(/\s+/g, " ").trim();
 }
 
 function parseFloatCell(text: string): number {
@@ -159,6 +165,32 @@ function sanitizeVeeamHtml(html: string): string {
 function extractFailureReason(text: string): string {
   const m = text.match(/Failure Reason[:]\s*(.+)/i);
   return m ? m[1].trim() : "";
+}
+
+// En la tabla grande de detalle de jobs, la columna "Job ID (CommCell)
+// (Status)" no trae el estado como palabra — viene como código de una
+// letra entre paréntesis pegado al Job ID (ej. "64396797* (C)"). El
+// significado de cada código está en la leyenda del reporte.
+const STATUS_CODE_MAP: Record<string, string> = {
+  A: "Active",
+  D: "Delayed",
+  STK: "Stuck",
+  NR: "No Run",
+  C: "Completed",
+  CWE: "Completed with errors",
+  CWW: "Completed with warnings",
+  K: "Killed",
+  F: "Failed",
+  CMTD: "Committed",
+};
+
+function extractJobIdAndStatus(rawCellText: string): { jobId: string; status: string } {
+  const text = rawCellText.replace(/ /g, " ");
+  const jobIdMatch = text.match(/(\d+)/);
+  const jobId = jobIdMatch ? jobIdMatch[1] : "";
+  const codeMatch = text.match(/\(([A-Z]+)\)\s*$/);
+  const code = codeMatch ? codeMatch[1] : "";
+  return { jobId, status: STATUS_CODE_MAP[code] || code };
 }
 
 function mean(values: number[]): number {
@@ -223,9 +255,12 @@ function parseVeeamKpiHtml(
       return;
     }
 
-    // ── Tabla 2: Detalle de Jobs (File System, SQL, etc.) ──────────────
-    const statusIdx = idx((h) => h.includes("Status"));
-    const machineNameIdx = idx((h) => h.includes("Machine Name") && !h.includes("Host"));
+    // ── Tabla 2: Detalle de Jobs (File System, SQL, VMware, etc.) ──────
+    // Es la tabla grande (900+ filas). NO tiene columna "Machine Name": su
+    // primera columna es "Client". El estado real viene codificado como
+    // letra entre paréntesis junto al Job ID (ej. "64396797* (C)" = Completed).
+    const clientIdx = headerTexts.findIndex((h) => h === "Client");
+    const scanTypeIdx = headerTexts.findIndex((h) => h === "Scan Type");
     const agentIdx = idx((h) => h.includes("Agent"));
     const backupSetIdx = idx((h) => h.includes("Backup Set"));
     const jobIdIdx = idx((h) => h.includes("Job ID"));
@@ -242,29 +277,33 @@ function parseVeeamKpiHtml(
     const failObjIdx = idx((h) => h.includes("Failed Objects"));
     const mediaAgentIdx = idx((h) => h.includes("MediaAgent"));
 
-    const vmSizePresent = headerTexts.some((h) => h.includes("Virtual Machine Size"));
-
-    if (statusIdx !== -1 && machineNameIdx !== -1 && !vmSizePresent) {
+    if (clientIdx !== -1 && scanTypeIdx !== -1 && jobIdIdx !== -1) {
       const allIdx = [
-        statusIdx, machineNameIdx, agentIdx, backupSetIdx, jobIdIdx, typeIdx, startIdx, endIdx,
+        clientIdx, agentIdx, backupSetIdx, jobIdIdx, typeIdx, scanTypeIdx, startIdx, endIdx,
         appSizeIdx, dataTxIdx, mediaSizeIdx, spacePctIdx, transferTimeIdx, throughputIdx,
         protObjIdx, failObjIdx, mediaAgentIdx,
       ].filter((x) => x !== -1);
       const maxIdx = allIdx.length ? Math.max(...allIdx) : -1;
 
-      rows.slice(1).each((_, tr) => {
+      const dataRows = rows.slice(1).toArray();
+      for (let i = 0; i < dataRows.length; i++) {
+        const tr = dataRows[i];
         const cells = $(tr).find("td");
-        if (cells.length <= maxIdx) return;
-        const status = cleanText($(cells[statusIdx]).text());
-        if (!VALID_STATUSES.has(status)) return;
+        if (cells.length <= maxIdx) continue;
+
+        const client = cleanText($(cells[clientIdx]).text());
+        if (!client || client.toLowerCase() === "client") continue;
+
+        const jobRaw = jobIdIdx !== -1 ? $(cells[jobIdIdx]).text() : "";
+        const { jobId: jobIdClean, status } = extractJobIdAndStatus(jobRaw);
+        if (!VALID_STATUSES.has(status)) continue;
 
         const appRaw = appSizeIdx !== -1 ? cleanText($(cells[appSizeIdx]).text()) : "";
-        const jobRaw = jobIdIdx !== -1 ? cleanText($(cells[jobIdIdx]).text()) : "";
-        const jobIdClean = jobRaw ? jobRaw.split(",")[0].replace(/[^0-9]/g, "") : "";
 
         const agentRaw = agentIdx !== -1 ? cleanText($(cells[agentIdx]).text()) : "";
         let agentType: string;
-        if (agentRaw.includes("SQL")) agentType = "SQL Server";
+        if (agentRaw.includes("Virtual Server") || agentRaw.includes("VMware")) agentType = "VMware";
+        else if (agentRaw.includes("SQL")) agentType = "SQL Server";
         else if (agentRaw.includes("Oracle")) agentType = "Oracle DB";
         else if (agentRaw.includes("Win")) agentType = "Windows FS";
         else if (agentRaw.includes("Linux")) agentType = "Linux FS";
@@ -276,13 +315,32 @@ function parseVeeamKpiHtml(
           transferTimeIdx !== -1 ? cleanText($(cells[transferTimeIdx]).text()).split("(")[0].trim() : "";
         const transferMin = parseDurationMinutes(transferRaw);
 
+        // Busca, en las filas inmediatamente siguientes (antes del próximo
+        // job real), el bloque "Content, filter and filter exception".
+        let contenidoFiltro = "";
+        for (let j = i + 1; j < dataRows.length; j++) {
+          const nextCells = $(dataRows[j]).find("td");
+          if (nextCells.length > maxIdx) break;
+          const nextHtml = $.html(dataRows[j]);
+          if (nextHtml.includes("Content, filter and filter exception")) {
+            const items = $(dataRows[j])
+              .find("li")
+              .toArray()
+              .map((li) => cleanText($(li).text()))
+              .filter(Boolean);
+            contenidoFiltro = items.join(", ");
+            break;
+          }
+        }
+
         fs.push({
-          clienteMaquina: cleanText($(cells[machineNameIdx]).text()),
+          clienteMaquina: client,
           agenteInstancia: agentRaw,
           tipoAgente: agentType,
           backupSetSubclient: backupSetIdx !== -1 ? cleanText($(cells[backupSetIdx]).text()) : "",
           jobId: jobIdClean,
           tipoBackup: typeIdx !== -1 ? cleanText($(cells[typeIdx]).text()) : "",
+          scanType: scanTypeIdx !== -1 ? cleanText($(cells[scanTypeIdx]).text()) : "",
           estado: status,
           horaInicio: startIdx !== -1 ? cleanText($(cells[startIdx]).text()).split("(")[0].trim() : "",
           horaFin: endIdx !== -1 ? cleanText($(cells[endIdx]).text()).split("(")[0].trim() : "",
@@ -298,9 +356,10 @@ function parseVeeamKpiHtml(
             protObjIdx !== -1 ? parseFloatCell(cleanText($(cells[protObjIdx]).text()).replace(/,/g, "")) : 0,
           objetosFallidos: failObjIdx !== -1 ? parseIntCell($(cells[failObjIdx]).text()) : 0,
           mediaAgent: mediaAgentIdx !== -1 ? cleanText($(cells[mediaAgentIdx]).text()) : "",
+          contenidoFiltro,
           fecha: fileDate,
         });
-      });
+      }
       return;
     }
 
@@ -488,19 +547,6 @@ function buildKpiWorkbook(
     ["% Tasa de éxito (Completed)", `${summary.pctExito}%`, false],
     ["% Completados con error", `${summary.pctError}%`, false],
     ["% Fallidos", `${summary.pctFallo}%`, false],
-    ["", null, false],
-    ["BACKUP FILE SYSTEM / BD", null, true],
-    ["Total Jobs FS / BD procesados", summary.totalFs, false],
-    ["Jobs FS Completados", summary.completadosFs, false],
-    ["Total datos respaldados (GB)", summary.totalDatosGB, false],
-    ["Total datos transferidos (GB)", summary.totalTransferidoGB, false],
-    ["Promedio Compresión (%)", `${summary.promedioCompresionPct.toFixed(2)}%`, false],
-    ["Promedio Ahorro de Espacio (%)", `${summary.promedioAhorroPct.toFixed(2)}%`, false],
-    ["", null, false],
-    ["BACKUP VIRTUAL MACHINES (VMware)", null, true],
-    ["Total VMs respaldadas", summary.totalVms, false],
-    ["VMs Completadas", summary.vmsCompletadas, false],
-    ["% Éxito VMs", `${summary.pctExitoVms}%`, false],
   ];
 
   const headerFill: ExcelJS.Fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E3A8A" } };
@@ -684,6 +730,7 @@ function buildKpiWorkbook(
       { header: "Backup Set / Subclient", key: "backupSetSubclient", width: 18 },
       { header: "Job ID", key: "jobId", width: 10 },
       { header: "Tipo de Backup", key: "tipoBackup", width: 14 },
+      { header: "Scan Type", key: "scanType", width: 14 },
       { header: "Estado", key: "estado", width: 16 },
       { header: "Hora Inicio", key: "horaInicio", width: 14 },
       { header: "Hora Fin", key: "horaFin", width: 14 },
@@ -697,6 +744,7 @@ function buildKpiWorkbook(
       { header: "Objetos Protegidos", key: "objetosProtegidos", width: 14 },
       { header: "Objetos Fallidos", key: "objetosFallidos", width: 14 },
       { header: "Media Agent", key: "mediaAgent", width: 16 },
+      { header: "Content / Filter Exception", key: "contenidoFiltro", width: 40 },
       { header: "Fecha", key: "fecha", width: 14 },
     ];
     allFs.forEach((r) => sheetFs.addRow({ ...r }));
