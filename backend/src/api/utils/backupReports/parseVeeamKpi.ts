@@ -381,19 +381,27 @@ function parseVeeamKpiHtml(
     const transportIdx = idx((h) => h.includes("Transport Mode"));
 
     if (vmNameIdx !== -1 && vmSizeIdx !== -1 && vmStatusIdx !== -1) {
-      rows.slice(1).each((_, tr) => {
-        const cells = $(tr).find("td");
-        if (cells.length < 4) return;
+      const vmRows = rows.slice(1).toArray();
+      for (let vi = 0; vi < vmRows.length; vi++) {
+        const cells = $(vmRows[vi]).find("td");
+        if (cells.length < 4) continue;
         const vmName = vmNameIdx < cells.length ? cleanText($(cells[vmNameIdx]).text()) : "";
-        if (!vmName || vmName === "Machine Name") return;
+        if (!vmName || vmName === "Machine Name") continue;
         const vmStatus = vmStatusIdx < cells.length ? cleanText($(cells[vmStatusIdx]).text()) : "";
-        if (!["Completed", "Failed", "Partial"].includes(vmStatus)) return;
+        if (!["Completed", "Failed", "Partial"].includes(vmStatus)) continue;
 
-        const fullRowText = cells
-          .toArray()
-          .map((c) => cleanText($(c).text()))
-          .join(" ");
-        const failureReason = extractFailureReason(fullRowText);
+        // El motivo de falla no está en la fila de la VM: Veeam lo agrega
+        // en una <TR> aparte (una sola <td>) justo después de esa fila.
+        let failureReason = "";
+        for (let j = vi + 1; j < vmRows.length; j++) {
+          const nextCells = $(vmRows[j]).find("td");
+          if (nextCells.length >= 4) break;
+          const reason = extractFailureReason(cleanText($(vmRows[j]).text()));
+          if (reason) {
+            failureReason = reason;
+            break;
+          }
+        }
 
         const vmSizeRaw = vmSizeIdx < cells.length ? cleanText($(cells[vmSizeIdx]).text()) : "";
         const bkSizeRaw = bkSizeIdx !== -1 && bkSizeIdx < cells.length ? cleanText($(cells[bkSizeIdx]).text()) : "";
@@ -420,7 +428,7 @@ function parseVeeamKpiHtml(
           razonFalla: failureReason,
           fecha: fileDate,
         });
-      });
+      }
     }
   });
 
