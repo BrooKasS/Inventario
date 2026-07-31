@@ -209,6 +209,87 @@ function parseVeeamKpiHtml(
   const summary: KpiSummaryRow[] = [];
   const vm: KpiVmRow[] = [];
 
+  // Parsea la subtabla anidada "Protected Virtual Machines". Esa tabla NO
+  // trae el tipo de backup real: su columna "Backup Type" es VADP (el
+  // método de VMware), no Full/Incremental/etc. Por eso el tipo se hereda
+  // del job padre (tabla grande) que la contiene, en vez de leerse aquí.
+  function parseVmSubTable($table: ReturnType<typeof $>, tipoBackupHeredado: string): KpiVmRow[] {
+    const result: KpiVmRow[] = [];
+    const vmTableRows = $table.find("tr");
+    if (vmTableRows.length === 0) return result;
+
+    const vmHeaderCells = $(vmTableRows[0]).find("td");
+    const vmHeaderTexts = vmHeaderCells.toArray().map((td) => cleanText($(td).text()));
+    const vmIdx = (pred: (h: string) => boolean) => vmHeaderTexts.findIndex(pred);
+
+    const vmNameIdx = vmHeaderTexts.findIndex((h) => h === "Machine Name");
+    const hostIdx = vmHeaderTexts.findIndex((h) => h === "Host");
+    const vmAgentIdx = vmHeaderTexts.findIndex((h) => h === "Agent");
+    const vmStatusIdx = vmHeaderTexts.findIndex((h) => h === "Status");
+    const vmSizeIdx = vmIdx((h) => h.includes("Virtual Machine Size"));
+    const bkSizeIdx = vmHeaderTexts.findIndex((h) => h === "Backup Size");
+    const guestSizeIdx = vmIdx((h) => h.includes("Guest Size"));
+    const vmStartIdx = vmHeaderTexts.findIndex((h) => h === "Start Time");
+    const vmEndIdx = vmHeaderTexts.findIndex((h) => h === "End Time");
+    const vmtoolsIdx = vmIdx((h) => h.includes("VMware Tools"));
+    const hwVerIdx = vmIdx((h) => h.includes("Hardware Version"));
+    const osIdx = vmIdx((h) => h.includes("Operating System"));
+    const cbtIdx = vmIdx((h) => h.includes("CBT Status"));
+    const transportIdx = vmIdx((h) => h.includes("Transport Mode"));
+
+    if (vmNameIdx === -1 || vmSizeIdx === -1 || vmStatusIdx === -1) return result;
+
+    const vmRows = vmTableRows.slice(1).toArray();
+    for (let vi = 0; vi < vmRows.length; vi++) {
+      const cells = $(vmRows[vi]).find("td");
+      if (cells.length < 4) continue;
+      const vmName = vmNameIdx < cells.length ? cleanText($(cells[vmNameIdx]).text()) : "";
+      if (!vmName || vmName === "Machine Name") continue;
+      const vmStatus = vmStatusIdx < cells.length ? cleanText($(cells[vmStatusIdx]).text()) : "";
+      if (!["Completed", "Failed", "Partial"].includes(vmStatus)) continue;
+
+      // El motivo de falla no está en la fila de la VM: Veeam lo agrega
+      // en una <TR> aparte (una sola <td>) justo después de esa fila.
+      let failureReason = "";
+      for (let j = vi + 1; j < vmRows.length; j++) {
+        const nextCells = $(vmRows[j]).find("td");
+        if (nextCells.length >= 4) break;
+        const reason = extractFailureReason(cleanText($(vmRows[j]).text()));
+        if (reason) {
+          failureReason = reason;
+          break;
+        }
+      }
+
+      const vmSizeRaw = vmSizeIdx < cells.length ? cleanText($(cells[vmSizeIdx]).text()) : "";
+      const bkSizeRaw = bkSizeIdx !== -1 && bkSizeIdx < cells.length ? cleanText($(cells[bkSizeIdx]).text()) : "";
+      const gstSizeRaw =
+        guestSizeIdx !== -1 && guestSizeIdx < cells.length ? cleanText($(cells[guestSizeIdx]).text()) : "";
+
+      result.push({
+        nombreVm: vmName,
+        host: hostIdx !== -1 && hostIdx < cells.length ? cleanText($(cells[hostIdx]).text()) : "",
+        mediaAgent: vmAgentIdx !== -1 && vmAgentIdx < cells.length ? cleanText($(cells[vmAgentIdx]).text()) : "",
+        estado: vmStatus,
+        tamanoVmGB: parseFloatCell(vmSizeRaw),
+        tamanoBackupGB: parseFloatCell(bkSizeRaw),
+        tamanoGuestGB: parseFloatCell(gstSizeRaw),
+        horaInicio: vmStartIdx !== -1 && vmStartIdx < cells.length ? cleanText($(cells[vmStartIdx]).text()) : "",
+        horaFin: vmEndIdx !== -1 && vmEndIdx < cells.length ? cleanText($(cells[vmEndIdx]).text()) : "",
+        vmwareTools: vmtoolsIdx !== -1 && vmtoolsIdx < cells.length ? cleanText($(cells[vmtoolsIdx]).text()) : "",
+        hwVersion: hwVerIdx !== -1 && hwVerIdx < cells.length ? cleanText($(cells[hwVerIdx]).text()) : "",
+        sistemaOperativo: osIdx !== -1 && osIdx < cells.length ? cleanText($(cells[osIdx]).text()) : "",
+        tipoBackup: tipoBackupHeredado,
+        cbtStatus: cbtIdx !== -1 && cbtIdx < cells.length ? cleanText($(cells[cbtIdx]).text()) : "",
+        modoTransporte:
+          transportIdx !== -1 && transportIdx < cells.length ? cleanText($(cells[transportIdx]).text()) : "",
+        razonFalla: failureReason,
+        fecha: fileDate,
+      });
+    }
+    return result;
+  }
+
   $("table").each((_, table) => {
     const $table = $(table);
     const rows = $table.find("tr");
@@ -314,12 +395,16 @@ function parseVeeamKpiHtml(
         const transferRaw =
           transferTimeIdx !== -1 ? cleanText($(cells[transferTimeIdx]).text()).split("(")[0].trim() : "";
         const transferMin = parseDurationMinutes(transferRaw);
+        const currentTipoBackup = typeIdx !== -1 ? cleanText($(cells[typeIdx]).text()) : "";
 
         // Busca, en las filas inmediatamente siguientes (antes del próximo
         // job real), el bloque "Content, filter and filter exception".
+        // OJO: el corte usa children("td"), no find("td") — find() cuenta
+        // también las <td> de una tabla anidada (p.ej. Protected Virtual
+        // Machines) y eso hace parecer esa fila un job real.
         let contenidoFiltro = "";
         for (let j = i + 1; j < dataRows.length; j++) {
-          const nextCells = $(dataRows[j]).find("td");
+          const nextCells = $(dataRows[j]).children("td");
           if (nextCells.length > maxIdx) break;
           const nextHtml = $.html(dataRows[j]);
           if (nextHtml.includes("Content, filter and filter exception")) {
@@ -333,13 +418,29 @@ function parseVeeamKpiHtml(
           }
         }
 
+        // Si es un job de VMware, busca el bloque "Protected Virtual
+        // Machines" (mismo job) y extrae sus VMs, heredándoles el Tipo de
+        // Backup de este job — esa subtabla no lo trae por su cuenta.
+        if (agentType === "VMware") {
+          for (let j = i + 1; j < dataRows.length; j++) {
+            const nextCells = $(dataRows[j]).children("td");
+            if (nextCells.length > maxIdx) break;
+            const nextHtml = $.html(dataRows[j]);
+            if (nextHtml.includes("Protected Virtual Machines")) {
+              const $nestedTable = $(dataRows[j]).find("table").first();
+              vm.push(...parseVmSubTable($nestedTable, currentTipoBackup));
+              break;
+            }
+          }
+        }
+
         fs.push({
           clienteMaquina: client,
           agenteInstancia: agentRaw,
           tipoAgente: agentType,
           backupSetSubclient: backupSetIdx !== -1 ? cleanText($(cells[backupSetIdx]).text()) : "",
           jobId: jobIdClean,
-          tipoBackup: typeIdx !== -1 ? cleanText($(cells[typeIdx]).text()) : "",
+          tipoBackup: currentTipoBackup,
           scanType: scanTypeIdx !== -1 ? cleanText($(cells[scanTypeIdx]).text()) : "",
           estado: status,
           horaInicio: startIdx !== -1 ? cleanText($(cells[startIdx]).text()).split("(")[0].trim() : "",
@@ -362,76 +463,6 @@ function parseVeeamKpiHtml(
       }
       return;
     }
-
-    // ── Tablas VMware: detalle de máquinas virtuales ───────────────────
-    const vmNameIdx = headerTexts.findIndex((h) => h === "Machine Name");
-    const hostIdx = headerTexts.findIndex((h) => h === "Host");
-    const vmAgentIdx = headerTexts.findIndex((h) => h === "Agent");
-    const vmStatusIdx = headerTexts.findIndex((h) => h === "Status");
-    const vmSizeIdx = idx((h) => h.includes("Virtual Machine Size"));
-    const bkSizeIdx = headerTexts.findIndex((h) => h === "Backup Size");
-    const guestSizeIdx = idx((h) => h.includes("Guest Size"));
-    const vmStartIdx = headerTexts.findIndex((h) => h === "Start Time");
-    const vmEndIdx = headerTexts.findIndex((h) => h === "End Time");
-    const vmtoolsIdx = idx((h) => h.includes("VMware Tools"));
-    const hwVerIdx = idx((h) => h.includes("Hardware Version"));
-    const osIdx = idx((h) => h.includes("Operating System"));
-    const cbtIdx = idx((h) => h.includes("CBT Status"));
-    const transportIdx = idx((h) => h.includes("Transport Mode"));
-
-    if (vmNameIdx !== -1 && vmSizeIdx !== -1 && vmStatusIdx !== -1) {
-      const vmRows = rows.slice(1).toArray();
-      for (let vi = 0; vi < vmRows.length; vi++) {
-        const cells = $(vmRows[vi]).find("td");
-        if (cells.length < 4) continue;
-        const vmName = vmNameIdx < cells.length ? cleanText($(cells[vmNameIdx]).text()) : "";
-        if (!vmName || vmName === "Machine Name") continue;
-        const vmStatus = vmStatusIdx < cells.length ? cleanText($(cells[vmStatusIdx]).text()) : "";
-        if (!["Completed", "Failed", "Partial"].includes(vmStatus)) continue;
-
-        // El motivo de falla no está en la fila de la VM: Veeam lo agrega
-        // en una <TR> aparte (una sola <td>) justo después de esa fila.
-        let failureReason = "";
-        for (let j = vi + 1; j < vmRows.length; j++) {
-          const nextCells = $(vmRows[j]).find("td");
-          if (nextCells.length >= 4) break;
-          const reason = extractFailureReason(cleanText($(vmRows[j]).text()));
-          if (reason) {
-            failureReason = reason;
-            break;
-          }
-        }
-
-        const vmSizeRaw = vmSizeIdx < cells.length ? cleanText($(cells[vmSizeIdx]).text()) : "";
-        const bkSizeRaw = bkSizeIdx !== -1 && bkSizeIdx < cells.length ? cleanText($(cells[bkSizeIdx]).text()) : "";
-        const gstSizeRaw =
-          guestSizeIdx !== -1 && guestSizeIdx < cells.length ? cleanText($(cells[guestSizeIdx]).text()) : "";
-
-        vm.push({
-          nombreVm: vmName,
-          host: hostIdx !== -1 && hostIdx < cells.length ? cleanText($(cells[hostIdx]).text()) : "",
-          mediaAgent: vmAgentIdx !== -1 && vmAgentIdx < cells.length ? cleanText($(cells[vmAgentIdx]).text()) : "",
-          estado: vmStatus,
-          tamanoVmGB: parseFloatCell(vmSizeRaw),
-          tamanoBackupGB: parseFloatCell(bkSizeRaw),
-          tamanoGuestGB: parseFloatCell(gstSizeRaw),
-          horaInicio: vmStartIdx !== -1 && vmStartIdx < cells.length ? cleanText($(cells[vmStartIdx]).text()) : "",
-          horaFin: vmEndIdx !== -1 && vmEndIdx < cells.length ? cleanText($(cells[vmEndIdx]).text()) : "",
-          vmwareTools: vmtoolsIdx !== -1 && vmtoolsIdx < cells.length ? cleanText($(cells[vmtoolsIdx]).text()) : "",
-          hwVersion: hwVerIdx !== -1 && hwVerIdx < cells.length ? cleanText($(cells[hwVerIdx]).text()) : "",
-          sistemaOperativo: osIdx !== -1 && osIdx < cells.length ? cleanText($(cells[osIdx]).text()) : "",
-          // El "Backup Type" de esta subtabla (VADP) es el método de VMware,
-          // no Full/Incremental/etc. El valor real se cruza más adelante
-          // desde la tabla grande de jobs (ver buildKpiBackupReport).
-          tipoBackup: "",
-          cbtStatus: cbtIdx !== -1 && cbtIdx < cells.length ? cleanText($(cells[cbtIdx]).text()) : "",
-          modoTransporte:
-            transportIdx !== -1 && transportIdx < cells.length ? cleanText($(cells[transportIdx]).text()) : "",
-          razonFalla: failureReason,
-          fecha: fileDate,
-        });
-      }
-    }
   });
 
   return { fs, summary, vm };
@@ -450,20 +481,6 @@ export async function buildKpiBackupReport(
     allSummary.push(...summary);
     allVm.push(...vm);
   }
-
-  // El Tipo de Backup real (Full/Incremental/Differential/Synthetic Full)
-  // viene de la tabla grande de jobs, no de la subtabla "Protected Virtual
-  // Machines". Se cruza por fecha + nombre de cliente/VM (mismo valor en
-  // ambas tablas para un job de VMware).
-  const tipoBackupPorVm = new Map<string, string>();
-  allFs.forEach((r) => {
-    if (r.tipoAgente === "VMware" && r.tipoBackup) {
-      tipoBackupPorVm.set(`${r.fecha}::${r.clienteMaquina}`, r.tipoBackup);
-    }
-  });
-  allVm.forEach((v) => {
-    v.tipoBackup = tipoBackupPorVm.get(`${v.fecha}::${v.nombreVm}`) || "";
-  });
 
   const sSum = (key: keyof Pick<KpiSummaryRow, "totalJobs" | "completados" | "completadosConErrores" | "completadosConAdvertencias" | "fallidos" | "enEjecucion" | "retrasados" | "confirmados" | "tamanoAppGB" | "tamanoMediaEstGB" | "objetosProtegidos" | "objetosFallidos">) =>
     allSummary.reduce((acc, r) => acc + r[key], 0);
