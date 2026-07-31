@@ -223,6 +223,8 @@ export default function SimpleBackupReportPage({ tipo, titulo, icono, descripcio
             <StatCard label="Con errores" value={s.completedWithErrors} grad="linear-gradient(135deg, #DC2626, #991B1B)" />
             <StatCard label="Con advertencias" value={s.completedWithWarnings} grad="linear-gradient(135deg, #D97706, #B45309)" />
             <StatCard label="% Completado" value={`${s.porcentajeCompletado}%`} grad="linear-gradient(135deg, #2563EB, #1D4ED8)" />
+            <StatCard label="Máquinas (Backup Full)" value={s.tareasProgramadasEjecutadas} grad="linear-gradient(135deg, #7C3AED, #5B21B6)" />
+            <StatCard label="Máquinas completadas" value={s.tareasProgramadasCompletadas} grad="linear-gradient(135deg, #0891B2, #0E7490)" />
           </div>
         )}
 
