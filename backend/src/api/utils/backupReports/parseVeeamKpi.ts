@@ -376,7 +376,6 @@ function parseVeeamKpiHtml(
     const vmtoolsIdx = idx((h) => h.includes("VMware Tools"));
     const hwVerIdx = idx((h) => h.includes("Hardware Version"));
     const osIdx = idx((h) => h.includes("Operating System"));
-    const bkTypeIdx = headerTexts.findIndex((h) => h === "Backup Type");
     const cbtIdx = idx((h) => h.includes("CBT Status"));
     const transportIdx = idx((h) => h.includes("Transport Mode"));
 
@@ -421,7 +420,10 @@ function parseVeeamKpiHtml(
           vmwareTools: vmtoolsIdx !== -1 && vmtoolsIdx < cells.length ? cleanText($(cells[vmtoolsIdx]).text()) : "",
           hwVersion: hwVerIdx !== -1 && hwVerIdx < cells.length ? cleanText($(cells[hwVerIdx]).text()) : "",
           sistemaOperativo: osIdx !== -1 && osIdx < cells.length ? cleanText($(cells[osIdx]).text()) : "",
-          tipoBackup: bkTypeIdx !== -1 && bkTypeIdx < cells.length ? cleanText($(cells[bkTypeIdx]).text()) : "",
+          // El "Backup Type" de esta subtabla (VADP) es el método de VMware,
+          // no Full/Incremental/etc. El valor real se cruza más adelante
+          // desde la tabla grande de jobs (ver buildKpiBackupReport).
+          tipoBackup: "",
           cbtStatus: cbtIdx !== -1 && cbtIdx < cells.length ? cleanText($(cells[cbtIdx]).text()) : "",
           modoTransporte:
             transportIdx !== -1 && transportIdx < cells.length ? cleanText($(cells[transportIdx]).text()) : "",
@@ -448,6 +450,20 @@ export async function buildKpiBackupReport(
     allSummary.push(...summary);
     allVm.push(...vm);
   }
+
+  // El Tipo de Backup real (Full/Incremental/Differential/Synthetic Full)
+  // viene de la tabla grande de jobs, no de la subtabla "Protected Virtual
+  // Machines". Se cruza por fecha + nombre de cliente/VM (mismo valor en
+  // ambas tablas para un job de VMware).
+  const tipoBackupPorVm = new Map<string, string>();
+  allFs.forEach((r) => {
+    if (r.tipoAgente === "VMware" && r.tipoBackup) {
+      tipoBackupPorVm.set(`${r.fecha}::${r.clienteMaquina}`, r.tipoBackup);
+    }
+  });
+  allVm.forEach((v) => {
+    v.tipoBackup = tipoBackupPorVm.get(`${v.fecha}::${v.nombreVm}`) || "";
+  });
 
   const sSum = (key: keyof Pick<KpiSummaryRow, "totalJobs" | "completados" | "completadosConErrores" | "completadosConAdvertencias" | "fallidos" | "enEjecucion" | "retrasados" | "confirmados" | "tamanoAppGB" | "tamanoMediaEstGB" | "objetosProtegidos" | "objetosFallidos">) =>
     allSummary.reduce((acc, r) => acc + r[key], 0);
@@ -763,9 +779,22 @@ function buildKpiWorkbook(
   }
 
   // ── Resumen por Cliente ──────────────────────────────────────────────────
+  // Tipo de Backup y Content/Filter Exception son datos por job (vienen de
+  // la tabla grande, allFs); acá se agregan por cliente+fecha (valores
+  // distintos, unidos por coma) para mostrarlos en esta fila por cliente.
+  const detalleporCliente = new Map<string, { tipos: Set<string>; filtros: Set<string> }>();
+  allFs.forEach((r) => {
+    const key = `${r.fecha}::${r.clienteMaquina}`;
+    if (!detalleporCliente.has(key)) detalleporCliente.set(key, { tipos: new Set(), filtros: new Set() });
+    const entry = detalleporCliente.get(key)!;
+    if (r.tipoBackup) entry.tipos.add(r.tipoBackup);
+    if (r.contenidoFiltro) entry.filtros.add(r.contenidoFiltro);
+  });
+
   const sheetSummary = workbook.addWorksheet("Resumen por Cliente");
   sheetSummary.columns = [
     { header: "Cliente", key: "cliente", width: 22 },
+    { header: "Tipo de Backup", key: "tipoBackup", width: 20 },
     { header: "Total Jobs", key: "totalJobs", width: 12 },
     { header: "Completados", key: "completados", width: 12 },
     { header: "Completados con errores", key: "completadosConErrores", width: 16 },
@@ -779,11 +808,14 @@ function buildKpiWorkbook(
     { header: "Ahorro de Espacio (%)", key: "ahorroEspacioPct", width: 14 },
     { header: "Objetos Protegidos", key: "objetosProtegidos", width: 14 },
     { header: "Objetos Fallidos", key: "objetosFallidos", width: 14 },
+    { header: "Content / Filter Exception", key: "contenidoFiltro", width: 40 },
     { header: "Fecha", key: "fecha", width: 14 },
   ];
-  allSummary.forEach((r) =>
+  allSummary.forEach((r) => {
+    const agg = detalleporCliente.get(`${r.fecha}::${r.cliente}`);
     sheetSummary.addRow({
       cliente: r.cliente,
+      tipoBackup: agg ? [...agg.tipos].join(", ") : "",
       totalJobs: r.totalJobs,
       completados: r.completados,
       completadosConErrores: r.completadosConErrores,
@@ -797,9 +829,10 @@ function buildKpiWorkbook(
       ahorroEspacioPct: r.ahorroEspacioPct,
       objetosProtegidos: r.objetosProtegidos,
       objetosFallidos: r.objetosFallidos,
+      contenidoFiltro: agg ? [...agg.filtros].join(", ") : "",
       fecha: r.fecha,
-    })
-  );
+    });
+  });
 
   const nDataSummary = allSummary.length;
   const pctTasaExito = summary.totalJobs > 0 ? (summary.completados / summary.totalJobs) * 100 : 0;
@@ -818,56 +851,6 @@ function buildKpiWorkbook(
   const totalRowsSummary = new Set([nDataSummary + 2, nDataSummary + 3]);
   applyKpiStyle(sheetSummary, { totalRows: totalRowsSummary });
 
-  // ── Backup FS y BD ───────────────────────────────────────────────────────
-  if (allFs.length > 0) {
-    const sheetFs = workbook.addWorksheet("Backup FS y BD");
-    sheetFs.columns = [
-      { header: "Cliente / Máquina", key: "clienteMaquina", width: 24 },
-      { header: "Agente / Instancia", key: "agenteInstancia", width: 18 },
-      { header: "Tipo de Agente", key: "tipoAgente", width: 14 },
-      { header: "Backup Set / Subclient", key: "backupSetSubclient", width: 18 },
-      { header: "Job ID", key: "jobId", width: 10 },
-      { header: "Tipo de Backup", key: "tipoBackup", width: 14 },
-      { header: "Scan Type", key: "scanType", width: 14 },
-      { header: "Estado", key: "estado", width: 16 },
-      { header: "Hora Inicio", key: "horaInicio", width: 14 },
-      { header: "Hora Fin", key: "horaFin", width: 14 },
-      { header: "Duración (min)", key: "duracionMin", width: 14 },
-      { header: "Tamaño App (GB)", key: "tamanoAppGB", width: 14 },
-      { header: "Compresión (%)", key: "compresionPct", width: 14 },
-      { header: "Datos Transferidos (GB)", key: "datosTransferidosGB", width: 16 },
-      { header: "Tamaño Media Est. (GB)", key: "tamanoMediaEstGB", width: 16 },
-      { header: "Ahorro Espacio (%)", key: "ahorroEspacioPct", width: 14 },
-      { header: "Throughput (GB/Hr)", key: "throughputGBHr", width: 14 },
-      { header: "Objetos Protegidos", key: "objetosProtegidos", width: 14 },
-      { header: "Objetos Fallidos", key: "objetosFallidos", width: 14 },
-      { header: "Media Agent", key: "mediaAgent", width: 16 },
-      { header: "Content / Filter Exception", key: "contenidoFiltro", width: 40 },
-      { header: "Fecha", key: "fecha", width: 14 },
-    ];
-    allFs.forEach((r) => sheetFs.addRow({ ...r }));
-
-    const nDataFs = allFs.length;
-    sheetFs.addRow({
-      clienteMaquina: "── RESUMEN ──",
-      tamanoAppGB: summary.totalDatosGB,
-      datosTransferidosGB: summary.totalTransferidoGB,
-      compresionPct: summary.promedioCompresionPct,
-      ahorroEspacioPct: summary.promedioAhorroPct,
-    });
-    sheetFs.addRow({ clienteMaquina: "Total Jobs ejecutados", estado: summary.totalFs });
-    sheetFs.addRow({ clienteMaquina: "Total Jobs Completados", estado: summary.completadosFs });
-
-    const totalRowsFs = new Set([nDataFs + 2, nDataFs + 3, nDataFs + 4]);
-    const alertRowsFs = new Set<number>();
-    allFs.forEach((r, i) => {
-      if (r.objetosFallidos > 0 || (r.estado !== "Completed" && r.estado !== "")) {
-        alertRowsFs.add(i + 2);
-      }
-    });
-    applyKpiStyle(sheetFs, { totalRows: totalRowsFs, alertRows: alertRowsFs });
-  }
-
   // ── Backup VMware ────────────────────────────────────────────────────────
   if (allVm.length > 0) {
     const sheetVm = workbook.addWorksheet("Backup VMware");
@@ -884,7 +867,7 @@ function buildKpiWorkbook(
       { header: "VMware Tools", key: "vmwareTools", width: 14 },
       { header: "HW Version", key: "hwVersion", width: 12 },
       { header: "Sistema Operativo", key: "sistemaOperativo", width: 20 },
-      { header: "Tipo Backup", key: "tipoBackup", width: 14 },
+      { header: "Tipo de Backup", key: "tipoBackup", width: 18 },
       { header: "CBT Status", key: "cbtStatus", width: 12 },
       { header: "Modo Transporte", key: "modoTransporte", width: 16 },
       { header: "Razón de Falla", key: "razonFalla", width: 50 },
