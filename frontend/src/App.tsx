@@ -10,10 +10,6 @@ import FirmaDevolucion from "./pages/FirmaDevolucion";
 import SoftwareInventario from "./pages/SoftwareInventario";
 import { isAuthenticated } from "./api/auth";
 import MobileStagingPage from "./pages/MobileStating";
-import BackupsLayout from "./pages/Backups/BackupsLayout";
-import BackupsDiario from "./pages/Backups/BackupsDiario";
-import BackupsSemanal from "./pages/Backups/BackupsSemanal";
-import BackupsMensual from "./pages/Backups/BackupsMensual";
 import BackupsKpi from "./pages/Backups/BackupsKpi";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -43,13 +39,7 @@ export default function App() {
           <Route path="mobile-staging" element={<MobileStagingPage />} />
           <Route path="/papelera"              element={<Papelera />} />
           <Route path="/inventario/software"   element={<SoftwareInventario />} /> {/* ← NUEVO */}
-          <Route path="backups" element={<BackupsLayout />}>
-            <Route index    element={<Navigate to="diario" replace />} />
-            <Route path="diario"  element={<BackupsDiario />} />
-            <Route path="semanal" element={<BackupsSemanal />} />
-            <Route path="mensual" element={<BackupsMensual />} />
-            <Route path="kpi"     element={<BackupsKpi />} />
-          </Route>
+          <Route path="backups" element={<BackupsKpi />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

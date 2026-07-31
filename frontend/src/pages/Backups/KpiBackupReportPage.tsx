@@ -193,7 +193,7 @@ export default function KpiBackupReportPage() {
               <StatCard label="VMs respaldadas" value={s.totalVms} grad="linear-gradient(135deg, #0F766E, #115E59)" />
               <StatCard label="VMs completadas" value={s.vmsCompletadas} grad="linear-gradient(135deg, #16A34A, #15803D)" />
               <StatCard label="% Éxito VMs" value={`${s.pctExitoVms}%`} grad="linear-gradient(135deg, #2563EB, #1D4ED8)" />
-              <StatCard label="Datos respaldados (GB)" value={s.totalDatosGB} grad="linear-gradient(135deg, #D97706, #B45309)" />
+              <StatCard label="VMs con Fallas" value={s.vmsConFallas?.length ?? 0} grad="linear-gradient(135deg, #DC2626, #991B1B)" />
               <StatCard label="Compresión prom. (%)" value={`${s.promedioCompresionPct}%`} grad="linear-gradient(135deg, #FA8200, #D86018)" />
             </div>
 
