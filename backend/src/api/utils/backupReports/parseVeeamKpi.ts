@@ -107,6 +107,7 @@ export interface KpiReportSummary {
   pctExitoVms: number;
   clientes: number;
   topClientes: { cliente: string; totalJobs: number; completados: number; pctExito: number }[];
+  topVms: { nombreVm: string; estado: string; tamanoBackupGB: number; tipoBackup: string }[];
   vmsConFallas: { nombreVm: string; estado: string; sistemaOperativo: string; razonFalla: string }[];
 }
 
@@ -527,6 +528,16 @@ export async function buildKpiBackupReport(
       razonFalla: v.razonFalla,
     }));
 
+  const topVms = [...allVm]
+    .sort((a, b) => b.tamanoBackupGB - a.tamanoBackupGB)
+    .slice(0, 5)
+    .map((v) => ({
+      nombreVm: v.nombreVm,
+      estado: v.estado,
+      tamanoBackupGB: v.tamanoBackupGB,
+      tipoBackup: v.tipoBackup,
+    }));
+
   const summary: KpiReportSummary = {
     totalJobs,
     completados,
@@ -548,6 +559,7 @@ export async function buildKpiBackupReport(
     pctExitoVms,
     clientes: allSummary.length,
     topClientes,
+    topVms,
     vmsConFallas,
   };
 
@@ -759,6 +771,56 @@ function buildKpiWorkbook(
     dash.getColumn(7).width = 10;
   }
 
+  if (summary.topVms.length > 0) {
+    rowNum += 2;
+    dash.getCell(rowNum, 4).value = "💽 TOP 5 VMs POR TAMAÑO DE BACKUP (VADP)";
+    dash.getCell(rowNum, 4).font = { bold: true, size: 10, color: { argb: "FF1E3A8A" }, name: "Arial" };
+    dash.mergeCells(rowNum, 4, rowNum, 7);
+    rowNum += 1;
+
+    const headersVadp = ["Nombre VM", "Estado", "Tamaño Backup (GB)", "Tipo de Backup"];
+    headersVadp.forEach((h, i) => {
+      const c = dash.getCell(rowNum, 4 + i);
+      c.value = h;
+      c.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 9, name: "Arial" };
+      c.fill = headerFill;
+      c.border = border;
+      c.alignment = { horizontal: "center" };
+    });
+    rowNum += 1;
+
+    const topVmsFirstRow = rowNum;
+    summary.topVms.forEach((v, i) => {
+      const bg = i % 2 === 0 ? oddFill : evenFill;
+      const vals = [v.nombreVm, v.estado, v.tamanoBackupGB, v.tipoBackup];
+      vals.forEach((val, ci) => {
+        const c = dash.getCell(rowNum, 4 + ci);
+        c.value = val;
+        c.font = { size: 9, name: "Arial" };
+        c.fill = bg;
+        c.border = border;
+        c.alignment = { horizontal: ci > 0 ? "center" : "left" };
+      });
+      rowNum += 1;
+    });
+    const topVmsLastRow = rowNum - 1;
+
+    // Barra de datos comparando el tamaño de backup entre las 5 VMs.
+    dash.addConditionalFormatting({
+      ref: `F${topVmsFirstRow}:F${topVmsLastRow}`,
+      rules: [
+        {
+          type: "dataBar",
+          priority: 1,
+          cfvo: [{ type: "min" }, { type: "max" }],
+          color: { argb: "FF6EE7B7" },
+        },
+      ],
+    } as unknown as ExcelJS.ConditionalFormattingOptions);
+
+    dash.getColumn(7).width = 16;
+  }
+
   if (summary.vmsConFallas.length > 0) {
     rowNum += 2;
     dash.getCell(rowNum, 4).value = "🔴 VMs CON ADVERTENCIAS / FALLAS (máx 10)";
@@ -795,7 +857,7 @@ function buildKpiWorkbook(
     dash.getColumn(8).width = 50;
   }
 
-  // ── Resumen por Cliente ──────────────────────────────────────────────────
+  // ── File System (antes "Resumen por Cliente") ───────────────────────────
   // Tipo de Backup y Content/Filter Exception son datos por job (vienen de
   // la tabla grande, allFs); acá se agregan por cliente+fecha (valores
   // distintos, unidos por coma) para mostrarlos en esta fila por cliente.
@@ -808,7 +870,7 @@ function buildKpiWorkbook(
     if (r.contenidoFiltro) entry.filtros.add(r.contenidoFiltro);
   });
 
-  const sheetSummary = workbook.addWorksheet("Resumen por Cliente");
+  const sheetSummary = workbook.addWorksheet("File System");
   sheetSummary.columns = [
     { header: "Cliente", key: "cliente", width: 22 },
     { header: "Tipo de Backup", key: "tipoBackup", width: 20 },
@@ -868,9 +930,9 @@ function buildKpiWorkbook(
   const totalRowsSummary = new Set([nDataSummary + 2, nDataSummary + 3]);
   applyKpiStyle(sheetSummary, { totalRows: totalRowsSummary });
 
-  // ── Backup VMware ────────────────────────────────────────────────────────
+  // ── VADP (antes "Backup VMware") ─────────────────────────────────────────
   if (allVm.length > 0) {
-    const sheetVm = workbook.addWorksheet("Backup VMware");
+    const sheetVm = workbook.addWorksheet("VADP");
     sheetVm.columns = [
       { header: "Nombre VM", key: "nombreVm", width: 24 },
       { header: "Host", key: "host", width: 20 },
