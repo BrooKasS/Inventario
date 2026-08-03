@@ -642,16 +642,9 @@ export function FormCertificadoSsl({
                   <input type="text" placeholder="Ej: https://app.ejemplo.com" value={currentCertApp?.url ?? ""}
                     onChange={e => onCertAppFieldChange?.("url", e.target.value)} style={inputStyle} />
                 </div>
-                <div>
-                  <label style={labelStyle}>Fecha Inicio</label>
-                  <input type="date" value={currentCertApp?.fechaInicio ?? ""}
-                    onChange={e => onCertAppFieldChange?.("fechaInicio", e.target.value)} style={inputStyle} />
-                </div>
-                <div>
-                  <label style={labelStyle}>Fecha Fin</label>
-                  <input type="date" value={currentCertApp?.fechaFin ?? ""}
-                    onChange={e => onCertAppFieldChange?.("fechaFin", e.target.value)} style={inputStyle} />
-                </div>
+              </div>
+              <div style={{ fontSize: 11, color: "#888", marginBottom: 12, fontFamily: "Calibri, sans-serif" }}>
+                📅 Usa las mismas fechas del proveedor (arriba) — no se piden por separado.
               </div>
               <button
                 onClick={onAddCertApp}
