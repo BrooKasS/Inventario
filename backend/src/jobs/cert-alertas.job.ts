@@ -13,7 +13,7 @@ async function run(): Promise<void> {
   try {
     await certAlertasService.checkAndNotify();
   } catch (error: any) {
-    console.error(`❌ [CERT-ALERTAS-JOB] Error: ${error.message}`);
+    console.error(`❌ [CERT-ALERTAS-JOB] Error:`, error.response?.data ?? error.message);
   } finally {
     running = false;
   }
