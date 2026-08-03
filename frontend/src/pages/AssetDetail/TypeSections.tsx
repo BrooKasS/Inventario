@@ -6,8 +6,11 @@ import {
   EditSelectField,
   EditAutoField,
   EditDateField,
+  UrlField,
+  DiasRestantesBadge,
 } from "./DetailComponents";
 import { inputStyle, labelStyle } from "./constants";
+import { CertificadoAplicaciones } from "./CertificadoAplicaciones";
 
 /* ═══════════════════════════════════════════
    SERVIDOR SECTIONS
@@ -442,35 +445,6 @@ export function VpnSection({
    "editing" plano. Ver lógica puedeEditar* abajo.
    NO cambiar esta lógica — es diseño intencional.
 ═══════════════════════════════════════════ */
-/* ─── Helper: Días restantes con color ─── */
-function DiasRestantesBadge({ fecha }: { fecha: string | null | undefined }) {
-  if (!fecha) return null;
-  const ahora = new Date();
-  const fin = new Date(fecha);
-  if (isNaN(fin.getTime())) return null;
-  fin.setHours(23, 59, 59, 999);
-  const diffMs = fin.getTime() - ahora.getTime();
-  const diffDias = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-  const diffMeses = diffDias / 30;
-
-  if (diffDias < 0) {
-    return <span style={{ color: "#c0392b", fontWeight: 800, fontSize: 12, background: "#ffebeb", padding: "2px 8px", borderRadius: 10, marginLeft: 8 }}>⚠️ VENCIDO</span>;
-  }
-
-  let color = "#27ae60";
-  if (diffMeses < 2) color = "#c0392b";
-  else if (diffMeses < 3) color = "#f39c12";
-
-  const label = diffDias >= 30
-    ? `${Math.floor(diffMeses)} mes${Math.floor(diffMeses) !== 1 ? "es" : ""} ${Math.floor(diffDias % 30)} día${Math.floor(diffDias % 30) !== 1 ? "s" : ""}`
-    : `${diffDias} día${diffDias !== 1 ? "s" : ""}`;
-
-  return (
-    <span style={{ color, fontWeight: 800, fontSize: 12, background: `${color}15`, padding: "2px 8px", borderRadius: 10, marginLeft: 8, whiteSpace: "nowrap" }}>
-      {label}
-    </span>
-  );
-}
 
 /* ═══════════════════════════════════════════
    CERTIFICADO SSL SECTION
@@ -482,7 +456,7 @@ export function CertificadoSslSection({
 }: {
   asset: Asset;
   editing: boolean;
-  handleChange: (section: string | null, field: string, val: string) => void;
+  handleChange: (section: string | null, field: string, val: any) => void;
 }) {
   const c = asset.certificadoSsl;
   if (!c) return null;
@@ -518,7 +492,7 @@ export function CertificadoSslSection({
             onChange={hc}
           />
         )}
-        
+
         <Field
           label="Proveedor"
           value={c.proveedor}
@@ -526,7 +500,7 @@ export function CertificadoSslSection({
           field="proveedor"
           onChange={hc}
         />
-        <Field
+        <UrlField
           label="URL"
           value={c.url}
           editing={editing}
@@ -540,42 +514,31 @@ export function CertificadoSslSection({
           editing={editing}
           onChange={hc}
         />
-        <EditDateField
-          label="Fecha de Vencimiento"
-          value={c.fechaFin}
-          field="fechaFin"
-          editing={editing}
-          onChange={hc}
-        />
+        <div>
+          <EditDateField
+            label="Fecha de Vencimiento"
+            value={c.fechaFin}
+            field="fechaFin"
+            editing={editing}
+            onChange={hc}
+          />
+          {!editing && <DiasRestantesBadge fecha={c.fechaFin} />}
+        </div>
       </Section>
 
-      {/* Apps hijas del proveedor */}
-      {c.tipoCertificado === "PROVEEDOR" && apps.length > 0 && (
-        <Section title={`Aplicaciones del Proveedor (${apps.length})`} icon="📋">
-          {apps.map((app, idx) => (
-            <div key={idx} style={{
-              background: "#fefcfa", padding: "14px 15px", borderRadius: 8,
-              border: "1px solid #e5ddd8", marginBottom: 8,
-              gridColumn: "1 / -1",
-            }}>
-              <div style={{ fontSize: 12, color: "#1A1A1A" }}>
-                <div style={{ marginBottom: 6 }}>
-                  <span style={{ fontWeight: 700, color: "#5a4a45" }}>App:</span>{" "}
-                  <span style={{ color: "#666" }}>{app.nombreAplicacion || "—"}</span>
-                </div>
-                <div style={{ marginBottom: 6 }}>
-                  <span style={{ fontWeight: 700, color: "#5a4a45" }}>URL:</span>{" "}
-                  <span style={{ color: "#666" }}>{app.url || "—"}</span>
-                </div>
-                <div>
-                  <span style={{ fontWeight: 700, color: "#5a4a45" }}>Fechas:</span>{" "}
-                  <span style={{ color: "#666" }}>
-                    {app.fechaInicio ? new Date(app.fechaInicio).toLocaleDateString("es-CO") : "?"} → {app.fechaFin ? new Date(app.fechaFin).toLocaleDateString("es-CO") : "?"}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
+      {/* Apps hijas del proveedor: ver/editar/agregar/eliminar */}
+      {c.tipoCertificado === "PROVEEDOR" && (
+        <Section title={`Aplicaciones del Proveedor${apps.length ? ` (${apps.length})` : ""}`} icon="📋">
+          <div style={{ gridColumn: "1 / -1" }}>
+            <CertificadoAplicaciones
+              key={editing ? "editing" : "view"}
+              apps={apps}
+              editing={editing}
+              fechaInicioProveedor={c.fechaInicio}
+              fechaFinProveedor={c.fechaFin}
+              onChange={(nuevasApps) => handleChange("certificadoSsl", "aplicaciones", nuevasApps)}
+            />
+          </div>
         </Section>
       )}
     </>

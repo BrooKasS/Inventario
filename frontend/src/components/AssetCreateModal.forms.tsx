@@ -573,7 +573,18 @@ export function FormCertificadoSsl({
                         </div>
                         <div style={{ marginBottom: 6 }}>
                           <span style={{ fontWeight: 700, color: "#5a4a45" }}>URL:</span>{" "}
-                          <span style={{ color: "#666" }}>{app.url || "—"}</span>
+                          {app.url ? (
+                            <a
+                              href={/^https?:\/\//i.test(app.url.trim()) ? app.url.trim() : `https://${app.url.trim()}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ color: "#B7312C", fontWeight: 600, textDecoration: "none" }}
+                            >
+                              {app.url}
+                            </a>
+                          ) : (
+                            <span style={{ color: "#666" }}>—</span>
+                          )}
                         </div>
                         <div>
                           <span style={{ fontWeight: 700, color: "#5a4a45" }}>Fechas:</span>{" "}

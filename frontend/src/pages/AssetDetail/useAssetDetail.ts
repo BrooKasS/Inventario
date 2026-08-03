@@ -34,7 +34,7 @@ export interface UseAssetDetailReturn {
   bitacoraFiltrada: BitacoraEntry[];
   hayFiltros: boolean;
   autoresUnicos: string[];
-  handleChange: (section: string | null, field: string, val: string) => void;
+  handleChange: (section: string | null, field: string, val: any) => void;
   handleSave: () => Promise<void>;
   handleAddObs: () => Promise<void>;
   handleExportExcel: () => Promise<void>;
@@ -56,6 +56,7 @@ function mergeAssetWithChanges(asset: Asset, changes: Record<string, any>): Asse
     baseDatos: asset.baseDatos || changes.baseDatos ? { ...(asset.baseDatos ?? {}), ...(changes.baseDatos ?? {}) } as any : asset.baseDatos,
     vpn: asset.vpn || changes.vpn ? { ...(asset.vpn ?? {}), ...(changes.vpn ?? {}) } as any : asset.vpn,
     movil: asset.movil || changes.movil ? { ...(asset.movil ?? {}), ...(changes.movil ?? {}) } as any : asset.movil,
+    certificadoSsl: asset.certificadoSsl || changes.certificadoSsl ? { ...(asset.certificadoSsl ?? {}), ...(changes.certificadoSsl ?? {}) } as any : asset.certificadoSsl,
   };
 }
 
@@ -139,7 +140,7 @@ export function useAssetDetail(): UseAssetDetailReturn {
     setFHasta("");
   };
 
-  const handleChange = (section: string | null, field: string, val: string) => {
+  const handleChange = (section: string | null, field: string, val: any) => {
     if (section) {
       setChanges((prev) => ({
         ...prev,

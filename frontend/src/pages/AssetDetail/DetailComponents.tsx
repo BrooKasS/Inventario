@@ -543,6 +543,42 @@ export function EditAutoField({
 }
 
 /* ═══════════════════════════════════════════
+   DIAS RESTANTES BADGE
+   Etiqueta de color segun cuanto falta para una
+   fecha (verde > 3 meses, amarillo 2-3, rojo < 2,
+   "VENCIDO" si ya paso). Usada en certificados SSL
+   y sus aplicaciones hijas.
+═══════════════════════════════════════════ */
+export function DiasRestantesBadge({ fecha }: { fecha: string | null | undefined }) {
+  if (!fecha) return null;
+  const ahora = new Date();
+  const fin = new Date(fecha);
+  if (isNaN(fin.getTime())) return null;
+  fin.setHours(23, 59, 59, 999);
+  const diffMs = fin.getTime() - ahora.getTime();
+  const diffDias = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const diffMeses = diffDias / 30;
+
+  if (diffDias < 0) {
+    return <span style={{ color: "#c0392b", fontWeight: 800, fontSize: 12, background: "#ffebeb", padding: "2px 8px", borderRadius: 10, marginLeft: 8 }}>⚠️ VENCIDO</span>;
+  }
+
+  let color = "#27ae60";
+  if (diffMeses < 2) color = "#c0392b";
+  else if (diffMeses < 3) color = "#f39c12";
+
+  const label = diffDias >= 30
+    ? `${Math.floor(diffMeses)} mes${Math.floor(diffMeses) !== 1 ? "es" : ""} ${Math.floor(diffDias % 30)} día${Math.floor(diffDias % 30) !== 1 ? "s" : ""}`
+    : `${diffDias} día${diffDias !== 1 ? "s" : ""}`;
+
+  return (
+    <span style={{ color, fontWeight: 800, fontSize: 12, background: `${color}15`, padding: "2px 8px", borderRadius: 10, marginLeft: 8, whiteSpace: "nowrap" }}>
+      {label}
+    </span>
+  );
+}
+
+/* ═══════════════════════════════════════════
    EDIT DATE FIELD
    Date picker nativo en edición, span en lectura.
    Soluciona la pérdida del date picker que tenía
@@ -607,6 +643,67 @@ export function EditDateField({
         <span style={{ ...readSpanStyle, color: current ? "#333" : "#999" }}>
           {formatDisplay(current)}
         </span>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   URL FIELD
+   Input en edición; en lectura, si hay valor lo
+   muestra como link clicable (target=_blank) en
+   vez de texto plano. Antepone https:// si el
+   valor guardado no trae protocolo.
+═══════════════════════════════════════════ */
+export function UrlField({
+  label,
+  value,
+  field,
+  editing,
+  onChange,
+}: {
+  label: string;
+  value: string | null;
+  field: string;
+  editing: boolean;
+  onChange: (field: string, val: string) => void;
+}) {
+  const current = value ?? "";
+  const href = /^https?:\/\//i.test(current.trim()) ? current.trim() : `https://${current.trim()}`;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <span style={labelStyle}>{label}</span>
+      {editing ? (
+        <input
+          defaultValue={current}
+          placeholder="https://ejemplo.com"
+          onChange={(e) => onChange(field, e.target.value)}
+          style={editBaseStyle}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = "#B7312C";
+            e.currentTarget.style.background = "#fff";
+            e.currentTarget.style.boxShadow = "0 0 0 3px rgba(183,49,44,.08)";
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = "#ddd";
+            e.currentTarget.style.background = "#fafbfc";
+            e.currentTarget.style.boxShadow = "none";
+          }}
+        />
+      ) : current ? (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ fontSize: 13, color: C.primary, fontWeight: 600, textDecoration: "none", fontFamily: "Calibri, sans-serif" }}
+          onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+          onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+        >
+          🔗 {current}
+        </a>
+      ) : (
+        <span style={{ ...readSpanStyle, color: "#999" }}>—</span>
       )}
     </div>
   );

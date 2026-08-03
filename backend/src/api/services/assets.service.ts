@@ -15,7 +15,7 @@ import { FindOptionsWhere, In, IsNull, Not } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { generarPdfDevolucion, generarPdfEntrega } from "../utils/generarMovilDocx";
 import { sendMovilEmail } from "../utils/sendMovilEmail";
-import { sendAssetAlerta, filaFecha } from "../utils/sendAssetAlerta";
+import { notificarAsset } from "../utils/sendAssetAlerta";
 import fs from "fs";
 import { sendToFlowRaw } from "../utils/flowRaw";
 import path from "path";
@@ -244,70 +244,35 @@ const {
     if (servidor) {
       const servidorToSave = { ...servidor, asset: savedAsset };
       if (!servidorToSave.id) servidorToSave.id = uuidv4();
-      await servidorRepository.save(servidorToSave);
-
-      await sendAssetAlerta("creado", "SERVIDOR", savedAsset, [
-        ["Código de servicio", savedAsset.codigoServicio ?? "—"],
-        ["Ambiente", servidorToSave.ambiente ?? "—"],
-        ["Sistema operativo", servidorToSave.sistemaOperativo ?? "—"],
-        ["IP interna", servidorToSave.ipInterna ?? "—"],
-        ["Propietario", savedAsset.propietario ?? "—"],
-        ["Custodio", savedAsset.custodio ?? "—"],
-      ], { autor });
+      savedAsset.servidor = await servidorRepository.save(servidorToSave);
     }
     if (red) {
       const redToSave = { ...red, asset: savedAsset };
       if (!redToSave.id) redToSave.id = uuidv4();
-      await redRepository.save(redToSave);
-
-      await sendAssetAlerta("creado", "RED", savedAsset, [
-        ["Código de servicio", savedAsset.codigoServicio ?? "—"],
-        ["Modelo", redToSave.modelo ?? "—"],
-        ["IP de gestión", redToSave.ipGestion ?? "—"],
-        ["Estado", redToSave.estado ?? "—"],
-        ["Propietario", savedAsset.propietario ?? "—"],
-        ["Custodio", savedAsset.custodio ?? "—"],
-      ], { autor });
+      savedAsset.red = await redRepository.save(redToSave);
     }
     if (ups) {
       const upsToSave = { ...ups, asset: savedAsset };
       if (!upsToSave.id) upsToSave.id = uuidv4();
-      await upsRepository.save(upsToSave);
-
-      await sendAssetAlerta("creado", "UPS", savedAsset, [
-        ["Código de servicio", savedAsset.codigoServicio ?? "—"],
-        ["Modelo", upsToSave.modelo ?? "—"],
-        ["Serial", upsToSave.serial ?? "—"],
-        ["Estado", upsToSave.estado ?? "—"],
-        ["Ubicación", savedAsset.ubicacion ?? "—"],
-        ["Custodio", savedAsset.custodio ?? "—"],
-      ], { autor });
+      savedAsset.ups = await upsRepository.save(upsToSave);
     }
     if (baseDatos) {
       const baseDatosToSave = { ...baseDatos, asset: savedAsset };
       if (!baseDatosToSave.id) baseDatosToSave.id = uuidv4();
-      await baseDatosRepository.save(baseDatosToSave);
-
-      await sendAssetAlerta("creado", "BASE_DATOS", savedAsset, [
-        ["Código de servicio", savedAsset.codigoServicio ?? "—"],
-        ["Ambiente", baseDatosToSave.ambiente ?? "—"],
-        ["Versión BD", baseDatosToSave.versionBd ?? "—"],
-        ["Servidor 1", baseDatosToSave.servidor1 ?? "—"],
-        ["Propietario", savedAsset.propietario ?? "—"],
-        ["Custodio", savedAsset.custodio ?? "—"],
-      ], { autor });
+      savedAsset.baseDatos = await baseDatosRepository.save(baseDatosToSave);
     }
     if (vpn) {
       const vpnToSave = { ...vpn, asset: savedAsset };
       if (!vpnToSave.id) vpnToSave.id = uuidv4();
-      
+
       // Separar reglas del objeto VPN
       const reglas = vpnToSave.reglas || [];
       delete vpnToSave.reglas; // Remover reglas del objeto principal
-      
+
       // Guardar VPN principal
       const savedVpn = await vpnRepository.save(vpnToSave);
-      
+      savedAsset.vpn = savedVpn;
+
       // Guardar reglas como VpnRule separadas
       if (reglas && Array.isArray(reglas) && reglas.length > 0) {
         const vpnRulesToSave = reglas.map((regla: any) => {
@@ -321,18 +286,9 @@ const {
           });
           return rule;
         });
-        
+
         await vpnRuleRepository.save(vpnRulesToSave);
       }
-
-      await sendAssetAlerta("creado", "VPN", savedAsset, [
-        ["Código de servicio", savedAsset.codigoServicio ?? "—"],
-        ["Conexión", vpnToSave.conexion ?? "—"],
-        ["Origen", vpnToSave.origen ?? "—"],
-        ["Destino", vpnToSave.destino ?? "—"],
-        ["Propietario", savedAsset.propietario ?? "—"],
-        ["Custodio", savedAsset.custodio ?? "—"],
-      ], { autor });
     }
 
     // -- CERTIFICADO SSL --
@@ -351,12 +307,14 @@ const {
       });
       const savedCert =
         await certificadoSslRepository.save(certData);
+      savedAsset.certificadoSsl = savedCert;
 
       if (
         certificadoSsl.aplicaciones &&
         Array.isArray(certificadoSsl.aplicaciones) &&
         certificadoSsl.aplicaciones.length > 0
       ) {
+        // Las apps hijas heredan la fecha del proveedor cuando no traen la suya propia.
         const apps = certificadoSsl.aplicaciones.map((app: any) =>
           certificadoSslAppRepository.create({
             id: uuidv4(),
@@ -365,23 +323,18 @@ const {
             url: app.url ?? null,
             fechaInicio: app.fechaInicio
               ? new Date(app.fechaInicio)
-              : null,
+              : savedCert.fechaInicio,
             fechaFin: app.fechaFin
               ? new Date(app.fechaFin)
-              : null,
+              : savedCert.fechaFin,
           })
         );
-      
+
         await certificadoSslAppRepository.save(apps);
       }
-
-      await sendAssetAlerta("creado", "CERTIFICADO_SSL", savedAsset, [
-        ["Tipo", savedCert.tipoCertificado ?? "—"],
-        ["Dominio/Aplicación", savedCert.nombreDominio ?? savedCert.nombreAplicacion ?? "—"],
-        ["Proveedor", savedCert.proveedor ?? "—"],
-        ["Vence", filaFecha(savedCert.fechaFin)],
-      ], { autor });
     }
+
+    await notificarAsset("creado", savedAsset, { autor });
 
       // -- MOVIL: genera solo el acta de ENTREGA --
     if (tipo === "MOVIL") {
@@ -815,42 +768,46 @@ const {
       if (
         data.certificadoSsl.aplicaciones !== undefined
       ) {
-      
+
         await certificadoSslAppRepository.delete({
           certificadoSsl: {
             id: cert.id,
           },
         });
-      
+
         const apps =
           data.certificadoSsl.aplicaciones || [];
-      
+
+        // Apps sin fecha propia heredan la fecha (nueva o existente) del proveedor.
+        const fechaInicioProveedor = certUpdates.fechaInicio ?? cert.fechaInicio;
+        const fechaFinProveedor    = certUpdates.fechaFin    ?? cert.fechaFin;
+
         if (apps.length > 0) {
-        
+
           const nuevasApps = apps.map(
             (app: any) =>
               certificadoSslAppRepository.create({
                 id: uuidv4(),
                 certificadoSsl: cert,
-              
+
                 nombreAplicacion:
                   app.nombreAplicacion ?? null,
-              
+
                 url:
                   app.url ?? null,
-              
+
                 fechaInicio:
                   app.fechaInicio
                     ? new Date(app.fechaInicio)
-                    : null,
-              
+                    : fechaInicioProveedor,
+
                 fechaFin:
                   app.fechaFin
                     ? new Date(app.fechaFin)
-                    : null,
+                    : fechaFinProveedor,
               })
           );
-        
+
           await certificadoSslAppRepository.save(
             nuevasApps
           );
@@ -1215,69 +1172,7 @@ return {
       })
     );
 
-    if (asset.tipo === "SERVIDOR" && asset.servidor) {
-      await sendAssetAlerta("deshabilitado", "SERVIDOR", asset, [
-        ["Código de servicio", asset.codigoServicio ?? "—"],
-        ["Ambiente", asset.servidor.ambiente ?? "—"],
-        ["Sistema operativo", asset.servidor.sistemaOperativo ?? "—"],
-        ["IP interna", asset.servidor.ipInterna ?? "—"],
-        ["Propietario", asset.propietario ?? "—"],
-        ["Custodio", asset.custodio ?? "—"],
-      ], { autor, motivo });
-    }
-
-    if (asset.tipo === "BASE_DATOS" && asset.baseDatos) {
-      await sendAssetAlerta("deshabilitado", "BASE_DATOS", asset, [
-        ["Código de servicio", asset.codigoServicio ?? "—"],
-        ["Ambiente", asset.baseDatos.ambiente ?? "—"],
-        ["Versión BD", asset.baseDatos.versionBd ?? "—"],
-        ["Servidor 1", asset.baseDatos.servidor1 ?? "—"],
-        ["Propietario", asset.propietario ?? "—"],
-        ["Custodio", asset.custodio ?? "—"],
-      ], { autor, motivo });
-    }
-
-    if (asset.tipo === "UPS" && asset.ups) {
-      await sendAssetAlerta("deshabilitado", "UPS", asset, [
-        ["Código de servicio", asset.codigoServicio ?? "—"],
-        ["Modelo", asset.ups.modelo ?? "—"],
-        ["Serial", asset.ups.serial ?? "—"],
-        ["Estado", asset.ups.estado ?? "—"],
-        ["Ubicación", asset.ubicacion ?? "—"],
-        ["Custodio", asset.custodio ?? "—"],
-      ], { autor, motivo });
-    }
-
-    if (asset.tipo === "RED" && asset.red) {
-      await sendAssetAlerta("deshabilitado", "RED", asset, [
-        ["Código de servicio", asset.codigoServicio ?? "—"],
-        ["Modelo", asset.red.modelo ?? "—"],
-        ["IP de gestión", asset.red.ipGestion ?? "—"],
-        ["Estado", asset.red.estado ?? "—"],
-        ["Propietario", asset.propietario ?? "—"],
-        ["Custodio", asset.custodio ?? "—"],
-      ], { autor, motivo });
-    }
-
-    if (asset.tipo === "VPN" && asset.vpn) {
-      await sendAssetAlerta("deshabilitado", "VPN", asset, [
-        ["Código de servicio", asset.codigoServicio ?? "—"],
-        ["Conexión", asset.vpn.conexion ?? "—"],
-        ["Origen", asset.vpn.origen ?? "—"],
-        ["Destino", asset.vpn.destino ?? "—"],
-        ["Propietario", asset.propietario ?? "—"],
-        ["Custodio", asset.custodio ?? "—"],
-      ], { autor, motivo });
-    }
-
-    if (asset.tipo === "CERTIFICADO_SSL" && asset.certificadoSsl) {
-      await sendAssetAlerta("deshabilitado", "CERTIFICADO_SSL", asset, [
-        ["Tipo", asset.certificadoSsl.tipoCertificado ?? "—"],
-        ["Dominio/Aplicación", asset.certificadoSsl.nombreDominio ?? asset.certificadoSsl.nombreAplicacion ?? "—"],
-        ["Proveedor", asset.certificadoSsl.proveedor ?? "—"],
-        ["Vence", filaFecha(asset.certificadoSsl.fechaFin)],
-      ], { autor, motivo });
-    }
+    await notificarAsset("deshabilitado", asset, { autor, motivo });
 
     return assetRepository.findOne({ where: { id } });
   }
@@ -1286,11 +1181,14 @@ return {
     const assetRepository    = AppDataSource.getRepository(Asset);
     const bitacoraRepository = AppDataSource.getRepository(Bitacora);
 
-    const asset = await assetRepository.findOne({ where: { id } });
+    const asset = await assetRepository.findOne({
+      where: { id },
+      relations: ["movil", "certificadoSsl", "servidor", "baseDatos", "ups", "red", "vpn"],
+    });
     if (!asset) throw new Error("Asset no encontrado");
-    
+
     await assetRepository.update(id, { deletedAt: null });
-     
+
     const bitacoraEntry = bitacoraRepository.create({
       asset: { id },
       autor,
@@ -1298,6 +1196,8 @@ return {
       descripcion: "Activo restaurado desde papelera.",
     });
     await bitacoraRepository.save(bitacoraEntry);
+
+    await notificarAsset("restaurado", asset, { autor });
 
     return assetRepository.findOne({ where: { id } });
   }
