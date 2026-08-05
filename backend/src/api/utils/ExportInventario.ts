@@ -67,6 +67,7 @@ export async function generarExcelInventario(
       nombre:             v(a.nombre),
       propietario:        v(a.propietario),
       custodio:           v(a.custodio),
+      codigoServicio:     v(a.codigoServicio),
       monitoreo:          v(a.servidor?.monitoreo),
       backup:             v(a.servidor?.backup),
       ipInterna:          v(a.servidor?.ipInterna),

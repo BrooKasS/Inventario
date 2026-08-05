@@ -41,14 +41,15 @@ def format_date(val):
     m = re.search(r'(\w{3})\s+(\w{3})\s+(\d{1,2})\s+(\d{4})', s)
     if m:
         month_str = m.group(2)
-        day   = int(m.group(3))
-        year  = int(m.group(4))
+        day = int(m.group(3))
+        year = int(m.group(4))
         month = _JS_MONTHS.get(month_str)
         if month:
             return f"{day:02d}/{month:02d}/{year}"
     if re.match(r'^\d{2}/\d{2}/\d{4}$', s):
         return s
     return s
+
 
 DATE_KEYS = {'fechaFinSoporte', 'fechaFinalSoporte', 'Fecha Entrega', 'Fecha Devolución'}
 
@@ -59,26 +60,26 @@ def make_border(left='thin', right='thin', top='thin', bottom='thin'):
     def side(style):
         return Side(style=style) if style else Side(style=None)
     return Border(left=side(left), right=side(right),
-                  top=side(top),   bottom=side(bottom))
+                  top=side(top), bottom=side(bottom))
 
-BORDER_THIN  = make_border()
+
+BORDER_THIN = make_border()
 BORDER_UPS_B = make_border(left='medium')
 BORDER_UPS_D = make_border(left='thin', right='medium')
-BORDER_UPS   = make_border(left='medium')
-BORDER_BD_B  = make_border(left='medium')
-BORDER_BD_N  = make_border(right='medium')
-BORDER_BD    = make_border()
-
-FONT_DATA  = Font(name='Calibri', size=11, bold=False, color='FF000000')
+BORDER_UPS = make_border(left='medium')
+BORDER_BD_B = make_border(left='medium')
+BORDER_BD_N = make_border(right='medium')
+BORDER_BD = make_border()
+FONT_DATA = Font(name='Calibri', size=11, bold=False, color='FF000000')
 ALIGN_DATA = Alignment(wrap_text=True, vertical='center')
 
 ROW_HEIGHTS = {
     'InventarioServidores': 30.75,
-    'InventarioRedes':      30.75,
-    'InventarioUPS':        30.75,
-    'InventarioBD':         30.75,
-    'InventarioVPN':        20.0,
-    'InventarioMovil':      20.0,
+    'InventarioRedes': 30.75,
+    'InventarioUPS': 30.75,
+    'InventarioBD': 30.75,
+    'InventarioVPN': 20.0,
+    'InventarioMovil': 20.0,
 }
 
 def get_border(sheet_name, col_index_0based, total_cols):
@@ -117,6 +118,7 @@ def copy_header(src_ws, dst_ws, header_rows=10):
         rd = src_ws.row_dimensions.get(row_idx)
         if rd and rd.height:
             dst_ws.row_dimensions[row_idx].height = rd.height
+
 
 # ─────────────────────────────────────────────────────────────────────
 # DATOS EN HOJAS CON TEMPLATE (sin cambios)
@@ -265,12 +267,14 @@ def main():
     dst_ws = dst_wb.create_sheet('InventarioServidores')
     add_logo_to_sheet(dst_ws)
     copy_header(src_ws, dst_ws)
+    dst_ws.cell(row=10, column=20, value='Código de servicio')
+    dst_ws.column_dimensions[get_column_letter(20)].width = 18
     write_data_rows(dst_ws, 'InventarioServidores', payload['servidores'], [
         'nombre', 'propietario', 'custodio', 'monitoreo', 'backup',
         'ipInterna', 'ipGestion', 'ipServicio',
         'ambiente', 'tipoServidor', 'appSoporta', 'ubicacion',
         'vcpu', 'vramMb', 'sistemaOperativo',
-        'fechaFinSoporte', 'rutasBackup', 'contratoQueSoporta',
+        'fechaFinSoporte', 'rutasBackup', 'contratoQueSoporta', 'codigoServicio',
     ], date_cols={15})
 
     # ── REDES ────────────────────────────────────────────────────────
