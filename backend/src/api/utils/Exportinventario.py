@@ -215,22 +215,34 @@ def crear_hoja_extra(dst_wb, sheet_name, labels, widths, data_rows, date_label_k
 # INSERTAR LOGO
 # ─────────────────────────────────────────────────────────────────────
 def add_logo_to_sheet(ws, logo_filename='logo.png'):
-    """Agrega logo en B2 — tamaño 236x51px (modo seguro, sin romper Excel)."""
+    """Agrega el logo en B2 si el archivo existe y puede cargarse."""
     try:
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        logo_path = os.path.join(script_dir, logo_filename)
-        
-        # Verificar que el archivo existe Y es un archivo válido
-        if not os.path.exists(logo_path) or os.path.getsize(logo_path) < 100:
-            return  # Archivo no existe o es muy pequeño
-        
+        candidate_paths = [
+            os.path.join(script_dir, logo_filename),
+            os.path.join(script_dir, 'logo.png'),
+            os.path.join(script_dir, '..', '..', 'storage', 'img', 'logo.png'),
+            os.path.join(script_dir, '..', '..', '..', 'frontend', 'public', 'logo.png'),
+        ]
+
+        logo_path = None
+        for path_candidate in candidate_paths:
+            if os.path.exists(path_candidate) and os.path.getsize(path_candidate) >= 100:
+                logo_path = path_candidate
+                break
+
+        if not logo_path:
+            return
+
         img = XLImage(logo_path)
         img.width = 236
         img.height = 51
         ws.add_image(img, 'B2')
-    except Exception as e:
-        # Silenciar CUALQUIER error — la imagen es opcional
-        # No romper Excel por problemas de imagen
+    except ModuleNotFoundError:
+        # Pillow no está instalado en el entorno de ejecución; no romper el exporte.
+        pass
+    except Exception:
+        # La imagen es opcional; si falla, el Excel se genera igual.
         pass
 
 # ─────────────────────────────────────────────────────────────────────

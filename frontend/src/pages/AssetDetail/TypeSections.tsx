@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { Asset, Vpn, VpnRule } from "../../types";
 import {
   Field,
@@ -9,7 +9,6 @@ import {
   UrlField,
   DiasRestantesBadge,
 } from "./DetailComponents";
-import { inputStyle, labelStyle } from "./constants";
 import { CertificadoAplicaciones } from "./CertificadoAplicaciones";
 
 /* ═══════════════════════════════════════════

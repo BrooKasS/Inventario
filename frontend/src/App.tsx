@@ -8,12 +8,18 @@ import Login from "./pages/Login";
 import FirmaMovil from "./pages/FirmaMovil";
 import FirmaDevolucion from "./pages/FirmaDevolucion";
 import SoftwareInventario from "./pages/SoftwareInventario";
-import { isAuthenticated } from "./api/auth";
+import { getRol, isAuthenticated } from "./api/auth";
 import MobileStagingPage from "./pages/MobileStating";
 import BackupsKpi from "./pages/Backups/BackupsKpi";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated()) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  if (!isAuthenticated()) return <Navigate to="/login" replace />;
+  if (getRol() !== "ADMIN") return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
@@ -39,7 +45,7 @@ export default function App() {
           <Route path="mobile-staging" element={<MobileStagingPage />} />
           <Route path="/papelera"              element={<Papelera />} />
           <Route path="/inventario/software"   element={<SoftwareInventario />} /> {/* ← NUEVO */}
-          <Route path="backups" element={<BackupsKpi />} />
+          <Route path="backups" element={<AdminRoute><BackupsKpi /></AdminRoute>} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

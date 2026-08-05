@@ -1,6 +1,6 @@
 import { Outlet, NavLink } from "react-router-dom";
 import { useState } from "react";
-import { logoutUser, getUsuario, getNombreReal } from "../api/auth";
+import { logoutUser, getUsuario, getNombreReal, getRol } from "../api/auth";
 import logo from "../assets/logo.png";
 
 const nav = [
@@ -10,7 +10,7 @@ const nav = [
   { label: "UPS",            path: "/inventario/UPS",       icon: "⚡" },
   { label: "Red",            path: "/inventario/RED",       icon: "🌐" },
   { label: "VPN",            path: "/inventario/VPN",       icon: "🔒" },
-  { label: "Móviles",        path: "/inventario/MOVIL",     icon: "📱" },
+  { label: "Móviles",        path: "/mobile-staging",      icon: "📱" },
   { label: "Software",       path: "/inventario/software", icon: "💾" }, 
   { label: "Certificados SSL", path: "/inventario/CERTIFICADO_SSL", icon: "🔐" },
   { label: "Backup",         path: "/backups",              icon: "🗄" },
@@ -24,6 +24,8 @@ export default function Layout() {
   const [importing,   setImporting]   = useState(false);
   const [importMsg,   setImportMsg]   = useState<string | null>(null);
   const [hoveredPath, setHoveredPath] = useState<string | null>(null);
+  const isAdmin = getRol() === "ADMIN";
+  const visibleNav = nav.filter(item => item.path !== "/backups" || isAdmin);
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -104,7 +106,7 @@ export default function Layout() {
           padding: "12px 12px", display: "flex", flexDirection: "column", gap: 6,
           overflowY: "auto",
         }}>
-          {nav.map(n => (
+          {visibleNav.map(n => (
             <NavLink
               key={n.path}
               to={n.path}

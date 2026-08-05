@@ -28,6 +28,10 @@ import { CertificadoSslApp } from "../../entities/CertificadoSslApp";
 
 
 export class AssetsService {
+  private buildAssetRef(asset: Pick<Asset, "id">) {
+    return { id: asset.id };
+  }
+
   async getAssets(filters: AssetFilters) {
     const { tipo, tipos, q, page = 1, limit = 50 } = filters;
     const skip = (page - 1) * limit;
@@ -242,27 +246,27 @@ const {
     // RELACIONES
     // ======================
     if (servidor) {
-      const servidorToSave = { ...servidor, asset: savedAsset };
+      const servidorToSave = { ...servidor, asset: this.buildAssetRef(savedAsset) };
       if (!servidorToSave.id) servidorToSave.id = uuidv4();
       savedAsset.servidor = await servidorRepository.save(servidorToSave);
     }
     if (red) {
-      const redToSave = { ...red, asset: savedAsset };
+      const redToSave = { ...red, asset: this.buildAssetRef(savedAsset) };
       if (!redToSave.id) redToSave.id = uuidv4();
       savedAsset.red = await redRepository.save(redToSave);
     }
     if (ups) {
-      const upsToSave = { ...ups, asset: savedAsset };
+      const upsToSave = { ...ups, asset: this.buildAssetRef(savedAsset) };
       if (!upsToSave.id) upsToSave.id = uuidv4();
       savedAsset.ups = await upsRepository.save(upsToSave);
     }
     if (baseDatos) {
-      const baseDatosToSave = { ...baseDatos, asset: savedAsset };
+      const baseDatosToSave = { ...baseDatos, asset: this.buildAssetRef(savedAsset) };
       if (!baseDatosToSave.id) baseDatosToSave.id = uuidv4();
       savedAsset.baseDatos = await baseDatosRepository.save(baseDatosToSave);
     }
     if (vpn) {
-      const vpnToSave = { ...vpn, asset: savedAsset };
+      const vpnToSave = { ...vpn, asset: this.buildAssetRef(savedAsset) };
       if (!vpnToSave.id) vpnToSave.id = uuidv4();
 
       // Separar reglas del objeto VPN
@@ -296,7 +300,7 @@ const {
       const { nombreAplicacion, nombreDominio, proveedor, url, fechaInicio, fechaFin } = certificadoSsl;
       const certData = certificadoSslRepository.create({
         id: uuidv4(),
-        asset: savedAsset,
+        asset: this.buildAssetRef(savedAsset),
         tipoCertificado: certificadoSsl.tipoCertificado ?? null,
         nombreAplicacion: nombreAplicacion ?? null,
         nombreDominio:    nombreDominio    ?? null,
@@ -340,7 +344,7 @@ const {
     if (tipo === "MOVIL") {
       const movilData = movilRepository.create({
         id:                  savedAsset.id,
-        asset:               savedAsset,
+        asset:               this.buildAssetRef(savedAsset),
         numeroCaso:          numeroCaso          ?? null,
         region:              region              ?? null,
         dependencia:         dependencia         ?? null,
@@ -400,7 +404,7 @@ const {
 
           await bitacoraRepository.save(
             bitacoraRepository.create({
-              asset:       savedAsset,
+              asset:       this.buildAssetRef(savedAsset),
               autor:       "Sistema",
               tipoEvento:  "NOTA",
               descripcion: `Acta de entrega enviada a ${correoResponsable}`,
@@ -416,7 +420,7 @@ const {
     // -- Bit�cora creaci�n --
     await bitacoraRepository.save(
       bitacoraRepository.create({
-        asset:       savedAsset,
+        asset:       this.buildAssetRef(savedAsset),
         autor,
         tipoEvento:  "IMPORTACION",
         descripcion: "Activo creado manualmente.",

@@ -688,14 +688,30 @@ export function FormMovil({ data, onChange }: { data: any; onChange: (f: string,
 
   useEffect(() => {
     (async () => {
-      const token = sessionStorage.getItem("inventario_token");
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/mobile-staging/opciones`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
+      try {
+        const token = sessionStorage.getItem("inventario_token");
+        if (!token) {
+          setMarcasExtra([]);
+          setModelosExtra([]);
+          return;
+        }
+
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/mobile-staging/opciones`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!res.ok) {
+          setMarcasExtra([]);
+          setModelosExtra([]);
+          return;
+        }
+
         const json = await res.json();
-        setMarcasExtra(json.marcas  ?? []);
-        setModelosExtra(json.modelos ?? []);
+        setMarcasExtra(Array.isArray(json?.marcas) ? json.marcas : []);
+        setModelosExtra(Array.isArray(json?.modelos) ? json.modelos : []);
+      } catch {
+        setMarcasExtra([]);
+        setModelosExtra([]);
       }
     })();
   }, []);
@@ -704,7 +720,7 @@ export function FormMovil({ data, onChange }: { data: any; onChange: (f: string,
     onChange("serial", valor);
     onChange("imei1", "");
     onChange("imei2", "");
-    onChange("marca",  "");
+    onChange("marca", "");
     onChange("modelo", "");
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -718,12 +734,12 @@ export function FormMovil({ data, onChange }: { data: any; onChange: (f: string,
       try {
         const token = sessionStorage.getItem("inventario_token");
         const res = await fetch(
-          `${import.meta.env.VITE_API_URL}/mobile-staging/search?serial=${encodeURIComponent(valor)}`,
+          `${import.meta.env.VITE_API_URL}/mobile-staging/search?q=${encodeURIComponent(valor)}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         if (res.ok) {
           const json = await res.json();
-          const items = json?.data ?? json ?? [];
+          const items = Array.isArray(json) ? json : json?.data ?? [];
           setSugerencias(items);
           setMostrarDrop(items.length > 0);
         }
@@ -731,82 +747,82 @@ export function FormMovil({ data, onChange }: { data: any; onChange: (f: string,
         setSugerencias([]);
         setMostrarDrop(false);
       }
-    }, 400);
+    }, 300);
   };
 
   const seleccionarSugerencia = (item: any) => {
-    onChange("serial",  item.serial  ?? "");
-    onChange("imei1",   item.imei1   ?? "");
-    onChange("imei2",   item.imei2   ?? "");
-    onChange("marca",   item.marca   ?? "");
-    onChange("modelo",  item.modelo  ?? "");
+    onChange("serial", item.serial ?? "");
+    onChange("imei1", item.imei1 ?? "");
+    onChange("imei2", item.imei2 ?? "");
+    onChange("marca", item.marca ?? "");
+    onChange("modelo", item.modelo ?? "");
     setSugerencias([]);
     setMostrarDrop(false);
   };
 
   return (
     <>
-      <FormSection title="Identificación del Móvil" icon="📱">
+      <FormSection title="Datos del Usuario" icon="👤">
+        <Field label="# Caso" field="numeroCaso" value={data.numeroCaso ?? ""} onChange={onChange} />
+        <SmartField tipo="MOVIL" field="region" label="Región/Departamento" value={data.region ?? ""} onChange={onChange} />
+        <SmartField tipo="MOVIL" field="dependencia" label="Dependencia/Área" value={data.dependencia ?? ""} onChange={onChange} />
+        <SmartField tipo="MOVIL" field="sede" label="Sede" value={data.sede ?? ""} onChange={onChange} placeholder="Ej: Calle 72" />
+        <Field label="C.C." field="cedula" value={data.cedula ?? ""} onChange={onChange} />
+        <Field label="Usuario de Red" field="usuarioRed" value={data.usuarioRed ?? ""} onChange={onChange} />
+        <Field label="Correo Responsable" field="correoResponsable" value={data.correoResponsable ?? ""} onChange={onChange} />
+      </FormSection>
+
+      <FormSection title="Datos del Equipo" icon="📱">
+        <Field label="UNI" field="uni" value={data.uni ?? "1"} onChange={onChange} readOnly />
+        <SmartField tipo="MOVIL" field="marca" label="Marca" value={data.marca ?? ""} onChange={onChange} extraOptions={marcasExtra} />
+        <SmartField tipo="MOVIL" field="modelo" label="Modelo" value={data.modelo ?? ""} onChange={onChange} extraOptions={modelosExtra} />
+
         <div style={{ position: "relative" }}>
-          <Field
-            label="Serial"
-            field="serial"
+          <label style={labelStyle}>Serial</label>
+          <input
             value={data.serial ?? ""}
-            onChange={buscarSerial}
-            placeholder="Escribe el serial para autocompletar"
-            required
+            onChange={e => buscarSerial(e.target.value)}
+            style={inputStyle}
+            placeholder="Escanea o escribe el serial..."
           />
           {mostrarDrop && sugerencias.length > 0 && (
             <div style={{
               position: "absolute", zIndex: 999, top: "100%", left: 0, right: 0,
-              background: "#fff", border: "1px solid #e5ddd8", borderRadius: 8,
-              boxShadow: "0 4px 16px rgba(0,0,0,0.10)", marginTop: 3, overflow: "hidden",
+              background: "#fff", border: "1px solid #d1d5db", borderRadius: 6, width: "100%",
             }}>
-              {sugerencias.map((item, idx) => (
+              {sugerencias.map((s: any) => (
                 <div
-                  key={idx}
-                  onMouseDown={() => seleccionarSugerencia(item)}
-                  style={{
-                    padding: "10px 14px", fontSize: 13,
-                    fontFamily: "Calibri, sans-serif", color: "#1A1A1A",
-                    cursor: "pointer",
-                    borderBottom: idx < sugerencias.length - 1 ? "1px solid #f5f0ed" : "none",
-                    background: "#fff", transition: "background 0.1s",
-                  }}
+                  key={s.id}
+                  onClick={() => seleccionarSugerencia(s)}
+                  style={{ padding: 8, cursor: "pointer" }}
                   onMouseEnter={e => (e.currentTarget.style.background = "#fef7f4")}
                   onMouseLeave={e => (e.currentTarget.style.background = "#fff")}
                 >
-                  <strong>{item.serial}</strong>
-                  {item.marca && <span style={{ color: "#888", marginLeft: 8 }}>{item.marca}</span>}
-                  {item.modelo && <span style={{ color: "#888", marginLeft: 4 }}>{item.modelo}</span>}
+                  <strong>{s.serial}</strong>
+                  {s.marca && <span style={{ marginLeft: 8, color: "#888", fontSize: 12 }}>{s.marca} {s.modelo}</span>}
                 </div>
               ))}
             </div>
           )}
         </div>
-        <Field label="IMEI 1" field="imei1" value={data.imei1 ?? ""} onChange={onChange} placeholder="Ej: 123456789012345" />
-        <Field label="IMEI 2" field="imei2" value={data.imei2 ?? ""} onChange={onChange} placeholder="Ej: 123456789012345" />
-        <SmartField tipo="MOVIL" field="marca"  label="Marca"  value={data.marca  ?? ""} onChange={onChange} extraOptions={marcasExtra} />
-        <SmartField tipo="MOVIL" field="modelo" label="Modelo" value={data.modelo ?? ""} onChange={onChange} extraOptions={modelosExtra} />
+
+        <Field label="IMEI 1" field="imei1" value={data.imei1 ?? ""} onChange={onChange} />
+        <Field label="IMEI 2" field="imei2" value={data.imei2 ?? ""} onChange={onChange} />
+        <SelectField label="SIM" field="sim" value={data.sim ?? ""} onChange={onChange} options={["Sí", "No"]} />
+        <Field label="Número de Línea" field="numeroLinea" value={data.numeroLinea ?? ""} onChange={onChange} />
+        <Field label="Fecha de Entrega" field="fechaEntrega" value={data.fechaEntrega ?? ""} onChange={onChange} type="date" />
       </FormSection>
 
-      <FormSection title="Asignación" icon="👤">
-        <SmartField tipo="MOVIL" field="region"      label="Regional"       value={data.region      ?? ""} onChange={onChange} />
-        <SmartField tipo="MOVIL" field="sede"        label="Sede"           value={data.sede        ?? ""} onChange={onChange} placeholder="Ej: Calle 72" />
-        <SmartField tipo="MOVIL" field="dependencia" label="Dependencia"    value={data.dependencia ?? ""} onChange={onChange} placeholder="Ej: Talento Humano" />
-        <Field field="cedula"           label="Cédula"          value={data.cedula           ?? ""} onChange={onChange} placeholder="Ej: 123456789" />
-        <Field field="usuarioRed"       label="Usuario Red"     value={data.usuarioRed       ?? ""} onChange={onChange} placeholder="Ej: jperez" />
-        <Field field="correoResponsable" label="Correo Responsable" value={data.correoResponsable ?? ""} onChange={onChange} placeholder="Ej: juan@fiduprevisora.gov.co" />
-        <Field field="numeroLinea"      label="Número de Línea" value={data.numeroLinea      ?? ""} onChange={onChange} placeholder="Ej: 3001234567" />
-        <Field field="sim"              label="SIM"             value={data.sim              ?? ""} onChange={onChange} placeholder="Ej: 8950123456789" />
-        <Field field="uni"              label="UNI"             value={data.uni              ?? ""} onChange={onChange} type="number" placeholder="Ej: 1" />
-      </FormSection>
-
-      <FormSection title="Fechas" icon="📅">
-        <Field field="fechaEntrega"          label="Fecha de Entrega"      value={data.fechaEntrega          ?? ""} onChange={onChange} type="date" />
-        <Field field="fechaDevolucion"       label="Fecha de Devolución"   value={data.fechaDevolucion       ?? ""} onChange={onChange} type="date" />
-        <Field field="observacionesEntrega"  label="Observaciones Entrega" value={data.observacionesEntrega  ?? ""} onChange={onChange} placeholder="Observaciones..." />
-        <Field field="observacionesDevolucion" label="Observaciones Devolución" value={data.observacionesDevolucion ?? ""} onChange={onChange} placeholder="Observaciones..." />
+      <FormSection title="Observaciones de Entrega" icon="📝">
+        <div style={{ gridColumn: "1 / -1" }}>
+          <label style={labelStyle}>Observaciones</label>
+          <textarea
+            value={data.observacionesEntrega ?? ""}
+            onChange={e => onChange("observacionesEntrega", e.target.value)}
+            rows={3}
+            style={{ ...inputStyle }}
+          />
+        </div>
       </FormSection>
     </>
   );
