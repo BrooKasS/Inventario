@@ -111,10 +111,17 @@ export default function Papelera() {
 
   /* ── Restaurar ── */
   const handleRestore = async (asset: Asset) => {
-    if (!window.confirm(`¿Habilitar "${asset.nombre}" y devolverlo al  inventario?`)) return;
+    const motivo = window.prompt(
+      `¿Por qué habilitas "${asset.nombre}" y lo devuelves al inventario?\nEscribe el motivo.`
+    );
+    if (motivo === null) return;
+    if (!motivo.trim()) {
+      alert("El motivo es obligatorio");
+      return;
+    }
     setRestoring(asset.id);
     try {
-      await restoreAsset(asset.id);
+      await restoreAsset(asset.id, motivo.trim());
       await cargar();
     } catch (e) {
       console.error("Error restaurando:", e);

@@ -136,8 +136,9 @@ export class AssetsController {
   async restoreAsset(req: Request, res: Response) {
     const  id  = req.params.id as string;
      const autor = (req as any).usuario ?? "Sistema";
+    const motivo = req.body.motivo ?? "Sin motivo";
 
-    const asset = await assetsService.restoreAsset(id, autor);
+    const asset = await assetsService.restoreAsset(id, autor, motivo);
 
     res.json({
       success: true,

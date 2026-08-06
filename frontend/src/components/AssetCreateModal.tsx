@@ -349,7 +349,6 @@ if (!open) return null;
   /* ── Render ── */
   return (
     <div
-      onClick={e => e.target === e.currentTarget && handleClose()}
       style={{
         position: "fixed", inset: 0,
         background: "rgba(0,0,0,.6)",

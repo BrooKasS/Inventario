@@ -107,8 +107,8 @@ export const hardDeleteAsset = (id: string) =>
 export const hardDeleteAllAssets = () =>
   api.delete("/assets/hard-all").then((r) => r.data);
 
-export const restoreAsset = (id: string) =>
-  api.post(`/assets/${id}/restore`).then((r) => r.data);
+export const restoreAsset = (id: string, motivo: string = "Sin motivo") =>
+  api.post(`/assets/${id}/restore`, { motivo }).then((r) => r.data);
 
 export const getDeleted = () =>
   api.get("/assets/deleted").then((r) => r.data.data);

@@ -1181,7 +1181,7 @@ return {
     return assetRepository.findOne({ where: { id } });
   }
 
-  async restoreAsset(id: string, autor: string = "Sistema") {
+  async restoreAsset(id: string, autor: string = "Sistema", motivo: string = "Sin motivo") {
     const assetRepository    = AppDataSource.getRepository(Asset);
     const bitacoraRepository = AppDataSource.getRepository(Bitacora);
 
@@ -1197,11 +1197,11 @@ return {
       asset: { id },
       autor,
       tipoEvento: "NOTA",
-      descripcion: "Activo restaurado desde papelera.",
+      descripcion: `Activo restaurado desde papelera. Motivo: ${motivo}`,
     });
     await bitacoraRepository.save(bitacoraEntry);
 
-    await notificarAsset("restaurado", asset, { autor });
+    await notificarAsset("restaurado", asset, { autor, motivo });
 
     return assetRepository.findOne({ where: { id } });
   }
