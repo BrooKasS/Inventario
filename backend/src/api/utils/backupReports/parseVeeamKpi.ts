@@ -109,7 +109,7 @@ export interface KpiReportSummary {
   pctExitoVms: number;
   pctFalloVms: number;
   clientes: number;
-  vmsConFallas: { nombreVm: string; estado: string; sistemaOperativo: string; razonFalla: string }[];
+  vmsConFallas: { nombreVm: string; estado: string; sistemaOperativo: string; razonFalla: string; fecha: string }[];
   jobsFallidos: { clienteMaquina: string; tipoAgente: string; tipoBackup: string; razonFalla: string; fecha: string }[];
 }
 
@@ -532,17 +532,16 @@ export async function buildKpiBackupReport(
       estado: v.estado,
       sistemaOperativo: v.sistemaOperativo,
       razonFalla: v.razonFalla,
+      fecha: v.fecha,
     }));
 
   const pctFalloVms = totalVms > 0 ? Math.round((vmsConFallas.length / totalVms) * 10000) / 100 : 0;
 
-  // Todos los jobs fallidos (File System/BD y VMware), no solo VMs — cada
-  // uno con su fecha, para distinguir en qué día del rango procesado
-  // ocurrió cada falla.
+  // Solo File System/BD — las fallas de VMware ya se listan por VM en
+  // vmsConFallas, incluirlas aquí también duplicaría el mismo evento.
   const jobsFallidos = allFs
-    .filter((r) => r.estado === "Failed")
+    .filter((r) => r.estado === "Failed" && r.tipoAgente !== "VMware")
     .sort((a, b) => b.fecha.localeCompare(a.fecha))
-    .slice(0, 15)
     .map((r) => ({
       clienteMaquina: r.clienteMaquina,
       tipoAgente: r.tipoAgente,
@@ -832,7 +831,7 @@ function buildKpiWorkbook(
     rowNum += 1;
 
     const alertFill: ExcelJS.Fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEE2E2" } };
-    const headersVm = ["Nombre VM", "Estado", "SO", "Razón de Falla"];
+    const headersVm = ["Nombre VM", "Estado", "SO", "Razón de Falla", "Fecha"];
     headersVm.forEach((h, i) => {
       const c = dash.getCell(rowNum, 4 + i);
       c.value = h;
@@ -844,7 +843,7 @@ function buildKpiWorkbook(
     rowNum += 1;
 
     summary.vmsConFallas.forEach((v) => {
-      const vals = [v.nombreVm, v.estado, v.sistemaOperativo, v.razonFalla];
+      const vals = [v.nombreVm, v.estado, v.sistemaOperativo, v.razonFalla, v.fecha];
       vals.forEach((val, ci) => {
         const c = dash.getCell(rowNum, 4 + ci);
         c.value = val;
@@ -857,12 +856,12 @@ function buildKpiWorkbook(
       rowNum += 1;
     });
 
-    dash.getColumn(8).width = 50;
+    dash.getColumn(8).width = 14;
   }
 
   if (summary.jobsFallidos.length > 0) {
     rowNum += 2;
-    dash.getCell(rowNum, 4).value = "❌ JOBS FALLIDOS — FILE SYSTEM/BD Y VADP (máx 15)";
+    dash.getCell(rowNum, 4).value = "❌ JOBS FALLIDOS — FILE SYSTEM/BD";
     dash.getCell(rowNum, 4).font = { bold: true, size: 10, color: { argb: "FFDC2626" }, name: "Arial" };
     dash.mergeCells(rowNum, 4, rowNum, 8);
     rowNum += 1;

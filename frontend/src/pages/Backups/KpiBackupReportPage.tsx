@@ -200,17 +200,17 @@ export default function KpiBackupReportPage() {
             {/* VMs con fallas */}
             {s.vmsConFallas?.length > 0 && (
               <MiniTable
-                title="VMs con advertencias / fallas"
-                headers={["VM", "Estado", "SO", "Razón de falla"]}
-                rows={s.vmsConFallas.map((v: any) => [v.nombreVm, v.estado, v.sistemaOperativo, v.razonFalla])}
+                title="VMs con fallas"
+                headers={["VM", "Estado", "SO", "Razón de falla", "Fecha"]}
+                rows={s.vmsConFallas.map((v: any) => [v.nombreVm, v.estado, v.sistemaOperativo, v.razonFalla, v.fecha])}
                 alert
               />
             )}
 
-            {/* Jobs fallidos (File System/BD y VADP) */}
+            {/* Jobs fallidos (File System/BD) */}
             {s.jobsFallidos?.length > 0 && (
               <MiniTable
-                title="Jobs fallidos — File System/BD y VADP"
+                title="Jobs fallidos — File System/BD"
                 headers={["Cliente / Máquina", "Tipo de Agente", "Tipo de Backup", "Razón de falla", "Fecha"]}
                 rows={s.jobsFallidos.map((j: any) => [j.clienteMaquina, j.tipoAgente, j.tipoBackup, j.razonFalla, j.fecha])}
                 alert
