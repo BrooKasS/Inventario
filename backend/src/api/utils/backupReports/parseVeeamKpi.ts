@@ -105,10 +105,10 @@ export interface KpiReportSummary {
   promedioAhorroPct: number;
   totalVms: number;
   vmsCompletadas: number;
+  vmsParciales: number;
   pctExitoVms: number;
+  pctFalloVms: number;
   clientes: number;
-  topClientes: { cliente: string; totalJobs: number; completados: number; pctExito: number }[];
-  topVms: { nombreVm: string; estado: string; tamanoBackupGB: number; tipoBackup: string }[];
   vmsConFallas: { nombreVm: string; estado: string; sistemaOperativo: string; razonFalla: string }[];
   jobsFallidos: { clienteMaquina: string; tipoAgente: string; tipoBackup: string; razonFalla: string; fecha: string }[];
 }
@@ -515,6 +515,7 @@ export async function buildKpiBackupReport(
 
   const totalVms = allVm.length;
   const vmsCompletadas = allVm.filter((v) => v.estado === "Completed").length;
+  const vmsParciales = allVm.filter((v) => v.estado === "Partial").length;
   const pctExitoVms = totalVms > 0 ? Math.round((vmsCompletadas / totalVms) * 10000) / 100 : 0;
 
   const totalFs = allFs.length;
@@ -523,16 +524,6 @@ export async function buildKpiBackupReport(
   const totalTransferidoGB = Math.round(allFs.reduce((a, r) => a + r.datosTransferidosGB, 0) * 100) / 100;
   const promedioCompresionPct = Math.round(mean(allFs.map((r) => r.compresionPct)) * 100) / 100;
   const promedioAhorroPct = Math.round(mean(allFs.map((r) => r.ahorroEspacioPct)) * 100) / 100;
-
-  const topClientes = [...allSummary]
-    .sort((a, b) => b.totalJobs - a.totalJobs)
-    .slice(0, 5)
-    .map((r) => ({
-      cliente: r.cliente,
-      totalJobs: r.totalJobs,
-      completados: r.completados,
-      pctExito: r.totalJobs > 0 ? Math.round((r.completados / r.totalJobs) * 1000) / 10 : 0,
-    }));
 
   const vmsConFallas = allVm
     .filter((v) => v.estado === "Failed")
@@ -543,15 +534,7 @@ export async function buildKpiBackupReport(
       razonFalla: v.razonFalla,
     }));
 
-  const topVms = [...allVm]
-    .sort((a, b) => b.tamanoBackupGB - a.tamanoBackupGB)
-    .slice(0, 5)
-    .map((v) => ({
-      nombreVm: v.nombreVm,
-      estado: v.estado,
-      tamanoBackupGB: v.tamanoBackupGB,
-      tipoBackup: v.tipoBackup,
-    }));
+  const pctFalloVms = totalVms > 0 ? Math.round((vmsConFallas.length / totalVms) * 10000) / 100 : 0;
 
   // Todos los jobs fallidos (File System/BD y VMware), no solo VMs — cada
   // uno con su fecha, para distinguir en qué día del rango procesado
@@ -586,10 +569,10 @@ export async function buildKpiBackupReport(
     promedioAhorroPct,
     totalVms,
     vmsCompletadas,
+    vmsParciales,
     pctExitoVms,
+    pctFalloVms,
     clientes: allSummary.length,
-    topClientes,
-    topVms,
     vmsConFallas,
     jobsFallidos,
   };
@@ -748,109 +731,98 @@ function buildKpiWorkbook(
 
   dash.getColumn(1).width = 42;
   dash.getColumn(2).width = 22;
+  dash.getColumn(4).width = 35;
+  dash.getColumn(5).width = 14;
+  dash.getColumn(6).width = 14;
+  dash.getColumn(7).width = 16;
 
-  if (summary.topClientes.length > 0) {
-    rowNum += 2;
-    dash.getCell(rowNum, 4).value = "🏆 TOP 5 CLIENTES POR TOTAL JOBS";
-    dash.getCell(rowNum, 4).font = { bold: true, size: 10, color: { argb: "FF1E3A8A" }, name: "Arial" };
-    dash.mergeCells(rowNum, 4, rowNum, 7);
-    rowNum += 1;
+  // ── RESUMEN GENERAL DE VMs (VADP) — mismo formato que el de Jobs, al
+  //    lado en columnas D-E. Sin tope en los conteos que la alimentan. ──
+  const cardRowsVm: CardRow[] = [
+    { icon: "💽", label: "Total de VMs respaldadas", value: summary.totalVms, color: "FF1E3A8A" },
+    { icon: "✅", label: "VMs Completadas", value: summary.vmsCompletadas, color: "FF16A34A" },
+    {
+      icon: "🟡",
+      label: "VMs Parciales",
+      value: summary.vmsParciales,
+      color: summary.vmsParciales > 0 ? "FFD97706" : "FF64748B",
+    },
+    {
+      icon: "🔴",
+      label: "VMs Fallidas",
+      value: summary.vmsConFallas.length,
+      color: summary.vmsConFallas.length > 0 ? "FFDC2626" : "FF16A34A",
+    },
+    {
+      icon: "📈",
+      label: "% Tasa de éxito (VMs)",
+      value: summary.pctExitoVms,
+      isPercent: true,
+      color: summary.pctExitoVms >= 90 ? "FF16A34A" : summary.pctExitoVms >= 70 ? "FFD97706" : "FFDC2626",
+    },
+    {
+      icon: "🚫",
+      label: "% VMs Fallidas",
+      value: summary.pctFalloVms,
+      isPercent: true,
+      color: summary.pctFalloVms === 0 ? "FF16A34A" : summary.pctFalloVms <= 10 ? "FFD97706" : "FFDC2626",
+    },
+  ];
 
-    const headersTop = ["Cliente", "Total Jobs", "Completados", "% Éxito"];
-    headersTop.forEach((h, i) => {
-      const c = dash.getCell(rowNum, 4 + i);
-      c.value = h;
-      c.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 9, name: "Arial" };
-      c.fill = headerFill;
-      c.border = border;
-      c.alignment = { horizontal: "center" };
-    });
-    rowNum += 1;
+  let rowNumVm = 4;
 
-    const topClientesFirstRow = rowNum;
-    summary.topClientes.forEach((r, i) => {
-      const bg = i % 2 === 0 ? oddFill : evenFill;
-      const vals = [r.cliente, r.totalJobs, r.completados, `${r.pctExito}%`];
-      vals.forEach((v, ci) => {
-        const c = dash.getCell(rowNum, 4 + ci);
-        c.value = v;
-        c.font = { size: 9, name: "Arial" };
-        c.fill = bg;
-        c.border = border;
-        c.alignment = { horizontal: ci > 0 ? "center" : "left" };
-      });
-      rowNum += 1;
-    });
-    const topClientesLastRow = rowNum - 1;
+  const cSectionAVm = dash.getCell(rowNumVm, 4);
+  const cSectionBVm = dash.getCell(rowNumVm, 5);
+  cSectionAVm.value = "📋 RESUMEN GENERAL DE VMs (VADP)";
+  cSectionAVm.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10, name: "Arial" };
+  cSectionAVm.fill = headerFill;
+  cSectionBVm.fill = headerFill;
+  dash.mergeCells(rowNumVm, 4, rowNumVm, 5);
+  rowNumVm += 1;
 
-    // Barra de datos comparando el total de jobs entre los 5 clientes.
+  const percentRefsVm: string[] = [];
+  cardRowsVm.forEach((row, i) => {
+    const c1 = dash.getCell(rowNumVm, 4);
+    const c2 = dash.getCell(rowNumVm, 5);
+    c1.value = `${row.icon}  ${row.label}`;
+    c1.font = { size: 9, name: "Arial", color: { argb: "FF334155" } };
+    c1.alignment = { vertical: "middle" };
+
+    c2.value = row.value;
+    if (row.isPercent) {
+      c2.numFmt = '0.00"%"';
+      percentRefsVm.push(`E${rowNumVm}`);
+    }
+    c2.font = { size: 14, bold: true, name: "Arial", color: { argb: row.color } };
+    c2.alignment = { horizontal: "center", vertical: "middle" };
+
+    const bg = i % 2 === 0 ? evenFill : oddFill;
+    c1.fill = bg;
+    c2.fill = bg;
+    c1.border = border;
+    c2.border = border;
+    dash.getRow(rowNumVm).height = 20;
+    rowNumVm += 1;
+  });
+
+  percentRefsVm.forEach((ref, i) => {
     dash.addConditionalFormatting({
-      ref: `E${topClientesFirstRow}:E${topClientesLastRow}`,
+      ref,
       rules: [
         {
           type: "dataBar",
-          priority: 1,
-          cfvo: [{ type: "min" }, { type: "max" }],
-          color: { argb: "FF93C5FD" },
+          priority: i + 1,
+          cfvo: [
+            { type: "num", value: 0 },
+            { type: "num", value: 100 },
+          ],
+          color: { argb: "FFBFDBFE" },
         },
       ],
     } as unknown as ExcelJS.ConditionalFormattingOptions);
+  });
 
-    dash.getColumn(4).width = 35;
-    dash.getColumn(5).width = 14;
-    dash.getColumn(6).width = 14;
-    dash.getColumn(7).width = 10;
-  }
-
-  if (summary.topVms.length > 0) {
-    rowNum += 2;
-    dash.getCell(rowNum, 4).value = "💽 TOP 5 VMs POR TAMAÑO DE BACKUP (VADP)";
-    dash.getCell(rowNum, 4).font = { bold: true, size: 10, color: { argb: "FF1E3A8A" }, name: "Arial" };
-    dash.mergeCells(rowNum, 4, rowNum, 7);
-    rowNum += 1;
-
-    const headersVadp = ["Nombre VM", "Estado", "Tamaño Backup (GB)", "Tipo de Backup"];
-    headersVadp.forEach((h, i) => {
-      const c = dash.getCell(rowNum, 4 + i);
-      c.value = h;
-      c.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 9, name: "Arial" };
-      c.fill = headerFill;
-      c.border = border;
-      c.alignment = { horizontal: "center" };
-    });
-    rowNum += 1;
-
-    const topVmsFirstRow = rowNum;
-    summary.topVms.forEach((v, i) => {
-      const bg = i % 2 === 0 ? oddFill : evenFill;
-      const vals = [v.nombreVm, v.estado, v.tamanoBackupGB, v.tipoBackup];
-      vals.forEach((val, ci) => {
-        const c = dash.getCell(rowNum, 4 + ci);
-        c.value = val;
-        c.font = { size: 9, name: "Arial" };
-        c.fill = bg;
-        c.border = border;
-        c.alignment = { horizontal: ci > 0 ? "center" : "left" };
-      });
-      rowNum += 1;
-    });
-    const topVmsLastRow = rowNum - 1;
-
-    // Barra de datos comparando el tamaño de backup entre las 5 VMs.
-    dash.addConditionalFormatting({
-      ref: `F${topVmsFirstRow}:F${topVmsLastRow}`,
-      rules: [
-        {
-          type: "dataBar",
-          priority: 1,
-          cfvo: [{ type: "min" }, { type: "max" }],
-          color: { argb: "FF6EE7B7" },
-        },
-      ],
-    } as unknown as ExcelJS.ConditionalFormattingOptions);
-
-    dash.getColumn(7).width = 16;
-  }
+  rowNum = Math.max(rowNum, rowNumVm);
 
   if (summary.vmsConFallas.length > 0) {
     rowNum += 2;
