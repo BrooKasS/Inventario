@@ -109,6 +109,7 @@ export interface KpiReportSummary {
   pctExitoVms: number;
   pctFalloVms: number;
   clientes: number;
+  clientesConFallos: { cliente: string; fallidos: number; totalJobs: number; fecha: string }[];
   vmsConFallas: { nombreVm: string; estado: string; sistemaOperativo: string; razonFalla: string; fecha: string }[];
   jobsFallidos: { clienteMaquina: string; tipoAgente: string; tipoBackup: string; razonFalla: string; fecha: string }[];
 }
@@ -525,6 +526,19 @@ export async function buildKpiBackupReport(
   const promedioCompresionPct = Math.round(mean(allFs.map((r) => r.compresionPct)) * 100) / 100;
   const promedioAhorroPct = Math.round(mean(allFs.map((r) => r.ahorroEspacioPct)) * 100) / 100;
 
+  // "Fallidos" (arriba) suma la columna del resumen por cliente de Veeam,
+  // no del detalle job por job — por eso ese numero no se puede rastrear
+  // en jobsFallidos. Esto muestra a que cliente(s) pertenece.
+  const clientesConFallos = allSummary
+    .filter((r) => r.fallidos > 0)
+    .sort((a, b) => b.fecha.localeCompare(a.fecha))
+    .map((r) => ({
+      cliente: r.cliente,
+      fallidos: r.fallidos,
+      totalJobs: r.totalJobs,
+      fecha: r.fecha,
+    }));
+
   const vmsConFallas = allVm
     .filter((v) => v.estado === "Failed")
     .map((v) => ({
@@ -572,6 +586,7 @@ export async function buildKpiBackupReport(
     pctExitoVms,
     pctFalloVms,
     clientes: allSummary.length,
+    clientesConFallos,
     vmsConFallas,
     jobsFallidos,
   };
@@ -822,6 +837,40 @@ function buildKpiWorkbook(
   });
 
   rowNum = Math.max(rowNum, rowNumVm);
+
+  if (summary.clientesConFallos.length > 0) {
+    rowNum += 2;
+    dash.getCell(rowNum, 4).value = "❌ CLIENTES CON JOBS FALLIDOS";
+    dash.getCell(rowNum, 4).font = { bold: true, size: 10, color: { argb: "FFDC2626" }, name: "Arial" };
+    dash.mergeCells(rowNum, 4, rowNum, 8);
+    rowNum += 1;
+
+    const alertFillClientes: ExcelJS.Fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEE2E2" } };
+    const headersClientes = ["Cliente", "Fallidos", "Total Jobs", "Fecha"];
+    headersClientes.forEach((h, i) => {
+      const c = dash.getCell(rowNum, 4 + i);
+      c.value = h;
+      c.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 9, name: "Arial" };
+      c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDC2626" } };
+      c.border = border;
+      c.alignment = { horizontal: "center" };
+    });
+    rowNum += 1;
+
+    summary.clientesConFallos.forEach((r, i) => {
+      const bg = i % 2 === 0 ? evenFill : alertFillClientes;
+      const vals = [r.cliente, r.fallidos, r.totalJobs, r.fecha];
+      vals.forEach((val, ci) => {
+        const c = dash.getCell(rowNum, 4 + ci);
+        c.value = val;
+        c.font = { size: 9, name: "Arial" };
+        c.fill = bg;
+        c.border = border;
+        c.alignment = { horizontal: ci > 0 ? "center" : "left" };
+      });
+      rowNum += 1;
+    });
+  }
 
   if (summary.vmsConFallas.length > 0) {
     rowNum += 2;

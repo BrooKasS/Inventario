@@ -197,6 +197,16 @@ export default function KpiBackupReportPage() {
               <StatCard label="Compresión prom. (%)" value={`${s.promedioCompresionPct}%`} grad="linear-gradient(135deg, #FA8200, #D86018)" />
             </div>
 
+            {/* Clientes con jobs fallidos — a qué cliente pertenece el conteo de "Fallidos" de arriba */}
+            {s.clientesConFallos?.length > 0 && (
+              <MiniTable
+                title="Clientes con jobs fallidos"
+                headers={["Cliente", "Fallidos", "Total Jobs", "Fecha"]}
+                rows={s.clientesConFallos.map((c: any) => [c.cliente, c.fallidos, c.totalJobs, c.fecha])}
+                alert
+              />
+            )}
+
             {/* VMs con fallas */}
             {s.vmsConFallas?.length > 0 && (
               <MiniTable
