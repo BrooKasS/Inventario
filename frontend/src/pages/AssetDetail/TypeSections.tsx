@@ -11,6 +11,11 @@ import {
 } from "./DetailComponents";
 import { CertificadoAplicaciones } from "./CertificadoAplicaciones";
 
+/** En modo lectura oculta filas sin valor; en edición siempre se muestran. */
+function has(v: unknown): boolean {
+  return v !== null && v !== undefined && v !== "";
+}
+
 /* ═══════════════════════════════════════════
    SERVIDOR SECTIONS
 ═══════════════════════════════════════════ */
@@ -31,26 +36,26 @@ export function ServidorSections({
   return (
     <>
       <Section title="Red" icon="🌐">
-        <Field label="IP Interna" value={s.ipInterna} editing={editing} field="ipInterna" onChange={hc} />
-        <Field label="IP Gestión" value={s.ipGestion} editing={editing} field="ipGestion" onChange={hc} />
-        <Field label="IP Servicio" value={s.ipServicio} editing={editing} field="ipServicio" onChange={hc} />
+        {(editing || has(s.ipInterna)) && <Field label="IP Interna" value={s.ipInterna} editing={editing} field="ipInterna" onChange={hc} />}
+        {(editing || has(s.ipGestion)) && <Field label="IP Gestión" value={s.ipGestion} editing={editing} field="ipGestion" onChange={hc} />}
+        {(editing || has(s.ipServicio)) && <Field label="IP Servicio" value={s.ipServicio} editing={editing} field="ipServicio" onChange={hc} />}
       </Section>
 
       <Section title="Recursos" icon="⚙️">
-        <EditAutoField label="vCPU" value={s.vcpu != null ? String(s.vcpu) : null} field="vcpu" editing={editing} onChange={hc} tipo="SERVIDOR" placeholder="Ej: 4" />
-        <EditAutoField label="vRAM (MB)" value={s.vramMb != null ? String(s.vramMb) : null} field="vramMb" editing={editing} onChange={hc} tipo="SERVIDOR" placeholder="Ej: 8192" />
-        <EditAutoField label="Sistema Operativo" value={s.sistemaOperativo} field="sistemaOperativo" editing={editing} onChange={hc} tipo="SERVIDOR" placeholder="Ej: Windows Server 2019" />
+        {(editing || has(s.vcpu)) && <EditAutoField label="vCPU" value={s.vcpu != null ? String(s.vcpu) : null} field="vcpu" editing={editing} onChange={hc} tipo="SERVIDOR" placeholder="Ej: 4" />}
+        {(editing || has(s.vramMb)) && <EditAutoField label="vRAM (MB)" value={s.vramMb != null ? String(s.vramMb) : null} field="vramMb" editing={editing} onChange={hc} tipo="SERVIDOR" placeholder="Ej: 8192" />}
+        {(editing || has(s.sistemaOperativo)) && <EditAutoField label="Sistema Operativo" value={s.sistemaOperativo} field="sistemaOperativo" editing={editing} onChange={hc} tipo="SERVIDOR" placeholder="Ej: Windows Server 2019" />}
       </Section>
 
       <Section title="Operación" icon="🔧">
-        <EditSelectField label="Ambiente" value={s.ambiente} field="ambiente" editing={editing} onChange={hc} options={["DRP", "PRODUCCIÓN", "PRUEBAS", "VALIDAR"]} />
-        <EditSelectField label="Tipo Servidor" value={s.tipoServidor} field="tipoServidor" editing={editing} onChange={hc} options={["FÍSICO", "VIRTUAL", "NUBE"]} />
-        <EditAutoField label="Aplicación que soporta" value={s.appSoporta} field="appSoporta" editing={editing} onChange={hc} tipo="SERVIDOR" />
-        <EditSelectField label="Monitoreo" value={s.monitoreo} field="monitoreo" editing={editing} onChange={hc} options={["SI", "NO"]} />
-        <EditSelectField label="Backup" value={s.backup} field="backup" editing={editing} onChange={hc} options={["SI", "NO"]} />
-        <EditAutoField label="Rutas de Backup" value={s.rutasBackup} field="rutasBackup" editing={editing} onChange={hc} tipo="SERVIDOR" />
-        <EditDateField label="Fecha Fin Soporte" value={s.fechaFinSoporte} field="fechaFinSoporte" editing={editing} onChange={hc} />
-        <EditAutoField label="Contrato que lo soporta" value={s.contratoQueSoporta} field="contratoQueSoporta" editing={editing} onChange={hc} tipo="SERVIDOR" />
+        {(editing || has(s.ambiente)) && <EditSelectField label="Ambiente" value={s.ambiente} field="ambiente" editing={editing} onChange={hc} options={["DRP", "PRODUCCIÓN", "PRUEBAS", "VALIDAR"]} />}
+        {(editing || has(s.tipoServidor)) && <EditSelectField label="Tipo Servidor" value={s.tipoServidor} field="tipoServidor" editing={editing} onChange={hc} options={["FÍSICO", "VIRTUAL", "NUBE"]} />}
+        {(editing || has(s.appSoporta)) && <EditAutoField label="Aplicación que soporta" value={s.appSoporta} field="appSoporta" editing={editing} onChange={hc} tipo="SERVIDOR" />}
+        {(editing || has(s.monitoreo)) && <EditSelectField label="Monitoreo" value={s.monitoreo} field="monitoreo" editing={editing} onChange={hc} options={["SI", "NO"]} />}
+        {(editing || has(s.backup)) && <EditSelectField label="Backup" value={s.backup} field="backup" editing={editing} onChange={hc} options={["SI", "NO"]} />}
+        {(editing || has(s.rutasBackup)) && <EditAutoField label="Rutas de Backup" value={s.rutasBackup} field="rutasBackup" editing={editing} onChange={hc} tipo="SERVIDOR" />}
+        {(editing || has(s.fechaFinSoporte)) && <EditDateField label="Fecha Fin Soporte" value={s.fechaFinSoporte} field="fechaFinSoporte" editing={editing} onChange={hc} />}
+        {(editing || has(s.contratoQueSoporta)) && <EditAutoField label="Contrato que lo soporta" value={s.contratoQueSoporta} field="contratoQueSoporta" editing={editing} onChange={hc} tipo="SERVIDOR" />}
       </Section>
     </>
   );
@@ -75,13 +80,13 @@ export function RedSection({
 
   return (
     <Section title="Equipo de Red" icon="🔌">
-      <Field label="Serial" value={r.serial} editing={editing} field="serial" onChange={hc} />
-      <Field label="MAC" value={r.mac} editing={editing} field="mac" onChange={hc} />
-      <EditAutoField label="Modelo" value={r.modelo} field="modelo" editing={editing} onChange={hc} tipo="RED" placeholder="Ej: Cisco Catalyst 9200" />
-      <Field label="IP Gestión" value={r.ipGestion} editing={editing} field="ipGestion" onChange={hc} />
-      <EditSelectField label="Estado" value={r.estado} field="estado" editing={editing} onChange={hc} options={["ACTIVO", "DESACTIVADO"]} />
-      <EditDateField label="Fecha Fin Soporte" value={r.fechaFinSoporte} field="fechaFinSoporte" editing={editing} onChange={hc} />
-      <EditAutoField label="Contrato que lo soporta" value={r.contratoQueSoporta} field="contratoQueSoporta" editing={editing} onChange={hc} tipo="RED" />
+      {(editing || has(r.serial)) && <Field label="Serial" value={r.serial} editing={editing} field="serial" onChange={hc} />}
+      {(editing || has(r.mac)) && <Field label="MAC" value={r.mac} editing={editing} field="mac" onChange={hc} />}
+      {(editing || has(r.modelo)) && <EditAutoField label="Modelo" value={r.modelo} field="modelo" editing={editing} onChange={hc} tipo="RED" placeholder="Ej: Cisco Catalyst 9200" />}
+      {(editing || has(r.ipGestion)) && <Field label="IP Gestión" value={r.ipGestion} editing={editing} field="ipGestion" onChange={hc} />}
+      {(editing || has(r.estado)) && <EditSelectField label="Estado" value={r.estado} field="estado" editing={editing} onChange={hc} options={["ACTIVO", "DESACTIVADO"]} />}
+      {(editing || has(r.fechaFinSoporte)) && <EditDateField label="Fecha Fin Soporte" value={r.fechaFinSoporte} field="fechaFinSoporte" editing={editing} onChange={hc} />}
+      {(editing || has(r.contratoQueSoporta)) && <EditAutoField label="Contrato que lo soporta" value={r.contratoQueSoporta} field="contratoQueSoporta" editing={editing} onChange={hc} tipo="RED" />}
     </Section>
   );
 }
@@ -105,10 +110,10 @@ export function UpsSection({
 
   return (
     <Section title="UPS" icon="🔋">
-      <Field label="Serial" value={u.serial} editing={editing} field="serial" onChange={hc} />
-      <Field label="Placa" value={u.placa} editing={editing} field="placa" onChange={hc} />
-      <EditAutoField label="Modelo" value={u.modelo} field="modelo" editing={editing} onChange={hc} tipo="UPS" placeholder="Ej: APC Smart-UPS 1500" />
-      <EditSelectField label="Estado" value={u.estado} field="estado" editing={editing} onChange={hc} options={["ACTIVO", "INACTIVO", "DESCONECTADO"]} />
+      {(editing || has(u.serial)) && <Field label="Serial" value={u.serial} editing={editing} field="serial" onChange={hc} />}
+      {(editing || has(u.placa)) && <Field label="Placa" value={u.placa} editing={editing} field="placa" onChange={hc} />}
+      {(editing || has(u.modelo)) && <EditAutoField label="Modelo" value={u.modelo} field="modelo" editing={editing} onChange={hc} tipo="UPS" placeholder="Ej: APC Smart-UPS 1500" />}
+      {(editing || has(u.estado)) && <EditSelectField label="Estado" value={u.estado} field="estado" editing={editing} onChange={hc} options={["ACTIVO", "INACTIVO", "DESCONECTADO"]} />}
     </Section>
   );
 }
@@ -132,15 +137,15 @@ export function BaseDatosSection({
 
   return (
     <Section title="Base de Datos" icon="🗄️">
-      <Field label="Servidor 1" value={b.servidor1} editing={editing} field="servidor1" onChange={hc} />
-      <Field label="Servidor 2" value={b.servidor2} editing={editing} field="servidor2" onChange={hc} />
-      <Field label="RAC/Scan" value={b.racScan} editing={editing} field="racScan" onChange={hc} />
-      <EditSelectField label="Ambiente" value={b.ambiente} field="ambiente" editing={editing} onChange={hc} options={["PRODUCCIÓN", "PRUEBAS"]} />
-      <EditAutoField label="Aplicación que soporta" value={b.appSoporta} field="appSoporta" editing={editing} onChange={hc} tipo="BASE_DATOS" />
-      <Field label="Versión BD" value={b.versionBd} editing={editing} field="versionBd" onChange={hc} />
-      <EditDateField label="Fecha Final Soporte" value={b.fechaFinalSoporte} field="fechaFinalSoporte" editing={editing} onChange={hc} />
-      <EditAutoField label="Contenedor Físico" value={b.contenedorFisico} field="contenedorFisico" editing={editing} onChange={hc} tipo="BASE_DATOS" />
-      <EditAutoField label="Contrato que lo soporta" value={b.contratoQueSoporta} field="contratoQueSoporta" editing={editing} onChange={hc} tipo="BASE_DATOS" />
+      {(editing || has(b.servidor1)) && <Field label="Servidor 1" value={b.servidor1} editing={editing} field="servidor1" onChange={hc} />}
+      {(editing || has(b.servidor2)) && <Field label="Servidor 2" value={b.servidor2} editing={editing} field="servidor2" onChange={hc} />}
+      {(editing || has(b.racScan)) && <Field label="RAC/Scan" value={b.racScan} editing={editing} field="racScan" onChange={hc} />}
+      {(editing || has(b.ambiente)) && <EditSelectField label="Ambiente" value={b.ambiente} field="ambiente" editing={editing} onChange={hc} options={["PRODUCCIÓN", "PRUEBAS"]} />}
+      {(editing || has(b.appSoporta)) && <EditAutoField label="Aplicación que soporta" value={b.appSoporta} field="appSoporta" editing={editing} onChange={hc} tipo="BASE_DATOS" />}
+      {(editing || has(b.versionBd)) && <Field label="Versión BD" value={b.versionBd} editing={editing} field="versionBd" onChange={hc} />}
+      {(editing || has(b.fechaFinalSoporte)) && <EditDateField label="Fecha Final Soporte" value={b.fechaFinalSoporte} field="fechaFinalSoporte" editing={editing} onChange={hc} />}
+      {(editing || has(b.contenedorFisico)) && <EditAutoField label="Contenedor Físico" value={b.contenedorFisico} field="contenedorFisico" editing={editing} onChange={hc} tipo="BASE_DATOS" />}
+      {(editing || has(b.contratoQueSoporta)) && <EditAutoField label="Contrato que lo soporta" value={b.contratoQueSoporta} field="contratoQueSoporta" editing={editing} onChange={hc} tipo="BASE_DATOS" />}
     </Section>
   );
 }
@@ -340,10 +345,10 @@ export function VpnSection({
   return (
     <>
       <Section title="VPN" icon="🔒">
-        <Field label="Conexión" value={v.conexion} editing={editing} field="conexion" onChange={hc} />
-        <Field label="Fases"    value={v.fases}    editing={editing} field="fases"    onChange={hc} />
-        <Field label="Origen"   value={v.origen}   editing={editing} field="origen"   onChange={hc} />
-        <Field label="Destino"  value={v.destino}  editing={editing} field="destino"  onChange={hc} />
+        {(editing || has(v.conexion)) && <Field label="Conexión" value={v.conexion} editing={editing} field="conexion" onChange={hc} />}
+        {(editing || has(v.fases))    && <Field label="Fases"    value={v.fases}    editing={editing} field="fases"    onChange={hc} />}
+        {(editing || has(v.origen))   && <Field label="Origen"   value={v.origen}   editing={editing} field="origen"   onChange={hc} />}
+        {(editing || has(v.destino))  && <Field label="Destino"  value={v.destino}  editing={editing} field="destino"  onChange={hc} />}
       </Section>
 
       {(totalReglas > 0 || editing) && (
@@ -467,22 +472,26 @@ export function CertificadoSslSection({
     <>
       <Section title="Certificado SSL" icon="🔐">
         {/* tipoCertificado: select con 3 modos */}
-        <EditSelectField
-          label="Tipo"
-          value={c.tipoCertificado}
-          field="tipoCertificado"
-          editing={editing}
-          onChange={hc}
-          options={["DOMINIO", "APLICACION", "PROVEEDOR"]}
-        />
-        <Field
-          label="Nombre de Aplicación"
-          value={c.nombreAplicacion}
-          editing={editing}
-          field="nombreAplicacion"
-          onChange={hc}
-        />
-        {(c.tipoCertificado === "DOMINIO") && (
+        {(editing || has(c.tipoCertificado)) && (
+          <EditSelectField
+            label="Tipo"
+            value={c.tipoCertificado}
+            field="tipoCertificado"
+            editing={editing}
+            onChange={hc}
+            options={["DOMINIO", "APLICACION", "PROVEEDOR"]}
+          />
+        )}
+        {(editing || has(c.nombreAplicacion)) && (
+          <Field
+            label="Nombre de Aplicación"
+            value={c.nombreAplicacion}
+            editing={editing}
+            field="nombreAplicacion"
+            onChange={hc}
+          />
+        )}
+        {c.tipoCertificado === "DOMINIO" && (editing || has(c.nombreDominio)) && (
           <Field
             label="Nombre del Dominio"
             value={c.nombreDominio}
@@ -492,37 +501,45 @@ export function CertificadoSslSection({
           />
         )}
 
-        <Field
-          label="Proveedor"
-          value={c.proveedor}
-          editing={editing}
-          field="proveedor"
-          onChange={hc}
-        />
-        <UrlField
-          label="URL"
-          value={c.url}
-          editing={editing}
-          field="url"
-          onChange={hc}
-        />
-        <EditDateField
-          label="Fecha de Inicio"
-          value={c.fechaInicio}
-          field="fechaInicio"
-          editing={editing}
-          onChange={hc}
-        />
-        <div>
+        {(editing || has(c.proveedor)) && (
+          <Field
+            label="Proveedor"
+            value={c.proveedor}
+            editing={editing}
+            field="proveedor"
+            onChange={hc}
+          />
+        )}
+        {(editing || has(c.url)) && (
+          <UrlField
+            label="URL"
+            value={c.url}
+            editing={editing}
+            field="url"
+            onChange={hc}
+          />
+        )}
+        {(editing || has(c.fechaInicio)) && (
           <EditDateField
-            label="Fecha de Vencimiento"
-            value={c.fechaFin}
-            field="fechaFin"
+            label="Fecha de Inicio"
+            value={c.fechaInicio}
+            field="fechaInicio"
             editing={editing}
             onChange={hc}
           />
-          {!editing && <DiasRestantesBadge fecha={c.fechaFin} />}
-        </div>
+        )}
+        {(editing || has(c.fechaFin)) && (
+          <div>
+            <EditDateField
+              label="Fecha de Vencimiento"
+              value={c.fechaFin}
+              field="fechaFin"
+              editing={editing}
+              onChange={hc}
+            />
+            {!editing && <DiasRestantesBadge fecha={c.fechaFin} />}
+          </div>
+        )}
       </Section>
 
       {/* Apps hijas del proveedor: ver/editar/agregar/eliminar */}
@@ -574,153 +591,187 @@ export function MovilSection({
     <>
       <Section title="Datos del Usuario" icon="👤">
         {/* numeroCaso / cedula / usuarioRed: texto libre siempre */}
-        <Field
-          label="# Caso"
-          value={m.numeroCaso}
-          editing={puedeEditarActaEntrega}
-          field="numeroCaso"
-          onChange={hc}
-        />
+        {(editing || has(m.numeroCaso)) && (
+          <Field
+            label="# Caso"
+            value={m.numeroCaso}
+            editing={puedeEditarActaEntrega}
+            field="numeroCaso"
+            onChange={hc}
+          />
+        )}
         {/*
           region: SelectField — vocabulario controlado.
           Mismo set que FormMovil en forms.tsx.
         */}
-        <EditSelectField
-          label="Región/Departamento"
-          value={m.region}
-          field="region"
-          editing={puedeEditarActaEntrega}
-          onChange={hc}
-          options={[
-            "Bogotá", "Bucaramanga", "Cúcuta", "Villavicencio", "Ibagué",
-            "Barranquilla", "Santa Marta", "Sincelejo", "Cartagena",
-            "Montería", "Medellín", "Cali", "Pereira",
-          ]}
-        />
+        {(editing || has(m.region)) && (
+          <EditSelectField
+            label="Región/Departamento"
+            value={m.region}
+            field="region"
+            editing={puedeEditarActaEntrega}
+            onChange={hc}
+            options={[
+              "Bogotá", "Bucaramanga", "Cúcuta", "Villavicencio", "Ibagué",
+              "Barranquilla", "Santa Marta", "Sincelejo", "Cartagena",
+              "Montería", "Medellín", "Cali", "Pereira",
+            ]}
+          />
+        )}
         {/* dependencia: texto libre */}
-        <Field
-          label="Dependencia/Área"
-          value={m.dependencia}
-          editing={puedeEditarActaEntrega}
-          field="dependencia"
-          onChange={hc}
-        />
+        {(editing || has(m.dependencia)) && (
+          <Field
+            label="Dependencia/Área"
+            value={m.dependencia}
+            editing={puedeEditarActaEntrega}
+            field="dependencia"
+            onChange={hc}
+          />
+        )}
         {/* sede: AutocompleteField */}
-        <EditAutoField
-          label="Sede"
-          value={m.sede}
-          field="sede"
-          editing={puedeEditarActaEntrega}
-          onChange={hc}
-          tipo="MOVIL"
-        />
-        <Field
-          label="C.C."
-          value={m.cedula}
-          editing={puedeEditarActaEntrega}
-          field="cedula"
-          onChange={hc}
-        />
-        <Field
-          label="Usuario de Red"
-          value={m.usuarioRed}
-          editing={puedeEditarActaEntrega}
-          field="usuarioRed"
-          onChange={hc}
-        />
-        <Field
-          label="Correo Responsable"
-          value={m.correoResponsable}
-          editing={puedeEditarCorreo}
-          field="correoResponsable"
-          onChange={hc}
-        />
+        {(editing || has(m.sede)) && (
+          <EditAutoField
+            label="Sede"
+            value={m.sede}
+            field="sede"
+            editing={puedeEditarActaEntrega}
+            onChange={hc}
+            tipo="MOVIL"
+          />
+        )}
+        {(editing || has(m.cedula)) && (
+          <Field
+            label="C.C."
+            value={m.cedula}
+            editing={puedeEditarActaEntrega}
+            field="cedula"
+            onChange={hc}
+          />
+        )}
+        {(editing || has(m.usuarioRed)) && (
+          <Field
+            label="Usuario de Red"
+            value={m.usuarioRed}
+            editing={puedeEditarActaEntrega}
+            field="usuarioRed"
+            onChange={hc}
+          />
+        )}
+        {(editing || has(m.correoResponsable)) && (
+          <Field
+            label="Correo Responsable"
+            value={m.correoResponsable}
+            editing={puedeEditarCorreo}
+            field="correoResponsable"
+            onChange={hc}
+          />
+        )}
       </Section>
 
       <Section title="Datos del Equipo Entregado" icon="📱">
         {/* uni: texto libre */}
-        <Field
-          label="UNI"
-          value={m.uni}
-          editing={puedeEditarActaEntrega}
-          field="uni"
-          onChange={hc}
-        />
+        {(editing || has(m.uni)) && (
+          <Field
+            label="UNI"
+            value={m.uni}
+            editing={puedeEditarActaEntrega}
+            field="uni"
+            onChange={hc}
+          />
+        )}
         {/*
           marca / modelo: SelectField y AutocompleteField.
           marca: vocabulario controlado igual que FormMovil.
           modelo: sugerencias de BD.
         */}
-        <EditSelectField
-          label="Marca"
-          value={m.marca}
-          field="marca"
-          editing={puedeEditarActaEntrega}
-          onChange={hc}
-          options={["Samsung", "Motorola", "Xiaomi", "Huawei", "Apple"]}
-        />
-        <EditAutoField
-          label="Modelo"
-          value={m.modelo}
-          field="modelo"
-          editing={puedeEditarActaEntrega}
-          onChange={hc}
-          tipo="MOVIL"
-        />
+        {(editing || has(m.marca)) && (
+          <EditSelectField
+            label="Marca"
+            value={m.marca}
+            field="marca"
+            editing={puedeEditarActaEntrega}
+            onChange={hc}
+            options={["Samsung", "Motorola", "Xiaomi", "Huawei", "Apple"]}
+          />
+        )}
+        {(editing || has(m.modelo)) && (
+          <EditAutoField
+            label="Modelo"
+            value={m.modelo}
+            field="modelo"
+            editing={puedeEditarActaEntrega}
+            onChange={hc}
+            tipo="MOVIL"
+          />
+        )}
         {/* serial / imei1 / imei2: texto libre SIEMPRE — nunca cambiar */}
-        <Field
-          label="Serial"
-          value={m.serial}
-          editing={puedeEditarActaEntrega}
-          field="serial"
-          onChange={hc}
-        />
-        <Field
-          label="IMEI 1"
-          value={m.imei1}
-          editing={puedeEditarActaEntrega}
-          field="imei1"
-          onChange={hc}
-        />
-        <Field
-          label="IMEI 2"
-          value={m.imei2}
-          editing={puedeEditarActaEntrega}
-          field="imei2"
-          onChange={hc}
-        />
+        {(editing || has(m.serial)) && (
+          <Field
+            label="Serial"
+            value={m.serial}
+            editing={puedeEditarActaEntrega}
+            field="serial"
+            onChange={hc}
+          />
+        )}
+        {(editing || has(m.imei1)) && (
+          <Field
+            label="IMEI 1"
+            value={m.imei1}
+            editing={puedeEditarActaEntrega}
+            field="imei1"
+            onChange={hc}
+          />
+        )}
+        {(editing || has(m.imei2)) && (
+          <Field
+            label="IMEI 2"
+            value={m.imei2}
+            editing={puedeEditarActaEntrega}
+            field="imei2"
+            onChange={hc}
+          />
+        )}
         {/* sim: SelectField */}
-        <EditSelectField
-          label="SIM"
-          value={m.sim}
-          field="sim"
-          editing={puedeEditarActaEntrega}
-          onChange={hc}
-          options={["Sí", "No"]}
-        />
+        {(editing || has(m.sim)) && (
+          <EditSelectField
+            label="SIM"
+            value={m.sim}
+            field="sim"
+            editing={puedeEditarActaEntrega}
+            onChange={hc}
+            options={["Sí", "No"]}
+          />
+        )}
         {/* numeroLinea: texto libre */}
-        <Field
-          label="Número de Línea"
-          value={m.numeroLinea}
-          editing={puedeEditarActaEntrega}
-          field="numeroLinea"
-          onChange={hc}
-        />
+        {(editing || has(m.numeroLinea)) && (
+          <Field
+            label="Número de Línea"
+            value={m.numeroLinea}
+            editing={puedeEditarActaEntrega}
+            field="numeroLinea"
+            onChange={hc}
+          />
+        )}
         {/* fechaEntrega: EditDateField */}
-        <EditDateField
-          label="Fecha de Entrega"
-          value={m.fechaEntrega}
-          field="fechaEntrega"
-          editing={puedeEditarActaEntrega}
-          onChange={hc}
-        />
-        <Field
-          label="Observaciones Entrega"
-          value={m.observacionesEntrega}
-          editing={puedeEditarActaEntrega}
-          field="observacionesEntrega"
-          onChange={hc}
-        />
+        {(editing || has(m.fechaEntrega)) && (
+          <EditDateField
+            label="Fecha de Entrega"
+            value={m.fechaEntrega}
+            field="fechaEntrega"
+            editing={puedeEditarActaEntrega}
+            onChange={hc}
+          />
+        )}
+        {(editing || has(m.observacionesEntrega)) && (
+          <Field
+            label="Observaciones Entrega"
+            value={m.observacionesEntrega}
+            editing={puedeEditarActaEntrega}
+            field="observacionesEntrega"
+            onChange={hc}
+          />
+        )}
       </Section>
 
       {(estado === "DEVOLUCION" ||
@@ -729,20 +780,24 @@ export function MovilSection({
         editing) && (
         <Section title="Datos de Devolución" icon="↩️">
           {/* fechaDevolucion: editing siempre false — lo setea el sistema */}
-          <Field
-            label="Fecha de Devolución"
-            value={m.fechaDevolucion}
-            editing={false}
-            field="fechaDevolucion"
-            onChange={hc}
-          />
-          <Field
-            label="Observaciones Devolución"
-            value={m.observacionesDevolucion}
-            editing={puedeEditarDevolucion}
-            field="observacionesDevolucion"
-            onChange={hc}
-          />
+          {(editing || has(m.fechaDevolucion)) && (
+            <Field
+              label="Fecha de Devolución"
+              value={m.fechaDevolucion}
+              editing={false}
+              field="fechaDevolucion"
+              onChange={hc}
+            />
+          )}
+          {(editing || has(m.observacionesDevolucion)) && (
+            <Field
+              label="Observaciones Devolución"
+              value={m.observacionesDevolucion}
+              editing={puedeEditarDevolucion}
+              field="observacionesDevolucion"
+              onChange={hc}
+            />
+          )}
         </Section>
       )}
     </>

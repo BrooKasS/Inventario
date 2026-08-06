@@ -70,6 +70,11 @@ function getEstadoColor(estado?: string | null) {
   }
 }
 
+/** En modo lectura oculta filas sin valor; en edición siempre se muestran. */
+function has(v: unknown): boolean {
+  return v !== null && v !== undefined && v !== "";
+}
+
 function getManualChangeMessage(estado?: string | null) {
   switch (estado) {
     case "ENTREGADO":
@@ -604,35 +609,43 @@ export default function AssetDetail() {
 
       {asset.tipo !== "CERTIFICADO_SSL" && (
         <Section title="Informacion General" icon="">
-          <Field
-            label="Nombre"
-            value={asset.nombre}
-            editing={editing}
-            field="nombre"
-            onChange={(f, v) => handleChange(null, f, v)}
-          />
-          <Field
-            label="Ubicacion"
-            value={asset.ubicacion}
-            editing={editing}
-            field="ubicacion"
-            onChange={(f, v) => handleChange(null, f, v)}
-          />
-          <Field
-            label="Propietario"
-            value={asset.propietario}
-            editing={editing}
-            field="propietario"
-            onChange={(f, v) => handleChange(null, f, v)}
-          />
-          <Field
-            label="Custodio"
-            value={asset.custodio}
-            editing={editing}
-            field="custodio"
-            onChange={(f, v) => handleChange(null, f, v)}
-          />
-          {["SERVIDOR", "RED"].includes(asset.tipo) && (
+          {(editing || has(asset.nombre)) && (
+            <Field
+              label="Nombre"
+              value={asset.nombre}
+              editing={editing}
+              field="nombre"
+              onChange={(f, v) => handleChange(null, f, v)}
+            />
+          )}
+          {(editing || has(asset.ubicacion)) && (
+            <Field
+              label="Ubicacion"
+              value={asset.ubicacion}
+              editing={editing}
+              field="ubicacion"
+              onChange={(f, v) => handleChange(null, f, v)}
+            />
+          )}
+          {(editing || has(asset.propietario)) && (
+            <Field
+              label="Propietario"
+              value={asset.propietario}
+              editing={editing}
+              field="propietario"
+              onChange={(f, v) => handleChange(null, f, v)}
+            />
+          )}
+          {(editing || has(asset.custodio)) && (
+            <Field
+              label="Custodio"
+              value={asset.custodio}
+              editing={editing}
+              field="custodio"
+              onChange={(f, v) => handleChange(null, f, v)}
+            />
+          )}
+          {["SERVIDOR", "RED"].includes(asset.tipo) && (editing || has(asset.codigoServicio)) && (
             <Field
               label="Codigo de Servicio"
               value={asset.codigoServicio}
