@@ -38,6 +38,32 @@ function mailbox(): string {
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
 // ─────────────────────────────────────────────────────────────────────────────
+// GET con reintento automático ante 429 (Too Many Requests) — Graph devuelve
+// el header Retry-After con los segundos exactos a esperar. Sin esto, correr
+// varias descargas en paralelo (ver backupReports.service.ts) revienta con
+// rangos de fecha largos en cuanto Graph empieza a limitar la tasa.
+// ─────────────────────────────────────────────────────────────────────────────
+async function graphGet(
+  url: string,
+  config: { headers: Record<string, string>; params?: Record<string, any> }
+): Promise<any> {
+  const MAX_REINTENTOS = 5;
+  for (let intento = 0; ; intento++) {
+    try {
+      const res = await axios.get(url, { ...config, httpsAgent });
+      return res.data;
+    } catch (err: any) {
+      const status = err?.response?.status;
+      if (status !== 429 || intento >= MAX_REINTENTOS) throw err;
+
+      const retryAfter = Number(err.response.headers?.["retry-after"]);
+      const esperaSeg = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 2 ** intento;
+      await new Promise((resolve) => setTimeout(resolve, (esperaSeg + 0.5) * 1000));
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Autenticación (client credentials) — reemplaza el uso de MSAL de los scripts
 // originales replicando el mismo POST OAuth2 que ya usaba enviar_reporte.py
 // ─────────────────────────────────────────────────────────────────────────────
@@ -88,8 +114,7 @@ async function listMessagesFromSender(
 
   const mensajes: GraphMessage[] = [];
   while (url) {
-    const res: any = await axios.get(url, { headers, params, httpsAgent });
-    const data = res.data;
+    const data = await graphGet(url, { headers, params });
     mensajes.push(...(data.value ?? []));
     url = data["@odata.nextLink"] ?? null;
     params = undefined; // nextLink ya trae la query completa
@@ -107,7 +132,7 @@ async function listMessagesFromSender(
 async function downloadAttachments(messageId: string): Promise<GraphAttachment[]> {
   const token = await getGraphToken();
   const url = `https://graph.microsoft.com/v1.0/users/${mailbox()}/messages/${messageId}/attachments`;
-  const { data } = await axios.get(url, { headers: { Authorization: `Bearer ${token}` }, httpsAgent });
+  const data = await graphGet(url, { headers: { Authorization: `Bearer ${token}` } });
 
   const archivos: GraphAttachment[] = [];
   for (const adj of data.value ?? []) {
