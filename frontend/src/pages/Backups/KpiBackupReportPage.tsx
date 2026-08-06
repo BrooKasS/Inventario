@@ -197,24 +197,6 @@ export default function KpiBackupReportPage() {
               <StatCard label="Compresión prom. (%)" value={`${s.promedioCompresionPct}%`} grad="linear-gradient(135deg, #FA8200, #D86018)" />
             </div>
 
-            {/* Top 5 clientes */}
-            {s.topClientes?.length > 0 && (
-              <MiniTable
-                title="Top 5 clientes por total de jobs"
-                headers={["Cliente", "Total Jobs", "Completados", "% Éxito"]}
-                rows={s.topClientes.map((c: any) => [c.cliente, c.totalJobs, c.completados, `${c.pctExito}%`])}
-              />
-            )}
-
-            {/* Top 5 VMs por tamaño (VADP) */}
-            {s.topVms?.length > 0 && (
-              <MiniTable
-                title="Top 5 VMs por tamaño de backup (VADP)"
-                headers={["VM", "Estado", "Tamaño Backup (GB)", "Tipo de Backup"]}
-                rows={s.topVms.map((v: any) => [v.nombreVm, v.estado, v.tamanoBackupGB, v.tipoBackup])}
-              />
-            )}
-
             {/* VMs con fallas */}
             {s.vmsConFallas?.length > 0 && (
               <MiniTable

@@ -369,7 +369,7 @@ def main():
                 'Obs. Entrega':     r.get('observacionesEntrega', ''),
                 'Fecha Devolución': r.get('fechaDevolucion', ''),
                 'Obs. Devolución':  r.get('observacionesDevolucion', ''),
-                'estados':     r.get('estados', ''),
+                'Estado Móvil':     r.get('estados', ''),
             } for r in movil_rows]
         crear_hoja_extra(dst_wb, 'InventarioMovil', mov_labels, mov_widths, mov_rows,
                          date_label_keys={'Fecha Entrega', 'Fecha Devolución'} if not payload.get('movilesEscaneados') else set())

@@ -138,13 +138,20 @@ async function createRun(
     range.hasta.toISOString()
   );
 
+  // Descarga adjuntos en lotes concurrentes en vez de uno por uno — con
+  // rangos largos (muchos correos) la versión secuencial tardaba lo
+  // suficiente para que el proxy devolviera 502/504 antes de terminar.
+  const CONCURRENCIA_DESCARGA = 8;
+  const conAdjuntos = mensajes.filter((m) => m.hasAttachments);
   const files: { filename: string; html: string }[] = [];
-  for (const mensaje of mensajes) {
-    if (!mensaje.hasAttachments) continue;
-    const adjuntos = await msgraphService.downloadAttachments(mensaje.id);
-    for (const adj of adjuntos) {
-      if (adj.name.toLowerCase().endsWith(".html")) {
-        files.push({ filename: adj.name, html: adj.buffer.toString("utf-8") });
+  for (let i = 0; i < conAdjuntos.length; i += CONCURRENCIA_DESCARGA) {
+    const lote = conAdjuntos.slice(i, i + CONCURRENCIA_DESCARGA);
+    const resultados = await Promise.all(lote.map((m) => msgraphService.downloadAttachments(m.id)));
+    for (const adjuntos of resultados) {
+      for (const adj of adjuntos) {
+        if (adj.name.toLowerCase().endsWith(".html")) {
+          files.push({ filename: adj.name, html: adj.buffer.toString("utf-8") });
+        }
       }
     }
   }

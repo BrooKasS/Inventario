@@ -535,8 +535,7 @@ export async function buildKpiBackupReport(
     }));
 
   const vmsConFallas = allVm
-    .filter((v) => v.razonFalla !== "")
-    .slice(0, 10)
+    .filter((v) => v.estado === "Failed")
     .map((v) => ({
       nombreVm: v.nombreVm,
       estado: v.estado,
@@ -855,7 +854,7 @@ function buildKpiWorkbook(
 
   if (summary.vmsConFallas.length > 0) {
     rowNum += 2;
-    dash.getCell(rowNum, 4).value = "🔴 VMs CON ADVERTENCIAS / FALLAS (máx 10)";
+    dash.getCell(rowNum, 4).value = "🔴 VMs CON FALLAS";
     dash.getCell(rowNum, 4).font = { bold: true, size: 10, color: { argb: "FFDC2626" }, name: "Arial" };
     dash.mergeCells(rowNum, 4, rowNum, 8);
     rowNum += 1;
@@ -1021,7 +1020,6 @@ function buildKpiWorkbook(
     allVm.forEach((r) => sheetVm.addRow({ ...r }));
 
     const nDataVm = allVm.length;
-    const vmsConAdvertencias = allVm.filter((v) => v.razonFalla !== "").length;
     sheetVm.addRow({
       nombreVm: "── RESUMEN VMs ──",
       tamanoVmGB: Math.round(allVm.reduce((a, r) => a + r.tamanoVmGB, 0) * 100) / 100,
@@ -1029,7 +1027,7 @@ function buildKpiWorkbook(
     });
     sheetVm.addRow({ nombreVm: "Total VMs respaldadas", estado: summary.totalVms });
     sheetVm.addRow({ nombreVm: "VMs Completadas", estado: summary.vmsCompletadas });
-    sheetVm.addRow({ nombreVm: "VMs con advertencias/fallas", estado: vmsConAdvertencias });
+    sheetVm.addRow({ nombreVm: "VMs con fallas", estado: summary.vmsConFallas.length });
 
     const totalRowsVm = new Set([nDataVm + 2, nDataVm + 3, nDataVm + 4, nDataVm + 5]);
     const alertRowsVm = new Set<number>();
