@@ -879,6 +879,10 @@ const {
       updates.custodio = data.custodio;
       bitacoraEntries.push({ campoModificado: "custodio", valorAnterior: asset.custodio, valorNuevo: data.custodio });
     }
+    if (data.codigoServicio !== undefined && data.codigoServicio !== asset.codigoServicio) {
+      updates.codigoServicio = data.codigoServicio;
+      bitacoraEntries.push({ campoModificado: "codigoServicio", valorAnterior: asset.codigoServicio, valorNuevo: data.codigoServicio });
+    }
 
     if (Object.keys(updates).length > 0) {
       await assetRepository.update(id, updates);

@@ -429,6 +429,15 @@ export default function AssetList() {
     }
   }, [showFilters, loadAllForFiltering]);
 
+  useEffect(() => {
+    if (!showFilters) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowFilters(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [showFilters]);
+
   const aplicarFiltros = () => {
     const filtered = allAssetsForFiltering.filter(a => {
       const matchNombre    = !filtroNombre    || normalize(a.nombre ?? "").includes(normalize(filtroNombre));
@@ -665,7 +674,6 @@ export default function AssetList() {
       {/* ══════════════ Modal de Filtros ══════════════ */}
       {showFilters && (
         <div
-          onClick={e => e.target === e.currentTarget && setShowFilters(false)}
           style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
         >
           <div className="modal-scroll" style={{ background: "white", borderRadius: 12, width: "90%", maxWidth: 580, boxShadow: "0 10px 40px rgba(0,0,0,.35)", animation: "fadeIn .2s ease", maxHeight: "90vh", overflowY: "auto" }}>
