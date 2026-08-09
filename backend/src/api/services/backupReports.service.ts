@@ -121,6 +121,19 @@ async function deleteRun(tipo: string, runId: string): Promise<void> {
   await fs.rm(runDir(tipo, runId), { recursive: true, force: true });
 }
 
+const MAX_RUNS = 10;
+
+// Borra las corridas mas viejas de un tipo, dejando solo las `maxRuns` mas
+// recientes — cada corrida guarda el excel + el html crudo de cada adjunto,
+// asi que sin esto el storage crece indefinidamente.
+async function pruneOldRuns(tipo: BackupTipo, maxRuns: number): Promise<void> {
+  const runs = await listRuns(tipo);
+  const sobrantes = runs.slice(maxRuns);
+  for (const run of sobrantes) {
+    await deleteRun(tipo, run.runId);
+  }
+}
+
 async function createRun(
   tipo: string,
   params: { fechaInicio?: string; fechaFin?: string; trigger?: "manual" | "cron" } = {}
@@ -190,6 +203,14 @@ async function createRun(
     enviado: false,
   };
   await writeRunMeta(meta);
+
+  // Limita el historico (cualquier tipo) a las ultimas 10 corridas. Si la
+  // limpieza falla no debe tumbar la corrida que ya se creo bien.
+  try {
+    await pruneOldRuns(tipo, MAX_RUNS);
+  } catch (err: any) {
+    console.error(`[BACKUP-JOB] Error limpiando historico ${tipo}:`, err.message);
+  }
 
   return meta;
 }
